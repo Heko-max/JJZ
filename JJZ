@@ -1839,6 +1839,10 @@ function NEXO_StyleSwitch(pill, on)
 	if typeof(pill) ~= "Instance" then return end
 	on = on and true or false
 
+	-- 0) remember the state FIRST, so the global "force black" pass and the
+	--    self-heal guard below both know what this switch should look like
+	pcall(function() pill:SetAttribute("NexoSwitchOn", on) end)
+
 	-- 1) normalize the track every time
 	pcall(function()
 		pill.ClipsDescendants = false
@@ -1908,8 +1912,10 @@ function NEXO_StyleSwitch(pill, on)
 	-- 4) apply the state (set instantly first, then tween, so a cancelled tween
 	--    can never leave the switch in a half-styled look)
 	pcall(function()
+		-- track colour is set instantly (never tweened) so an interrupted tween or an
+		-- external repaint can never leave the pill in a half-way colour
 		pill.BackgroundColor3 = on and NEXO_SWITCH_ON or NEXO_SWITCH_OFF
-		tween(pill, {BackgroundTransparency = 0, BackgroundColor3 = on and NEXO_SWITCH_ON or NEXO_SWITCH_OFF})
+		pill.BackgroundTransparency = 0
 
 		local stroke = pill:FindFirstChildOfClass("UIStroke")
 		if stroke then
@@ -1927,7 +1933,22 @@ function NEXO_StyleSwitch(pill, on)
 		tween(glow, {ImageColor3 = NEXO_SWITCH_ON, ImageTransparency = on and 0.3 or 1})
 	end)
 
-	pcall(function() pill:SetAttribute("NexoSwitchOn", on) end)
+	-- 5) self-heal: if anything else in the script repaints this pill later
+	--    (theme pass, "force black" pass, etc.) snap it straight back to the
+	--    correct NEXO look. Connected only once per switch.
+	if not pill:GetAttribute("NexoSwitchGuard") then
+		pcall(function()
+			pill:SetAttribute("NexoSwitchGuard", true)
+			pill:GetPropertyChangedSignal("BackgroundColor3"):Connect(function()
+				local want = pill:GetAttribute("NexoSwitchOn") and NEXO_SWITCH_ON or NEXO_SWITCH_OFF
+				if pill.BackgroundColor3 ~= want then pill.BackgroundColor3 = want end
+			end)
+			pill:GetPropertyChangedSignal("Size"):Connect(function()
+				local want = UDim2.fromOffset(NEXO_SWITCH_W, NEXO_SWITCH_H)
+				if pill.Size ~= want then pill.Size = want end
+			end)
+		end)
+	end
 end
 
 local function Hide(Window, bind, notif)
@@ -2023,9 +2044,20 @@ local NEXO_SKIP = {
 	Progress = true, val = true, color = true, Background = true,
 	Display = true, MainCP = true, Main = true, Hue = true,
 	SatVib = true, Line = true,
+	-- NEXO: never repaint the switch parts, otherwise the pill gets forced black
+	-- and the ON / OFF states end up looking different from each other
+	toggle = true, Toggle = true, Switch = true, switch = true, NexoGlow = true,
 }
 local function NexoBlacken(obj)
-	if obj and obj:IsA("GuiObject") and not NEXO_SKIP[obj.Name] and tostring(obj.Name):sub(1,8) ~= "NexoKeep" then
+	if not obj then return end
+	local okAttr, isSwitch = pcall(function() return obj:GetAttribute("NexoSwitchOn") ~= nil end)
+	if okAttr and isSwitch then return end
+	local parentIsSwitch = false
+	pcall(function()
+		if obj.Parent and obj.Parent:GetAttribute("NexoSwitchOn") ~= nil then parentIsSwitch = true end
+	end)
+	if parentIsSwitch then return end
+	if obj:IsA("GuiObject") and not NEXO_SKIP[obj.Name] and tostring(obj.Name):sub(1,8) ~= "NexoKeep" then
 		pcall(function() obj.BackgroundColor3 = NEXO_BLACK end)
 	end
 end
