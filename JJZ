@@ -3,6 +3,8 @@ local NEXO_BUILD = "NEXO BUILD 16"
 pcall(function() warn("[NEXO] running " .. NEXO_BUILD) end)
 
 local Luna = {
+	SaveSettingsEnabled = false,
+	NexoRequestSave = nil,
 	Folder = "NEXO",
 	Options = {},
 	ThemeGradient = ColorSequence.new(Color3.fromRGB(255, 255, 255)) --[[NEXO white]]
@@ -1819,61 +1821,113 @@ local LunaUI = isStudio and script.Parent:WaitForChild("NEXO") or game:GetObject
 
 local SizeBleh = nil
 
--- ===== NEXO: modern switch style (purple pill + soft glow) =====
-local NEXO_SWITCH_ON = Color3.fromRGB(139, 92, 246)
-local NEXO_SWITCH_OFF = Color3.fromRGB(38, 38, 42)
+-- ===== NEXO: modern switch style (ONE style, identical geometry for ON and OFF) =====
+local NEXO_SWITCH_ON    = Color3.fromRGB(139, 92, 246)
+local NEXO_SWITCH_OFF   = Color3.fromRGB(38, 38, 42)
+local NEXO_KNOB_ON      = Color3.fromRGB(255, 255, 255)
+local NEXO_KNOB_OFF     = Color3.fromRGB(160, 160, 168)
+local NEXO_STROKE_ON    = NEXO_SWITCH_ON
+local NEXO_STROKE_OFF   = Color3.fromRGB(72, 72, 78)
+local NEXO_SWITCH_W     = 44
+local NEXO_SWITCH_H     = 22
+local NEXO_KNOB_SIZE    = 16
+local NEXO_KNOB_PAD     = 3
+
+-- Rebuilds the switch from scratch on EVERY state change so ON -> OFF -> ON always
+-- ends up pixel-identical (no leftover gradients, sizes, corners or tweens).
 function NEXO_StyleSwitch(pill, on)
 	if typeof(pill) ~= "Instance" then return end
+	on = on and true or false
+
+	-- 1) normalize the track every time
 	pcall(function()
 		pill.ClipsDescendants = false
-		if pill:FindFirstChild("color") then pill.color.Enabled = false end
-		if pill:FindFirstChild("UIStroke") and pill.UIStroke:FindFirstChild("color") then
-			pill.UIStroke.color.Enabled = false
+		pill.BorderSizePixel = 0
+		pill.AutomaticSize = Enum.AutomaticSize.None
+		pill.Size = UDim2.fromOffset(NEXO_SWITCH_W, NEXO_SWITCH_H)
+		pill.BackgroundTransparency = 0
+
+		-- kill every gradient/theme overlay on the track
+		for _, d in ipairs(pill:GetDescendants()) do
+			if d:IsA("UIGradient") then d.Enabled = false end
+		end
+
+		local corner = pill:FindFirstChildOfClass("UICorner")
+		if not corner then corner = Instance.new("UICorner"); corner.Parent = pill end
+		corner.CornerRadius = UDim.new(1, 0)
+
+		local stroke = pill:FindFirstChildOfClass("UIStroke")
+		if stroke then
+			stroke.Thickness = 1
+			stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		end
 	end)
 
+	-- 2) soft glow (single reusable instance)
 	local glow = pill:FindFirstChild("NexoGlow")
 	if not glow then
 		glow = Instance.new("ImageLabel")
 		glow.Name = "NexoGlow"
-		glow.BackgroundTransparency = 1
 		glow.Image = "rbxassetid://5028857084"
 		glow.ScaleType = Enum.ScaleType.Slice
 		glow.SliceCenter = Rect.new(24, 24, 276, 276)
+		glow.Active = false
+		glow.Parent = pill
+	end
+	pcall(function()
+		glow.BackgroundTransparency = 1
+		glow.BorderSizePixel = 0
 		glow.AnchorPoint = Vector2.new(0.5, 0.5)
 		glow.Position = UDim2.fromScale(0.5, 0.5)
 		glow.Size = UDim2.new(1, 26, 1, 26)
 		glow.ImageColor3 = NEXO_SWITCH_ON
-		glow.ImageTransparency = 1
 		glow.ZIndex = 0
-		glow.Active = false
-		glow.Parent = pill
-	end
+	end)
 
+	-- 3) normalize the knob every time
 	local knob = pill:FindFirstChild("val")
-	pcall(function() if knob then knob.ZIndex = 3 end end)
-
-	if on then
-		pill.BackgroundColor3 = NEXO_SWITCH_ON
-		tween(pill, {BackgroundTransparency = 0, BackgroundColor3 = NEXO_SWITCH_ON})
-		if pill:FindFirstChild("UIStroke") then
-			tween(pill.UIStroke, {Color = NEXO_SWITCH_ON, Transparency = 0.15})
-		end
-		if knob then
-			tween(knob, {BackgroundColor3 = Color3.fromRGB(255,255,255), Position = UDim2.new(1,-23,0.5,0), BackgroundTransparency = 0})
-		end
-		tween(glow, {ImageColor3 = NEXO_SWITCH_ON, ImageTransparency = 0.3})
-	else
-		pill.BackgroundColor3 = NEXO_SWITCH_OFF
-		tween(pill, {BackgroundTransparency = 0, BackgroundColor3 = NEXO_SWITCH_OFF})
-		if pill:FindFirstChild("UIStroke") then
-			tween(pill.UIStroke, {Color = Color3.fromRGB(72,72,78), Transparency = 0.35})
-		end
-		if knob then
-			tween(knob, {BackgroundColor3 = Color3.fromRGB(130,130,136), Position = UDim2.new(0,5,0.5,0), BackgroundTransparency = 0})
-		end
-		tween(glow, {ImageTransparency = 1})
+	if knob then
+		pcall(function()
+			knob.ZIndex = 3
+			knob.BorderSizePixel = 0
+			knob.AutomaticSize = Enum.AutomaticSize.None
+			knob.AnchorPoint = Vector2.new(0, 0.5)
+			knob.Size = UDim2.fromOffset(NEXO_KNOB_SIZE, NEXO_KNOB_SIZE)
+			knob.BackgroundTransparency = 0
+			local kc = knob:FindFirstChildOfClass("UICorner")
+			if not kc then kc = Instance.new("UICorner"); kc.Parent = knob end
+			kc.CornerRadius = UDim.new(1, 0)
+			local ks = knob:FindFirstChildOfClass("UIStroke")
+			if ks then ks.Enabled = false end
+		end)
 	end
+
+	local onPos  = UDim2.new(0, NEXO_SWITCH_W - NEXO_KNOB_SIZE - NEXO_KNOB_PAD, 0.5, 0)
+	local offPos = UDim2.new(0, NEXO_KNOB_PAD, 0.5, 0)
+
+	-- 4) apply the state (set instantly first, then tween, so a cancelled tween
+	--    can never leave the switch in a half-styled look)
+	pcall(function()
+		pill.BackgroundColor3 = on and NEXO_SWITCH_ON or NEXO_SWITCH_OFF
+		tween(pill, {BackgroundTransparency = 0, BackgroundColor3 = on and NEXO_SWITCH_ON or NEXO_SWITCH_OFF})
+
+		local stroke = pill:FindFirstChildOfClass("UIStroke")
+		if stroke then
+			stroke.Color = on and NEXO_STROKE_ON or NEXO_STROKE_OFF
+			stroke.Transparency = on and 0.15 or 0.35
+			tween(stroke, {Color = on and NEXO_STROKE_ON or NEXO_STROKE_OFF, Transparency = on and 0.15 or 0.35})
+		end
+
+		if knob then
+			knob.BackgroundColor3 = on and NEXO_KNOB_ON or NEXO_KNOB_OFF
+			tween(knob, {BackgroundColor3 = on and NEXO_KNOB_ON or NEXO_KNOB_OFF, Position = on and onPos or offPos, BackgroundTransparency = 0})
+		end
+
+		glow.ImageTransparency = on and 0.3 or 1
+		tween(glow, {ImageColor3 = NEXO_SWITCH_ON, ImageTransparency = on and 0.3 or 1})
+	end)
+
+	pcall(function() pill:SetAttribute("NexoSwitchOn", on) end)
 end
 
 local function Hide(Window, bind, notif)
@@ -3380,7 +3434,7 @@ function Luna:CreateWindow(WindowSettings)
 				Slider.Main.Progress.Size =	UDim2.new(0, Slider.Main.AbsoluteSize.X * ((SliderSettings.CurrentValue + SliderSettings.Range[1]) / (SliderSettings.Range[2] - SliderSettings.Range[1])) > 5 and Slider.Main.AbsoluteSize.X * (SliderSettings.CurrentValue / (SliderSettings.Range[2] - SliderSettings.Range[1])) or 5, 1, 0)
 
 				Slider.Value.Text = tostring(SliderSettings.CurrentValue)
-				SliderV.CurrentValue = Slider.Value.Text
+				SliderV.CurrentValue = tonumber(Slider.Value.Text) or SliderSettings.CurrentValue
 
 				SliderSettings.Callback(SliderSettings.CurrentValue)
 
@@ -3456,6 +3510,7 @@ function Luna:CreateWindow(WindowSettings)
 
 								SliderSettings.CurrentValue = NewValue
 								SliderV.CurrentValue = SliderSettings.CurrentValue
+					if Luna.NexoRequestSave then Luna.NexoRequestSave() end
 
 							end
 						else
@@ -3489,6 +3544,7 @@ function Luna:CreateWindow(WindowSettings)
 
 					SliderSettings.CurrentValue = NewVal
 					SliderV.CurrentValue = SliderSettings.CurrentValue
+					if Luna.NexoRequestSave then Luna.NexoRequestSave() end
 
 				end
 
@@ -3588,6 +3644,7 @@ function Luna:CreateWindow(WindowSettings)
 					NEXO_StyleSwitch(Toggle.toggle, bool)
 
 					ToggleV.CurrentValue = bool
+					if Luna.NexoRequestSave then Luna.NexoRequestSave() end
 				end
 
 				Toggle.Interact.MouseButton1Click:Connect(function()
@@ -3688,8 +3745,7 @@ function Luna:CreateWindow(WindowSettings)
 				end
 
 				LunaUI.ThemeRemote:GetPropertyChangedSignal("Value"):Connect(function()
-					Toggle.toggle.color.Color = Luna.ThemeGradient
-					Toggle.toggle.UIStroke.color.Color = Luna.ThemeGradient
+					NEXO_StyleSwitch(Toggle.toggle, ToggleSettings.CurrentValue)
 				end)
 
 				if Flag then
@@ -4094,6 +4150,7 @@ function Luna:CreateWindow(WindowSettings)
 				}, DropdownSettings or {})
 
 				DropdownV.CurrentOption = DropdownSettings.CurrentOption
+								if Luna.NexoRequestSave then Luna.NexoRequestSave() end
 
 				local descriptionbool = false
 				if DropdownSettings.Description ~= nil and DropdownSettings.Description ~= "" then
@@ -4194,6 +4251,7 @@ function Luna:CreateWindow(WindowSettings)
 								if table.find(DropdownSettings.CurrentOption, v) then
 									RemoveTable(DropdownSettings.CurrentOption, v)
 									DropdownV.CurrentOption = DropdownSettings.CurrentOption
+								if Luna.NexoRequestSave then Luna.NexoRequestSave() end
 									if not optionhover then
 										tween(Option, {TextColor3 = Color3.fromRGB(200,200,200)})
 									end
@@ -4201,13 +4259,15 @@ function Luna:CreateWindow(WindowSettings)
 								else
 									table.insert(DropdownSettings.CurrentOption, v)
 									DropdownV.CurrentOption = DropdownSettings.CurrentOption
+								if Luna.NexoRequestSave then Luna.NexoRequestSave() end
 									tween(Option, {TextColor3 = Color3.fromRGB(240,240,240), BackgroundTransparency = 0.95})
 								end
 								bleh = DropdownSettings.CurrentOption
 							else
 								DropdownSettings.CurrentOption = {v}
 								bleh = v
-								DropdownV.CurrentOption = bleh
+								DropdownV.CurrentOption = DropdownSettings.CurrentOption
+								if Luna.NexoRequestSave then Luna.NexoRequestSave() end
 								ActivateColorSingle(v)
 							end
 
@@ -4329,7 +4389,7 @@ function Luna:CreateWindow(WindowSettings)
 						Dropdown.Selected.PlaceholderText = "None"
 					end
 					for _, name in pairs(DropdownSettings.CurrentOption) do
-						tween(Dropdown.List[name], {TextColor3 = Color3.fromRGB(227,227,227), BackgroundTransparency = 0.95})
+						if Dropdown.List:FindFirstChild(name) then tween(Dropdown.List[name], {TextColor3 = Color3.fromRGB(227,227,227), BackgroundTransparency = 0.95}) end
 					end
 				else
 					Dropdown.Selected.PlaceholderText = DropdownSettings.CurrentOption[1] or "None"
@@ -4378,13 +4438,16 @@ function Luna:CreateWindow(WindowSettings)
 						ind = ind + 1
 					end
 					if ind == 1 then bleh = DropdownSettings.CurrentOption[1] else bleh = DropdownSettings.CurrentOption end
+					DropdownV.CurrentOption = DropdownSettings.CurrentOption
 					SafeCallback(bleh)
 					for _, Option in pairs(Dropdown.List:GetChildren()) do
 						if Option.ClassName == "TextLabel" then
 							tween(Option, {TextColor3 = Color3.fromRGB(200,200,200), BackgroundTransparency = 0.98})
 						end
 					end
-					tween(Dropdown.List[bleh], {TextColor3 = Color3.fromRGB(240,240,240), BackgroundTransparency = 0.95})
+					if type(bleh) == "string" and Dropdown.List:FindFirstChild(bleh) then
+						tween(Dropdown.List[bleh], {TextColor3 = Color3.fromRGB(240,240,240), BackgroundTransparency = 0.95})
+					end
 
 					if DropdownSettings.MultipleOptions then
 						if DropdownSettings.CurrentOption and type(DropdownSettings.CurrentOption) == "table" then
@@ -4400,7 +4463,7 @@ function Luna:CreateWindow(WindowSettings)
 							Dropdown.Selected.PlaceholderText = "None"
 						end
 						for _, name in pairs(DropdownSettings.CurrentOption) do
-							tween(Dropdown.List[name], {TextColor3 = Color3.fromRGB(227,227,227), BackgroundTransparency = 0.95})
+							if Dropdown.List:FindFirstChild(name) then tween(Dropdown.List[name], {TextColor3 = Color3.fromRGB(227,227,227), BackgroundTransparency = 0.95}) end
 						end
 					else
 						Dropdown.Selected.PlaceholderText = DropdownSettings.CurrentOption[1] or "None"
@@ -4922,7 +4985,7 @@ function Luna:CreateWindow(WindowSettings)
 			Slider.Main.Progress.Size =	UDim2.new(0, Slider.Main.AbsoluteSize.X * ((SliderSettings.CurrentValue + SliderSettings.Range[1]) / (SliderSettings.Range[2] - SliderSettings.Range[1])) > 5 and Slider.Main.AbsoluteSize.X * (SliderSettings.CurrentValue / (SliderSettings.Range[2] - SliderSettings.Range[1])) or 5, 1, 0)
 
 			Slider.Value.Text = tostring(SliderSettings.CurrentValue)
-			SliderV.CurrentValue = Slider.Value.Text
+			SliderV.CurrentValue = tonumber(Slider.Value.Text) or SliderSettings.CurrentValue
 
 			SliderSettings.Callback(SliderSettings.CurrentValue)
 
@@ -4998,6 +5061,7 @@ function Luna:CreateWindow(WindowSettings)
 
 							SliderSettings.CurrentValue = NewValue
 							SliderV.CurrentValue = SliderSettings.CurrentValue
+					if Luna.NexoRequestSave then Luna.NexoRequestSave() end
 
 						end
 					else
@@ -5031,6 +5095,7 @@ function Luna:CreateWindow(WindowSettings)
 
 				SliderSettings.CurrentValue = NewVal
 				SliderV.CurrentValue = SliderSettings.CurrentValue
+					if Luna.NexoRequestSave then Luna.NexoRequestSave() end
 
 			end
 
@@ -5129,6 +5194,7 @@ function Luna:CreateWindow(WindowSettings)
 				NEXO_StyleSwitch(Toggle.toggle, bool)
 
 				ToggleV.CurrentValue = bool
+					if Luna.NexoRequestSave then Luna.NexoRequestSave() end
 			end
 
 			Toggle.Interact.MouseButton1Click:Connect(function()
@@ -5229,8 +5295,7 @@ function Luna:CreateWindow(WindowSettings)
 			end
 
 			LunaUI.ThemeRemote:GetPropertyChangedSignal("Value"):Connect(function()
-				Toggle.toggle.color.Color = Luna.ThemeGradient
-				Toggle.toggle.UIStroke.color.Color = Luna.ThemeGradient
+				NEXO_StyleSwitch(Toggle.toggle, ToggleSettings.CurrentValue)
 			end)
 
 			if Flag then
@@ -5820,6 +5885,7 @@ function Luna:CreateWindow(WindowSettings)
 			}, DropdownSettings or {})
 
 			DropdownV.CurrentOption = DropdownSettings.CurrentOption
+								if Luna.NexoRequestSave then Luna.NexoRequestSave() end
 
 			local descriptionbool = false
 			if DropdownSettings.Description ~= nil and DropdownSettings.Description ~= "" then
@@ -5920,6 +5986,7 @@ function Luna:CreateWindow(WindowSettings)
 							if table.find(DropdownSettings.CurrentOption, v) then
 								RemoveTable(DropdownSettings.CurrentOption, v)
 								DropdownV.CurrentOption = DropdownSettings.CurrentOption
+								if Luna.NexoRequestSave then Luna.NexoRequestSave() end
 								if not optionhover then
 									tween(Option, {TextColor3 = Color3.fromRGB(200,200,200)})
 								end
@@ -5927,13 +5994,15 @@ function Luna:CreateWindow(WindowSettings)
 							else
 								table.insert(DropdownSettings.CurrentOption, v)
 								DropdownV.CurrentOption = DropdownSettings.CurrentOption
+								if Luna.NexoRequestSave then Luna.NexoRequestSave() end
 								tween(Option, {TextColor3 = Color3.fromRGB(240,240,240), BackgroundTransparency = 0.95})
 							end
 							bleh = DropdownSettings.CurrentOption
 						else
 							DropdownSettings.CurrentOption = {v}
 							bleh = v
-							DropdownV.CurrentOption = bleh
+							DropdownV.CurrentOption = DropdownSettings.CurrentOption
+								if Luna.NexoRequestSave then Luna.NexoRequestSave() end
 							ActivateColorSingle(v)
 						end
 
@@ -6055,7 +6124,7 @@ function Luna:CreateWindow(WindowSettings)
 					Dropdown.Selected.PlaceholderText = "None"
 				end
 				for _, name in pairs(DropdownSettings.CurrentOption) do
-					tween(Dropdown.List[name], {TextColor3 = Color3.fromRGB(227,227,227), BackgroundTransparency = 0.95})
+					if Dropdown.List:FindFirstChild(name) then tween(Dropdown.List[name], {TextColor3 = Color3.fromRGB(227,227,227), BackgroundTransparency = 0.95}) end
 				end
 			else
 				Dropdown.Selected.PlaceholderText = DropdownSettings.CurrentOption[1] or "None"
@@ -6104,13 +6173,16 @@ function Luna:CreateWindow(WindowSettings)
 					ind = ind + 1
 				end
 				if ind == 1 then bleh = DropdownSettings.CurrentOption[1] else bleh = DropdownSettings.CurrentOption end
+				DropdownV.CurrentOption = DropdownSettings.CurrentOption
 				SafeCallback(bleh)
 				for _, Option in pairs(Dropdown.List:GetChildren()) do
 					if Option.ClassName == "TextLabel" then
 						tween(Option, {TextColor3 = Color3.fromRGB(200,200,200), BackgroundTransparency = 0.98})
 					end
 				end
-				tween(Dropdown.List[bleh], {TextColor3 = Color3.fromRGB(240,240,240), BackgroundTransparency = 0.95})
+				if type(bleh) == "string" and Dropdown.List:FindFirstChild(bleh) then
+					tween(Dropdown.List[bleh], {TextColor3 = Color3.fromRGB(240,240,240), BackgroundTransparency = 0.95})
+				end
 
 				if DropdownSettings.MultipleOptions then
 					if DropdownSettings.CurrentOption and type(DropdownSettings.CurrentOption) == "table" then
@@ -6126,7 +6198,7 @@ function Luna:CreateWindow(WindowSettings)
 						Dropdown.Selected.PlaceholderText = "None"
 					end
 					for _, name in pairs(DropdownSettings.CurrentOption) do
-						tween(Dropdown.List[name], {TextColor3 = Color3.fromRGB(227,227,227), BackgroundTransparency = 0.95})
+						if Dropdown.List:FindFirstChild(name) then tween(Dropdown.List[name], {TextColor3 = Color3.fromRGB(227,227,227), BackgroundTransparency = 0.95}) end
 					end
 				else
 					Dropdown.Selected.PlaceholderText = DropdownSettings.CurrentOption[1] or "None"
@@ -6594,15 +6666,22 @@ function Luna:CreateWindow(WindowSettings)
 			},
 			["Slider"] = {
 				Save = function(Flag, data)
+					local v = data.CurrentValue
+					if v == nil and data.Settings then v = data.Settings.CurrentValue end
 					return {
 						type = "Slider",
 						flag = Flag,
-						value = (data.CurrentValue and tostring(data.CurrentValue)),
+						value = tonumber(v),
 					}
 				end,
 				Load = function(Flag, data)
-					if Luna.Options[Flag] and data.value then
-						Luna.Options[Flag]:Set({ CurrentValue = data.value })
+					local v = tonumber(data.value)
+					if Luna.Options[Flag] and v then
+						if Luna.Options[Flag].UpdateValue then
+							Luna.Options[Flag]:UpdateValue(v)
+						else
+							Luna.Options[Flag]:Set({ CurrentValue = v })
+						end
 					end
 				end
 			},
@@ -6622,15 +6701,25 @@ function Luna:CreateWindow(WindowSettings)
 			},
 			["Dropdown"] = {
 				Save = function(Flag, data)
+					local opt = data.CurrentOption
+					if opt == nil and data.Settings then opt = data.Settings.CurrentOption end
+					if type(opt) == "string" then opt = { opt } end
+					if type(opt) ~= "table" then opt = {} end
+					local clean = {}
+					for _, v in pairs(opt) do
+						if type(v) == "string" then table.insert(clean, v) end
+					end
 					return {
 						type = "Dropdown",
 						flag = Flag,
-						value = data.CurrentOption
+						value = clean
 					}
 				end,
 				Load = function(Flag, data)
-					if Luna.Options[Flag] and data.value then
-						Luna.Options[Flag]:Set({ CurrentOption = data.value })
+					local opt = data.value
+					if type(opt) == "string" then opt = { opt } end
+					if Luna.Options[Flag] and type(opt) == "table" and #opt > 0 then
+						Luna.Options[Flag]:Set({ CurrentOption = opt })
 					end
 				end
 			},
@@ -6766,6 +6855,11 @@ function Luna:CreateWindow(WindowSettings)
 		function Luna:SaveConfig(Path)
 			if isStudio then return "Config system unavailable." end
 
+			-- Save Settings OFF means the auto-save slot is never written
+			if Path == "NEXO_AutoSave" and not Luna.SaveSettingsEnabled then
+				return false, "Save Settings is off."
+			end
+
 			if (not Path) then
 				return false, "Please select a config file."
 			end
@@ -6817,6 +6911,8 @@ function Luna:CreateWindow(WindowSettings)
 		end
 
 		function Luna:LoadAutoloadConfig()
+			if isStudio then return "Config system unavailable." end
+			if not isfile(Luna.Folder .. "/settings/autoload.txt") then return end
 			if isfile(Luna.Folder .. "/settings/autoload.txt") then
 
 				if isStudio then return "Config system unavailable." end
@@ -7146,24 +7242,45 @@ function Luna:CreateWindow(WindowSettings)
         knob.Position = UDim2.new(0, 2, 0.5, 0); knob.Size = UDim2.fromOffset(18,18)
         knob.BackgroundColor3 = Color3.fromRGB(255,255,255); knob.Parent = track
         Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
+        local AUTO_NAME = "NEXO_AutoSave"
+        local autoloadPath = Luna.Folder .. "/settings/autoload.txt"
+        local autoFilePath = Luna.Folder .. "/settings/" .. AUTO_NAME .. ".luna"
         local saveOn = false
-        pcall(function() if isfile and isfile(Luna.Folder .. "/settings/autoload.txt") then saveOn = true end end)
+        pcall(function() if isfile and isfile(autoloadPath) then saveOn = true end end)
+        Luna.SaveSettingsEnabled = saveOn
+
+        -- debounced autosave: only ever writes while Save Settings is ON
+        local savePending = false
+        Luna.NexoRequestSave = function()
+            if not Luna.SaveSettingsEnabled then return end
+            if savePending then return end
+            savePending = true
+            task.delay(0.4, function()
+                savePending = false
+                if Luna.SaveSettingsEnabled then
+                    pcall(function() Luna:SaveConfig(AUTO_NAME) end)
+                end
+            end)
+        end
+        -- use the exact same switch style as every other toggle in the UI
         local function render()
-            tween(track, {BackgroundColor3 = saveOn and Color3.fromRGB(255,255,255) or Color3.fromRGB(40,40,40)})
-            tween(knob, {Position = saveOn and UDim2.new(1,-20,0.5,0) or UDim2.new(0,2,0.5,0), BackgroundColor3 = saveOn and Color3.fromRGB(0,0,0) or Color3.fromRGB(255,255,255)})
+            NEXO_StyleSwitch(track, saveOn)
         end
         render()
         track.MouseButton1Click:Connect(function()
             saveOn = not saveOn; render()
+            Luna.SaveSettingsEnabled = saveOn
             if saveOn then
                 pcall(function()
-                    Luna:SaveConfig("NEXO_AutoSave")
-                    if writefile then writefile(Luna.Folder .. "/settings/autoload.txt", "NEXO_AutoSave") end
+                    Luna:SaveConfig(AUTO_NAME)
+                    if writefile then writefile(autoloadPath, AUTO_NAME) end
                 end)
-                pcall(function() Luna:Notification({Title = "Save Settings", Content = "ON - settings saved to your executor workspace.", Icon = "star_rate", ImageSource = "Material"}) end)
+                pcall(function() Luna:Notification({Title = "Save Settings", Content = "ON - toggles, sliders and selectors are saved automatically.", Icon = "star_rate", ImageSource = "Material"}) end)
             else
-                pcall(function() if delfile and isfile and isfile(Luna.Folder .. "/settings/autoload.txt") then delfile(Luna.Folder .. "/settings/autoload.txt") end end)
-                pcall(function() Luna:Notification({Title = "Save Settings", Content = "OFF - settings will not be saved.", Icon = "star_rate", ImageSource = "Material"}) end)
+                -- OFF: stop saving AND wipe what was saved, so rejoining resets everything
+                pcall(function() if delfile and isfile and isfile(autoloadPath) then delfile(autoloadPath) end end)
+                pcall(function() if delfile and isfile and isfile(autoFilePath) then delfile(autoFilePath) end end)
+                pcall(function() Luna:Notification({Title = "Save Settings", Content = "OFF - nothing is saved. Rejoin and settings reset.", Icon = "star_rate", ImageSource = "Material"}) end)
             end
         end)
         saveBtn.ImageLabel.MouseButton1Click:Connect(function()
@@ -7177,11 +7294,17 @@ function Luna:CreateWindow(WindowSettings)
         saveBtn.ImageLabel.MouseLeave:Connect(function() tween(saveBtn.ImageLabel, {ImageColor3 = Color3.fromRGB(195,195,195)}) end)
         task.spawn(function()
             while panel.Parent do
-                if saveOn then pcall(function() Luna:SaveConfig("NEXO_AutoSave") end) end
+                if Luna.SaveSettingsEnabled then pcall(function() Luna:SaveConfig(AUTO_NAME) end) end
                 task.wait(5)
             end
         end)
-        task.delay(3, function() if saveOn then pcall(function() Luna:LoadAutoloadConfig() end) end end)
+        -- restore on join only when Save Settings was left ON
+        task.delay(3, function()
+            if not Luna.SaveSettingsEnabled then return end
+            pcall(function() Luna:LoadAutoloadConfig() end)
+            task.wait(1)
+            pcall(function() Luna:SaveConfig(AUTO_NAME) end)
+        end)
     end)
 
     -- ===== NEXO: thin vertical divider between tabs and content =====
