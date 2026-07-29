@@ -2,6 +2,7 @@ local Release = "NEXO BUILD 16"
 local NEXO_BUILD = "NEXO BUILD 16"
 pcall(function() warn("[NEXO] running " .. NEXO_BUILD) end)
 
+print("[NEXO] UI build FIXED-v3 loaded (single switch style + save settings)")
 local Luna = {
 	SaveSettingsEnabled = false,
 	NexoRequestSave = nil,
@@ -1889,7 +1890,17 @@ function NEXO_StyleSwitch(pill, on)
 	end)
 
 	-- 3) normalize the knob every time
-	local knob = pill:FindFirstChild("val")
+	local knob = pill:FindFirstChild("val") or pill:FindFirstChild("Val")
+		or pill:FindFirstChild("Knob") or pill:FindFirstChild("knob")
+	if not knob then
+		-- fall back to the first small square child (the knob) that is not our glow
+		for _, c in ipairs(pill:GetChildren()) do
+			if c:IsA("GuiObject") and c.Name ~= "NexoGlow" then
+				knob = c
+				break
+			end
+		end
+	end
 	if knob then
 		pcall(function()
 			knob.ZIndex = 3
@@ -2064,6 +2075,53 @@ end
 NexoBlacken(Main)
 for _, d in ipairs(Main:GetDescendants()) do NexoBlacken(d) end
 Main.DescendantAdded:Connect(NexoBlacken)
+
+-- ===== NEXO: switch watchdog =====
+-- Guarantees every switch in the interface uses the exact same style, no matter
+-- which code path created it or which other pass tried to repaint it.
+local function NexoIsSwitch(d)
+	if not (d and d:IsA("GuiObject")) then return false end
+	if d.Name == "toggle" or d.Name == "Toggle" then return true end
+	local ok, has = pcall(function() return d:GetAttribute("NexoSwitchOn") ~= nil end)
+	return ok and has
+end
+
+local function NexoFixSwitch(d)
+	local on = false
+	pcall(function() on = d:GetAttribute("NexoSwitchOn") and true or false end)
+	NEXO_StyleSwitch(d, on)
+end
+
+pcall(function()
+	for _, d in ipairs(Main:GetDescendants()) do
+		if NexoIsSwitch(d) then NexoFixSwitch(d) end
+	end
+end)
+
+Main.DescendantAdded:Connect(function(d)
+	if NexoIsSwitch(d) then
+		task.defer(function() pcall(function() NexoFixSwitch(d) end) end)
+	end
+end)
+
+task.spawn(function()
+	while true do
+		task.wait(1)
+		pcall(function()
+			for _, d in ipairs(Main:GetDescendants()) do
+				if NexoIsSwitch(d) then
+					local on = d:GetAttribute("NexoSwitchOn") and true or false
+					local wantColor = on and NEXO_SWITCH_ON or NEXO_SWITCH_OFF
+					local wantSize = UDim2.fromOffset(NEXO_SWITCH_W, NEXO_SWITCH_H)
+					-- only restyle when something actually drifted
+					if d.BackgroundColor3 ~= wantColor or d.Size ~= wantSize then
+						NEXO_StyleSwitch(d, on)
+					end
+				end
+			end
+		end)
+	end
+end)
 
 -- NEXO: force all text (labels, buttons, sliders, switches) pure white
 local NEXO_WHITE_ALL = Color3.fromRGB(255, 255, 255)
@@ -3708,6 +3766,11 @@ function Luna:CreateWindow(WindowSettings)
 					tween(Toggle.UIStroke, {Color = Color3.fromRGB(64,61,76)})
 				end)
 
+				-- NEXO: style the switch immediately for BOTH states, otherwise a toggle
+				-- that starts OFF keeps the old template look until it is clicked
+				NEXO_StyleSwitch(Toggle.toggle, ToggleSettings.CurrentValue)
+				ToggleV.CurrentValue = ToggleSettings.CurrentValue
+
 				if ToggleSettings.CurrentValue then
 					Set(ToggleSettings.CurrentValue)
 					local Success, Response = pcall(function()
@@ -5257,6 +5320,11 @@ function Luna:CreateWindow(WindowSettings)
 			Toggle["MouseLeave"]:Connect(function()
 				tween(Toggle.UIStroke, {Color = Color3.fromRGB(64,61,76)})
 			end)
+
+			-- NEXO: style the switch immediately for BOTH states, otherwise a toggle
+			-- that starts OFF keeps the old template look until it is clicked
+			NEXO_StyleSwitch(Toggle.toggle, ToggleSettings.CurrentValue)
+			ToggleV.CurrentValue = ToggleSettings.CurrentValue
 
 			if ToggleSettings.CurrentValue then
 				Set(ToggleSettings.CurrentValue)
