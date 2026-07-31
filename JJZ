@@ -1,9 +1,11 @@
-local Release = "Prerelease Beta 6.1"
+local Release = "NEXO BUILD 16"
+local NEXO_BUILD = "NEXO BUILD 16"
+pcall(function() warn("[NEXO] running " .. NEXO_BUILD) end)
 
 local Luna = {
-	Folder = "Luna",
+	Folder = "NEXO",
 	Options = {},
-	ThemeGradient = ColorSequence.new{ColorSequenceKeypoint.new(0.00, Color3.fromRGB(117, 164, 206)), ColorSequenceKeypoint.new(0.50, Color3.fromRGB(123, 201, 201)), ColorSequenceKeypoint.new(1.00, Color3.fromRGB(224, 138, 175))}
+	ThemeGradient = ColorSequence.new(Color3.fromRGB(255, 255, 255)) --[[NEXO white]]
 }
 
 local UserInputService = game:GetService("UserInputService")
@@ -1513,7 +1515,7 @@ local IconModule = {
 }
 
 local request = (syn and syn.request) or (http and http.request) or http_request or nil
-local tweeninfo = TweenInfo.new(0.3, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
+local tweeninfo = TweenInfo.new(0.22, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 local PresetGradients = {
 	["Nightlight (Classic)"] = {Color3.fromRGB(147, 255, 239), Color3.fromRGB(201,211,233), Color3.fromRGB(255, 167, 227)},
 	["Nightlight (Neo)"] = {Color3.fromRGB(117, 164, 206), Color3.fromRGB(123, 201, 201), Color3.fromRGB(224, 138, 175)},
@@ -1605,6 +1607,7 @@ function tween(object, goal, callback, tweenin)
 end
 
 local function BlurModule(Frame)
+	if true then return end -- NEXO: acrylic blur disabled to fix screen-blur glitch
 	local RunService = game:GetService('RunService')
 	local camera = workspace.CurrentCamera
 	local MTREL = "Glass"
@@ -1812,47 +1815,85 @@ local function unpackt(array : table)
 	return val
 end
 
-local LunaUI = isStudio and script.Parent:WaitForChild("Luna UI") or game:GetObjects("rbxassetid://86467455075715")[1]
+local LunaUI = isStudio and script.Parent:WaitForChild("NEXO") or game:GetObjects("rbxassetid://86467455075715")[1]
 
 local SizeBleh = nil
+
+-- ===== NEXO: modern switch style (purple pill + soft glow) =====
+local NEXO_SWITCH_ON = Color3.fromRGB(139, 92, 246)
+local NEXO_SWITCH_OFF = Color3.fromRGB(38, 38, 42)
+function NEXO_StyleSwitch(pill, on)
+	if typeof(pill) ~= "Instance" then return end
+	pcall(function()
+		pill.ClipsDescendants = false
+		if pill:FindFirstChild("color") then pill.color.Enabled = false end
+		if pill:FindFirstChild("UIStroke") and pill.UIStroke:FindFirstChild("color") then
+			pill.UIStroke.color.Enabled = false
+		end
+	end)
+
+	local glow = pill:FindFirstChild("NexoGlow")
+	if not glow then
+		glow = Instance.new("ImageLabel")
+		glow.Name = "NexoGlow"
+		glow.BackgroundTransparency = 1
+		glow.Image = "rbxassetid://5028857084"
+		glow.ScaleType = Enum.ScaleType.Slice
+		glow.SliceCenter = Rect.new(24, 24, 276, 276)
+		glow.AnchorPoint = Vector2.new(0.5, 0.5)
+		glow.Position = UDim2.fromScale(0.5, 0.5)
+		glow.Size = UDim2.new(1, 26, 1, 26)
+		glow.ImageColor3 = NEXO_SWITCH_ON
+		glow.ImageTransparency = 1
+		glow.ZIndex = 0
+		glow.Active = false
+		glow.Parent = pill
+	end
+
+	local knob = pill:FindFirstChild("val")
+	pcall(function() if knob then knob.ZIndex = 3 end end)
+
+	if on then
+		pill.BackgroundColor3 = NEXO_SWITCH_ON
+		tween(pill, {BackgroundTransparency = 0, BackgroundColor3 = NEXO_SWITCH_ON})
+		if pill:FindFirstChild("UIStroke") then
+			tween(pill.UIStroke, {Color = NEXO_SWITCH_ON, Transparency = 0.15})
+		end
+		if knob then
+			tween(knob, {BackgroundColor3 = Color3.fromRGB(255,255,255), Position = UDim2.new(1,-23,0.5,0), BackgroundTransparency = 0})
+		end
+		tween(glow, {ImageColor3 = NEXO_SWITCH_ON, ImageTransparency = 0.3})
+	else
+		pill.BackgroundColor3 = NEXO_SWITCH_OFF
+		tween(pill, {BackgroundTransparency = 0, BackgroundColor3 = NEXO_SWITCH_OFF})
+		if pill:FindFirstChild("UIStroke") then
+			tween(pill.UIStroke, {Color = Color3.fromRGB(72,72,78), Transparency = 0.35})
+		end
+		if knob then
+			tween(knob, {BackgroundColor3 = Color3.fromRGB(130,130,136), Position = UDim2.new(0,5,0.5,0), BackgroundTransparency = 0})
+		end
+		tween(glow, {ImageTransparency = 1})
+	end
+end
 
 local function Hide(Window, bind, notif)
 	SizeBleh = Window.Size
 	bind = string.split(tostring(bind), "Enum.KeyCode.")
 	bind = bind[2]
 	if notif then
-		Luna:Notification({Title = "Interface Hidden", Content = "The interface has been hidden, you may reopen the interface by Pressing the UI Bind In Settings ("..tostring(bind)..")", Icon = "visibility_off"})
 	end
-	tween(Window, {BackgroundTransparency = 1})
-	tween(Window.Elements, {BackgroundTransparency = 1})
-	tween(Window.Line, {BackgroundTransparency = 1})
-	tween(Window.Title.Title, {TextTransparency = 1})
-	tween(Window.Title.subtitle, {TextTransparency = 1})
-	tween(Window.Logo, {ImageTransparency = 1})
-	tween(Window.Navigation.Line, {BackgroundTransparency = 1})
+	pcall(function() Window.ClipsDescendants = true end)
+	local __ti = TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+	TweenService:Create(Window, __ti, {Size = UDim2.new(0,0,0,0), BackgroundTransparency = 1}):Play()
+	pcall(function() if Window.Parent:FindFirstChild("ShadowHolder") then TweenService:Create(Window.Parent.ShadowHolder, __ti, {ImageTransparency = 1}):Play() end end)
 
+	task.wait(0.3)
 	for _, TopbarButton in ipairs(Window.Controls:GetChildren()) do
-		if TopbarButton.ClassName == "Frame" then
-			tween(TopbarButton, {BackgroundTransparency = 1})
-			tween(TopbarButton.UIStroke, {Transparency = 1})
-			tween(TopbarButton.ImageLabel, {ImageTransparency = 1})
-			TopbarButton.Visible = false
-		end
+		if TopbarButton.ClassName == "Frame" then TopbarButton.Visible = false end
 	end
-	for _, tabbtn in ipairs(Window.Navigation.Tabs:GetChildren()) do
-		if tabbtn.ClassName == "Frame" and tabbtn.Name ~= "InActive Template" then
-			TweenService:Create(tabbtn, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = 1}):Play()
-			TweenService:Create(tabbtn.ImageLabel, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
-			TweenService:Create(tabbtn.DropShadowHolder.DropShadow, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
-			TweenService:Create(tabbtn.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
-		end
-	end
-
-	task.wait(0.28)
-	Window.Size = UDim2.new(0,0,0,0)
-	Window.Parent.ShadowHolder.Visible = false
+	pcall(function() if Window.Parent:FindFirstChild("ShadowHolder") then Window.Parent.ShadowHolder.Visible = false end end)
 	task.wait()
-	Window.Elements.Parent.Visible = false
+	pcall(function() Window.Elements.Parent.Visible = false end)
 	Window.Visible = false
 end
 
@@ -1869,18 +1910,14 @@ end
 
 if gethui then
 	for _, Interface in ipairs(gethui():GetChildren()) do
-		if Interface.Name == LunaUI.Name and Interface ~= LunaUI then
-			Hide(Interface.SmartWindow)
-			Interface.Enabled = false
-			Interface.Name = "Luna-Old"
+		if Interface ~= LunaUI and (Interface.Name == LunaUI.Name or Interface.Name == "Luna-Old" or string.find(Interface.Name, "Luna")) then
+			pcall(function() Interface:Destroy() end)
 		end
 	end
 elseif not isStudio then
 	for _, Interface in ipairs(CoreGui:GetChildren()) do
-		if Interface.Name == LunaUI.Name and Interface ~= LunaUI then
-			Hide(Interface.SmartWindow)
-			Interface.Enabled = false
-			Interface.Name = "Luna-Old"
+		if Interface ~= LunaUI and (Interface.Name == LunaUI.Name or Interface.Name == "Luna-Old" or string.find(Interface.Name, "Luna")) then
+			pcall(function() Interface:Destroy() end)
 		end
 	end
 end
@@ -1888,19 +1925,123 @@ end
 LunaUI.Enabled = false
 LunaUI.SmartWindow.Visible = false
 LunaUI.Notifications.Template.Visible = false
-LunaUI.DisplayOrder = 1000000000
+LunaUI.DisplayOrder = 2147483647
 
 local Main : Frame = LunaUI.SmartWindow
 local Dragger = Main.Drag
 local dragBar = LunaUI.Drag
 local dragInteract = dragBar and dragBar.Interact or nil
 local dragBarCosmetic = dragBar and dragBar.Drag or nil
+
+-- NEXO: keep the drag bar line locked directly under the window
+local NEXO_DRAG_GAP = 12
+local NEXO_LOGO_ICON = "bolt"
+function NEXO_SyncDragBar()
+	if not dragBar then return end
+	pcall(function()
+		local mp = Main.Position
+		local ma = Main.AnchorPoint
+		local ms = Main.AbsoluteSize
+		dragBar.AnchorPoint = Vector2.new(0.5, 0)
+		dragBar.Position = UDim2.new(
+			mp.X.Scale,
+			mp.X.Offset + math.floor((0.5 - ma.X) * ms.X),
+			mp.Y.Scale,
+			mp.Y.Offset + math.floor((1 - ma.Y) * ms.Y) + NEXO_DRAG_GAP
+		)
+	end)
+end
+pcall(function() dragBar.Visible = false end)
+pcall(function() Main:GetPropertyChangedSignal("Position"):Connect(NEXO_SyncDragBar) end)
+pcall(function() Main:GetPropertyChangedSignal("Size"):Connect(NEXO_SyncDragBar) end)
+pcall(function() Main:GetPropertyChangedSignal("AbsoluteSize"):Connect(NEXO_SyncDragBar) end)
+pcall(function() Main:GetPropertyChangedSignal("AnchorPoint"):Connect(NEXO_SyncDragBar) end)
 local Elements = Main.Elements.Interactions
+pcall(function() Elements.UIPageLayout.TweenTime = 0.2; Elements.UIPageLayout.EasingStyle = Enum.EasingStyle.Quint end)
 local LoadingFrame = Main.LoadingFrame
 local Navigation = Main.Navigation
 local Tabs = Navigation.Tabs
 local Notifications = LunaUI.Notifications
+
+-- NEXO: force fully black, opaque interface
+local NEXO_BLACK = Color3.fromRGB(0, 0, 0)
+local NEXO_SKIP = {
+	Progress = true, val = true, color = true, Background = true,
+	Display = true, MainCP = true, Main = true, Hue = true,
+	SatVib = true, Line = true,
+}
+local function NexoBlacken(obj)
+	if obj and obj:IsA("GuiObject") and not NEXO_SKIP[obj.Name] and tostring(obj.Name):sub(1,8) ~= "NexoKeep" then
+		pcall(function() obj.BackgroundColor3 = NEXO_BLACK end)
+	end
+end
+NexoBlacken(Main)
+for _, d in ipairs(Main:GetDescendants()) do NexoBlacken(d) end
+Main.DescendantAdded:Connect(NexoBlacken)
+
+-- NEXO: force all text (labels, buttons, sliders, switches) pure white
+local NEXO_WHITE_ALL = Color3.fromRGB(255, 255, 255)
+local function NexoWhitenText(o)
+	if not o then return end
+	if tostring(o.Name):sub(1,8) == "NexoKeep" then return end
+	pcall(function()
+		if o:IsA("TextLabel") or o:IsA("TextButton") or o:IsA("TextBox") then
+			o.TextColor3 = NEXO_WHITE_ALL
+			o.TextStrokeTransparency = 1
+		end
+		if o:IsA("UIGradient") then
+			local par = o.Parent
+			if par and (par:IsA("TextLabel") or par:IsA("TextButton") or par:IsA("TextBox")) then
+				o.Color = ColorSequence.new(NEXO_WHITE_ALL)
+			end
+		end
+		if o:IsA("UIGradient") and (o.Name == "color" or o.Name == "val") then
+			o.Color = ColorSequence.new(NEXO_WHITE_ALL)
+		end
+		if o:IsA("Frame") and o.Name == "Progress" then
+			o.BackgroundColor3 = NEXO_WHITE_ALL
+		end
+	end)
+end
+NexoWhitenText(Main)
+for _, d in ipairs(Main:GetDescendants()) do NexoWhitenText(d) end
+Main.DescendantAdded:Connect(NexoWhitenText)
 local KeySystem : Frame = Main.KeySystem
+
+-- NEXO: sliders are always white, no theme gradient
+local NEXO_WHITE_SEQ = ColorSequence.new(Color3.fromRGB(255, 255, 255))
+function NEXO_WhiteSlider(m)
+	if not m then return end
+	pcall(function()
+		local g = m:FindFirstChild("color")
+		if g and g:IsA("UIGradient") then g.Color = NEXO_WHITE_SEQ end
+		local st = m:FindFirstChildOfClass("UIStroke")
+		if st then
+			st.Color = Color3.fromRGB(255, 255, 255)
+			local sg = st:FindFirstChild("color")
+			if sg and sg:IsA("UIGradient") then sg.Color = NEXO_WHITE_SEQ end
+		end
+		local prog = m:FindFirstChild("Progress")
+		if prog then
+			prog.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+			prog.BackgroundTransparency = 0
+			local pg = prog:FindFirstChildOfClass("UIGradient")
+			if pg then pg.Color = NEXO_WHITE_SEQ end
+			local ps = prog:FindFirstChildOfClass("UIStroke")
+			if ps then ps.Color = Color3.fromRGB(255, 255, 255) end
+		end
+	end)
+end
+pcall(function()
+	Main.DescendantAdded:Connect(function(o)
+		if o and o.Name == "Progress" then
+			task.defer(function() NEXO_WhiteSlider(o.Parent) end)
+		end
+	end)
+	for _, d in ipairs(Main:GetDescendants()) do
+		if d.Name == "Progress" then NEXO_WhiteSlider(d.Parent) end
+	end
+end)
 
 local function Draggable(Bar, Window, enableTaptic, tapticOffset)
 	pcall(function()
@@ -1910,13 +2051,13 @@ local function Draggable(Bar, Window, enableTaptic, tapticOffset)
 			if dragBar and enableTaptic then
 				dragBar.MouseEnter:Connect(function()
 					if not Dragging then
-						TweenService:Create(dragBarCosmetic, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {BackgroundTransparency = 0.5, Size = UDim2.new(0, 120, 0, 4)}):Play()
+						TweenService:Create(dragBarCosmetic, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 0.5, Size = UDim2.new(0, 120, 0, 4)}):Play()
 					end
 				end)
 
 				dragBar.MouseLeave:Connect(function()
 					if not Dragging then
-						TweenService:Create(dragBarCosmetic, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {BackgroundTransparency = 0.7, Size = UDim2.new(0, 100, 0, 4)}):Play()
+						TweenService:Create(dragBarCosmetic, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 0.7, Size = UDim2.new(0, 100, 0, 4)}):Play()
 					end
 				end)
 			end
@@ -1931,7 +2072,7 @@ local function Draggable(Bar, Window, enableTaptic, tapticOffset)
 				FramePos = Window.Position
 
 				if enableTaptic then
-					TweenService:Create(dragBarCosmetic, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 110, 0, 4), BackgroundTransparency = 0}):Play()
+					TweenService:Create(dragBarCosmetic, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(0, 110, 0, 4), BackgroundTransparency = 0}):Play()
 				end
 
 				Input.Changed:Connect(function()
@@ -1940,7 +2081,7 @@ local function Draggable(Bar, Window, enableTaptic, tapticOffset)
 						connectFunctions()
 
 						if enableTaptic then
-							TweenService:Create(dragBarCosmetic, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = UDim2.new(0, 100, 0, 4), BackgroundTransparency = 0.7}):Play()
+							TweenService:Create(dragBarCosmetic, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(0, 100, 0, 4), BackgroundTransparency = 0.7}):Play()
 						end
 					end
 				end)
@@ -1958,12 +2099,9 @@ local function Draggable(Bar, Window, enableTaptic, tapticOffset)
 				local Delta = Input.Position - MousePos
 
 				local newMainPosition = UDim2.new(FramePos.X.Scale, FramePos.X.Offset + Delta.X, FramePos.Y.Scale, FramePos.Y.Offset + Delta.Y)
-				TweenService:Create(Window, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Position = newMainPosition}):Play()
+				TweenService:Create(Window, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = newMainPosition}):Play()
 
-				if dragBar then
-					local newDragBarPosition = UDim2.new(FramePos.X.Scale, FramePos.X.Offset + Delta.X, FramePos.Y.Scale, FramePos.Y.Offset + Delta.Y + 240)
-					dragBar.Position = newDragBarPosition
-				end
+				if dragBar then NEXO_SyncDragBar() end
 			end
 		end)
 
@@ -1989,6 +2127,11 @@ function Luna:Notification(data)
 		newNotification.Title.Text = data.Title
 		newNotification.Description.Text = data.Content
 		newNotification.Icon.Image = GetIcon(data.Icon, data.ImageSource)
+		pcall(function() newNotification.BackgroundColor3 = Color3.fromRGB(0,0,0) end)
+		pcall(function() newNotification.Title.TextColor3 = Color3.fromRGB(255,255,255) end)
+		pcall(function() newNotification.Description.TextColor3 = Color3.fromRGB(255,255,255) end)
+		pcall(function() newNotification.UIStroke.Color = Color3.fromRGB(255,255,255) end)
+		pcall(function() local ng = newNotification:FindFirstChildOfClass("UIGradient"); if ng then ng.Enabled = false end end)
 
 		newNotification.BackgroundTransparency = 1
 		newNotification.Title.TextTransparency = 1
@@ -2011,36 +2154,36 @@ function Luna:Notification(data)
 		local bounds = newNotification.Description.TextBounds.Y + 55
 		newNotification.Description.Size = UDim2.new(1,-65,0, bounds - 35)
 		newNotification.Size = UDim2.new(1, 0, 0, -Notifications:FindFirstChild("UIListLayout").Padding.Offset)
-		TweenService:Create(newNotification, TweenInfo.new(0.6, Enum.EasingStyle.Exponential), {Size = UDim2.new(1, 0, 0, bounds)}):Play()
+		TweenService:Create(newNotification, TweenInfo.new(0.6, Enum.EasingStyle.Quart), {Size = UDim2.new(1, 0, 0, bounds)}):Play()
 
 		task.wait(0.15)
-		TweenService:Create(newNotification, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.45}):Play()
-		TweenService:Create(newNotification.Title, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+		TweenService:Create(newNotification, TweenInfo.new(0.4, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+		TweenService:Create(newNotification.Title, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 
 		task.wait(0.05)
 
-		TweenService:Create(newNotification.Icon, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ImageTransparency = 0}):Play()
+		TweenService:Create(newNotification.Icon, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {ImageTransparency = 0}):Play()
 
 		task.wait(0.05)
-		TweenService:Create(newNotification.Description, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 0.35}):Play()
-		TweenService:Create(newNotification.UIStroke, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {Transparency = 0.95}):Play()
-		TweenService:Create(newNotification.Shadow, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ImageTransparency = 0.82}):Play()
+		TweenService:Create(newNotification.Description, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {TextTransparency = 0.35}):Play()
+		TweenService:Create(newNotification.UIStroke, TweenInfo.new(0.4, Enum.EasingStyle.Quart), {Transparency = 0.95}):Play()
+		TweenService:Create(newNotification.Shadow, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {ImageTransparency = 0.82}):Play()
 
 		local waitDuration = math.min(math.max((#newNotification.Description.Text * 0.1) + 2.5, 3), 10)
 		task.wait(data.Duration or waitDuration)
 
 		newNotification.Icon.Visible = false
-		TweenService:Create(newNotification, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {BackgroundTransparency = 1}):Play()
-		TweenService:Create(newNotification.UIStroke, TweenInfo.new(0.4, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
-		TweenService:Create(newNotification.Shadow, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
-		TweenService:Create(newNotification.Title, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
-		TweenService:Create(newNotification.Description, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
+		TweenService:Create(newNotification, TweenInfo.new(0.4, Enum.EasingStyle.Quart), {BackgroundTransparency = 1}):Play()
+		TweenService:Create(newNotification.UIStroke, TweenInfo.new(0.4, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
+		TweenService:Create(newNotification.Shadow, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {ImageTransparency = 1}):Play()
+		TweenService:Create(newNotification.Title, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {TextTransparency = 1}):Play()
+		TweenService:Create(newNotification.Description, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {TextTransparency = 1}):Play()
 
-		TweenService:Create(newNotification, TweenInfo.new(1, Enum.EasingStyle.Exponential), {Size = UDim2.new(1, -90, 0, 0)}):Play()
+		TweenService:Create(newNotification, TweenInfo.new(1, Enum.EasingStyle.Quart), {Size = UDim2.new(1, -90, 0, 0)}):Play()
 
 		task.wait(1)
 
-		TweenService:Create(newNotification, TweenInfo.new(1, Enum.EasingStyle.Exponential), {Size = UDim2.new(1, -90, 0, -Notifications:FindFirstChild("UIListLayout").Padding.Offset)}):Play()
+		TweenService:Create(newNotification, TweenInfo.new(1, Enum.EasingStyle.Quart), {Size = UDim2.new(1, -90, 0, -Notifications:FindFirstChild("UIListLayout").Padding.Offset)}):Play()
 
 		newNotification.Visible = false
 		newNotification:Destroy()
@@ -2048,12 +2191,15 @@ function Luna:Notification(data)
 end
 
 local function Unhide(Window, currentTab)
-	Window.Size = SizeBleh
+	pcall(function() Window.ClipsDescendants = true end)
+	pcall(function() Window.Parent.ShadowHolder.Visible = true; Window.Parent.ShadowHolder.ImageTransparency = 0 end)
 	Window.Elements.Visible = true
 	Window.Visible = true
+	Window.Size = UDim2.new(0,0,0,0)
 	task.wait()
-	tween(Window, {BackgroundTransparency = 0.2})
-	tween(Window.Elements, {BackgroundTransparency = 0.08})
+	tween(Window, {Size = SizeBleh})
+	tween(Window, {BackgroundTransparency = 0})
+	tween(Window.Elements, {BackgroundTransparency = 0})
 	tween(Window.Line, {BackgroundTransparency = 0})
 	tween(Window.Title.Title, {TextTransparency = 0})
 	tween(Window.Title.subtitle, {TextTransparency = 0})
@@ -2063,7 +2209,7 @@ local function Unhide(Window, currentTab)
 	for _, TopbarButton in ipairs(Window.Controls:GetChildren()) do
 		if TopbarButton.ClassName == "Frame" and TopbarButton.Name ~= "Theme" then
 			TopbarButton.Visible = true
-			tween(TopbarButton, {BackgroundTransparency = 0.25})
+			tween(TopbarButton, {BackgroundTransparency = 0})
 			tween(TopbarButton.UIStroke, {Transparency = 0.5})
 			tween(TopbarButton.ImageLabel, {ImageTransparency = 0.25})
 		end
@@ -2071,11 +2217,11 @@ local function Unhide(Window, currentTab)
 	for _, tabbtn in ipairs(Window.Navigation.Tabs:GetChildren()) do
 		if tabbtn.ClassName == "Frame" and tabbtn.Name ~= "InActive Template" then
 			if tabbtn.Name == currentTab then
-				TweenService:Create(tabbtn, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-				TweenService:Create(tabbtn.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Transparency = 0.41}):Play()
+				TweenService:Create(tabbtn, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+				TweenService:Create(tabbtn.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {Transparency = 0.41}):Play()
 			end
-			TweenService:Create(tabbtn.ImageLabel, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ImageTransparency = 0}):Play()
-			TweenService:Create(tabbtn.DropShadowHolder.DropShadow, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
+			TweenService:Create(tabbtn.ImageLabel, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {ImageTransparency = 0}):Play()
+			TweenService:Create(tabbtn.DropShadowHolder.DropShadow, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {ImageTransparency = 1}):Play()
 		end
 	end
 
@@ -2083,13 +2229,37 @@ end
 
 local MainSize
 local MinSize
-if Camera.ViewportSize.X > 774 and Camera.ViewportSize.Y > 503 then
-	MainSize = UDim2.fromOffset(675, 424)
-	MinSize = UDim2.fromOffset(500, 42)
-else
-	MainSize = UDim2.fromOffset(Camera.ViewportSize.X - 100, Camera.ViewportSize.Y - 100)
-	MinSize = UDim2.fromOffset(Camera.ViewportSize.X - 275, 42)
+local function NEXO_ComputeSizes()
+	local vp = Camera.ViewportSize
+	local w, h
+	if vp.X > 774 and vp.Y > 503 then
+		w, h = 675, 424
+	else
+		w = math.floor(vp.X * 0.9)
+		h = math.floor(vp.Y * 0.86)
+	end
+	w = math.clamp(w, 280, math.max(280, vp.X - 16))
+	h = math.clamp(h, 200, math.max(200, vp.Y - 16))
+	MainSize = UDim2.fromOffset(w, h)
+	local mw = math.clamp(math.floor(w * 0.74), 250, 500)
+	MinSize = UDim2.fromOffset(math.min(mw, w), 42)
 end
+NEXO_ComputeSizes()
+pcall(function()
+	Camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+		NEXO_ComputeSizes()
+		task.delay(0.05, function()
+			pcall(function()
+				if not Main.Visible then return end
+				if Main.Navigation.Visible then
+					Main.Size = MainSize
+				else
+					Main.Size = MinSize
+				end
+			end)
+		end)
+	end)
+end)
 
 local function Maximise(Window)
 	Window.Controls.ToggleSize.ImageLabel.Image = "rbxassetid://10137941941"
@@ -2108,12 +2278,12 @@ end
 function Luna:CreateWindow(WindowSettings)
 
 	WindowSettings = Kwargify({
-		Name = "Luna UI Example Window",
+		Name = "NEXO Example Window",
 		Subtitle = "",
-		LogoID = "6031097225",
+		LogoID = "",
 		LoadingEnabled = true,
-		LoadingTitle = "Luna Interface Suite",
-		LoadingSubtitle = "by Nebula Softworks",
+		LoadingTitle = "NEXO",
+		LoadingSubtitle = "by NEXO",
 
 		ConfigSettings = {},
 
@@ -2133,6 +2303,7 @@ function Luna:CreateWindow(WindowSettings)
 		SaveInRoot = false,
 		SaveKey = true,
 		Key = {""},
+		GrabKeyFromSite = false,
 		SecondAction = {}
 	}, WindowSettings.KeySettings or {})
 
@@ -2147,8 +2318,40 @@ function Luna:CreateWindow(WindowSettings)
 	local Window = { Bind = Enum.KeyCode.K, CurrentTab = nil, State = true, Size = false, Settings = nil }
 
 	Main.Title.Title.Text = WindowSettings.Name
-	Main.Title.subtitle.Text = WindowSettings.Subtitle
-	Main.Logo.Image = "rbxassetid://" .. WindowSettings.LogoID
+	Main.Title.subtitle.Text = tostring(WindowSettings.Subtitle)
+	local function NEXO_FitTitle()
+		pcall(function()
+			local sb = Main.Title.subtitle
+			sb.TextTruncate = Enum.TextTruncate.AtEnd
+			pcall(function() Main.Title.Title.TextTruncate = Enum.TextTruncate.AtEnd end)
+			local ctrlW = 96
+			local c = Main:FindFirstChild("Controls") or Main.Title:FindFirstChild("Controls")
+			if c then ctrlW = c.AbsoluteSize.X + 14 end
+			local left = sb.AbsolutePosition.X - Main.AbsolutePosition.X
+			local avail = Main.AbsoluteSize.X - ctrlW - left
+			if avail < 0 then avail = 0 end
+			sb.Size = UDim2.new(0, avail, sb.Size.Y.Scale, sb.Size.Y.Offset)
+		end)
+	end
+	pcall(function()
+		Main:GetPropertyChangedSignal("AbsoluteSize"):Connect(NEXO_FitTitle)
+	end)
+	for _, d in ipairs({0.15, 0.5, 1.2, 2.5}) do task.delay(d, NEXO_FitTitle) end
+	local function NexoSetLogo()
+		local ok, img = pcall(function() return GetIcon(NEXO_LOGO_ICON, "Material") end)
+		pcall(function()
+			Main.Logo.Image = ok and img or ""
+			Main.Logo.ImageColor3 = Color3.fromRGB(255, 255, 255)
+			Main.Logo.ImageRectOffset = Vector2.new(0, 0)
+			Main.Logo.ImageRectSize = Vector2.new(0, 0)
+			Main.Logo.ScaleType = Enum.ScaleType.Fit
+			Main.Logo.BackgroundTransparency = 1
+		end)
+	end
+	NexoSetLogo()
+	for _, d in ipairs({0.2, 0.6, 1.2, 2, 3}) do
+		task.delay(d, function() pcall(NexoSetLogo) end)
+	end
 	Main.Visible = true
 	Main.BackgroundTransparency = 1
 	Main.Size = MainSize
@@ -2164,11 +2367,21 @@ function Luna:CreateWindow(WindowSettings)
 
 	LoadingFrame.Frame.Frame.Title.Text = WindowSettings.LoadingTitle
 	LoadingFrame.Frame.Frame.Subtitle.Text = WindowSettings.LoadingSubtitle
-	LoadingFrame.Version.Text = LoadingFrame.Frame.Frame.Title.Text == "Luna Interface Suite" and Release or "Luna UI"
+	LoadingFrame.Version.Text = NEXO_BUILD
+	pcall(function() LoadingFrame.BackgroundColor3 = Color3.fromRGB(0,0,0); LoadingFrame.BackgroundTransparency = 0 end)
+	pcall(function() LoadingFrame.Frame.Frame.Title.TextColor3 = Color3.fromRGB(255,255,255) end)
+	pcall(function() LoadingFrame.Frame.Frame.Subtitle.TextColor3 = Color3.fromRGB(255,255,255) end)
+	pcall(function() LoadingFrame.Version.TextColor3 = Color3.fromRGB(255,255,255) end)
 
 	Navigation.Player.icon.ImageLabel.Image = Players:GetUserThumbnailAsync(Players.LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48)
 	Navigation.Player.Namez.Text = Players.LocalPlayer.DisplayName
 	Navigation.Player.TextLabel.Text = Players.LocalPlayer.Name
+	pcall(function()
+		local pl = Navigation.Player
+		pl.BackgroundColor3 = Color3.fromRGB(0,0,0); pl.BackgroundTransparency = 0
+		if not pl:FindFirstChildOfClass("UICorner") then Instance.new("UICorner", pl).CornerRadius = UDim.new(0, 10) end
+		local ps = pl:FindFirstChildOfClass("UIStroke"); if ps then ps.Transparency = 1 end
+	end)
 
 	for i,v in pairs(Main.Controls:GetChildren()) do
 		v.Visible = false
@@ -2181,6 +2394,18 @@ function Luna:CreateWindow(WindowSettings)
 		Main.Parent.ShadowHolder.Size = Main.Size
 	end)
 
+	-- NEXO: keep the window internals hidden until loading finishes
+	pcall(function() Navigation.Visible = false end)
+	pcall(function() Main.Elements.Visible = false end)
+	pcall(function() Main.Line.BackgroundTransparency = 1 end)
+	pcall(function() if dragBar then dragBar.Visible = false end end)
+	pcall(function()
+		LoadingFrame.ZIndex = 1000000
+		LoadingFrame.AnchorPoint = Vector2.new(0, 0)
+		LoadingFrame.Position = UDim2.fromScale(0, 0)
+		LoadingFrame.Size = UDim2.fromScale(1, 1)
+		LoadingFrame.BackgroundTransparency = 0
+	end)
 	LoadingFrame.Visible = true
 
 	LunaUI.Enabled = true
@@ -2203,10 +2428,36 @@ function Luna:CreateWindow(WindowSettings)
 
 		if typeof(WindowSettings.KeySettings.Key) == "string" then WindowSettings.KeySettings.Key = {WindowSettings.KeySettings.Key} end
 
-		local direc = WindowSettings.KeySettings.SaveInRoot and "Luna/Configurations/" .. WindowSettings.ConfigSettings.RootFolder .. "/" .. WindowSettings.ConfigSettings.ConfigFolder .. "/Key System/" or "Luna/Configurations/" ..  WindowSettings.ConfigSettings.ConfigFolder .. "/Key System/"
+		-- Resolve the list of currently-valid keys. When GrabKeyFromSite is on,
+		-- each entry in Key is treated as a URL / pastebin-raw link and fetched
+		-- live (so keys can rotate); the body is split on new lines and commas.
+		local function resolveKeys()
+			if not WindowSettings.KeySettings.GrabKeyFromSite then
+				return WindowSettings.KeySettings.Key
+			end
+			local keys = {}
+			for _, link in ipairs(WindowSettings.KeySettings.Key) do
+				local ok, body = pcall(function()
+					local req = request or http_request or (syn and syn.request)
+					if req then
+						return req({ Url = link, Method = "GET" }).Body
+					end
+					return game:HttpGet(link)
+				end)
+				if ok and type(body) == "string" then
+					for token in string.gmatch(body, "[^\r\n,]+") do
+						local k = string.gsub(token, "^%s*(.-)%s*$", "%1")
+						if #k > 0 then table.insert(keys, k) end
+					end
+				end
+			end
+			return keys
+		end
+
+		local direc = WindowSettings.KeySettings.SaveInRoot and "NEXO/Configurations/" .. WindowSettings.ConfigSettings.RootFolder .. "/" .. WindowSettings.ConfigSettings.ConfigFolder .. "/Key System/" or "NEXO/Configurations/" ..  WindowSettings.ConfigSettings.ConfigFolder .. "/Key System/"
 
 		if isfile and isfile(direc .. WindowSettings.KeySettings.FileName .. ".luna") then
-			for i, Key in ipairs(WindowSettings.KeySettings.Key) do
+			for i, Key in ipairs(resolveKeys()) do
 				if string.find(readfile(direc .. WindowSettings.KeySettings.FileName .. ".luna"), Key) then
 					Passthrough = true
 					break
@@ -2226,6 +2477,80 @@ function Luna:CreateWindow(WindowSettings)
 			local AttemptsRemaining = math.random(2, 5)
 
 			KeySystem.Visible = true
+			pcall(function() LoadingFrame.Visible = false end)
+			pcall(function() KeySystem.ZIndex = 900000 end)
+			-- NEXO: key system is solid black, zero transparency
+			local function NexoSolidKey()
+				pcall(function()
+					Main.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+					Main.BackgroundTransparency = 0
+				end)
+				pcall(function()
+					KeySystem.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+					KeySystem.BackgroundTransparency = 0
+				end)
+				pcall(function()
+					local sh = Main.Parent:FindFirstChild("ShadowHolder")
+					if sh then
+						sh.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+						sh.BackgroundTransparency = 0
+					end
+				end)
+				for _, d in ipairs(KeySystem:GetDescendants()) do
+					pcall(function()
+						if (d:IsA("Frame") or d:IsA("TextButton") or d:IsA("TextBox") or d:IsA("ImageButton") or d:IsA("ScrollingFrame")) and d.BackgroundTransparency < 1 then
+							d.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+							d.BackgroundTransparency = 0
+						end
+					end)
+				end
+			end
+			NexoSolidKey()
+			KeySystem.DescendantAdded:Connect(function() task.defer(NexoSolidKey) end)
+			for _, nexoT in ipairs({0.1, 0.3, 0.6, 1, 1.6, 2.5}) do
+				task.delay(nexoT, function()
+					if KeySystem.Visible then NexoSolidKey() end
+				end)
+			end
+			pcall(function()
+				Main.AnchorPoint = Vector2.new(0.5, 0.5)
+				Main.Position = UDim2.fromScale(0.5, 0.5)
+				local sh = Main.Parent:FindFirstChild("ShadowHolder")
+				if sh then
+					sh.AnchorPoint = Vector2.new(0.5, 0.5)
+					sh.Position = Main.Position
+					sh.Size = Main.Size
+				end
+			end)
+			pcall(function() if dragBar then dragBar.Visible = false end end)
+			-- NEXO: force key-system text pure white (kills gray gradient + dimming)
+			local NEXO_WHITE = Color3.fromRGB(255, 255, 255)
+			local function NexoWhiten(d)
+				if d:IsA("TextLabel") or d:IsA("TextButton") or d:IsA("TextBox") then
+					pcall(function()
+						d.TextColor3 = NEXO_WHITE
+						d.TextTransparency = 0
+						d.TextStrokeTransparency = 1
+					end)
+					local g = d:FindFirstChildOfClass("UIGradient")
+					if g then pcall(function() g.Color = ColorSequence.new(NEXO_WHITE) end) end
+				elseif d:IsA("UIGradient") then
+					local p = d.Parent
+					if p and (p:IsA("TextLabel") or p:IsA("TextButton") or p:IsA("TextBox")) then
+						pcall(function() d.Color = ColorSequence.new(NEXO_WHITE) end)
+					end
+				end
+			end
+			for _, d in ipairs(KeySystem:GetDescendants()) do NexoWhiten(d) end
+			KeySystem.DescendantAdded:Connect(NexoWhiten)
+			task.delay(0.7, function() for _, d in ipairs(KeySystem:GetDescendants()) do NexoWhiten(d) end end)
+			-- Entrance animation: subtle scale-up "pop".
+			do
+				local scale = KeySystem:FindFirstChildOfClass("UIScale") or Instance.new("UIScale")
+				scale.Scale = 0.9
+				scale.Parent = KeySystem
+				tween(scale, {Scale = 1}, nil, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out))
+			end
 			KeySystem.Title.Text = WindowSettings.KeySettings.Title
 			KeySystem.Subtitle.Text = WindowSettings.KeySettings.Subtitle
 			KeySystem.textshit.Text = WindowSettings.KeySettings.Note
@@ -2261,7 +2586,7 @@ function Luna:CreateWindow(WindowSettings)
 				if #KeySystem.Input.InputBox.Text == 0 then return end
 				local KeyFound = false
 				local FoundKey = ''
-				for _, Key in ipairs(WindowSettings.KeySettings.Key) do
+				for _, Key in ipairs(resolveKeys()) do
 					if KeySystem.Input.InputBox.Text == Key then
 						KeyFound = true
 						FoundKey = Key
@@ -2269,32 +2594,24 @@ function Luna:CreateWindow(WindowSettings)
 					end
 				end
 				if KeyFound then
-					for _, instance in pairs(KeySystem:GetDescendants()) do
-						if instance.ClassName ~= "UICorner" and instance.ClassName ~= "UIPadding" then
-							if instance.ClassName ~= "UIStroke" and instance.ClassName ~= "UIListLayout" then
-								tween(instance, {BackgroundTransparency = 1}, nil,TweenInfo.new(0.6, Enum.EasingStyle.Exponential))
-							end
-							if instance.ClassName == "ImageButton" then
-								tween(instance, {ImageTransparency = 1}, nil,TweenInfo.new(0.5, Enum.EasingStyle.Exponential))
-							end
-							if instance.ClassName == "TextLabel" then
-								tween(instance, {TextTransparency = 1}, nil,TweenInfo.new(0.4, Enum.EasingStyle.Exponential))
-							end
-							if instance.ClassName == "UIStroke" then
-								tween(instance, {Transparency = 1}, nil,TweenInfo.new(0.5, Enum.EasingStyle.Exponential))
-							end
-						end
-					end
-					tween(KeySystem, {BackgroundTransparency = 1}, nil,TweenInfo.new(0.6, Enum.EasingStyle.Exponential))
-					task.wait(0.51)
 					Passthrough = true
-					KeySystem.Visible = false
 					if WindowSettings.KeySettings.SaveKey then
 						if writefile then
-							writefile(direc .. WindowSettings.KeySettings.FileName .. ".luna", FoundKey)
+							pcall(function() writefile(direc .. WindowSettings.KeySettings.FileName .. ".luna", FoundKey) end)
 						end
-						Luna:Notification({Title = "Key System", Content = "The key for this script has been saved successfully.", Icon = "lock_open"})
+						pcall(function() Luna:Notification({Title = "Key System", Content = "The key for this script has been saved successfully.", Icon = "lock_open"}) end)
 					end
+					task.spawn(function()
+						for _, instance in pairs(KeySystem:GetDescendants()) do
+							if instance:IsA("GuiObject") then pcall(function() tween(instance, {BackgroundTransparency = 1}, nil, TweenInfo.new(0.5, Enum.EasingStyle.Quart)) end) end
+							if instance:IsA("ImageLabel") or instance:IsA("ImageButton") then pcall(function() tween(instance, {ImageTransparency = 1}, nil, TweenInfo.new(0.5, Enum.EasingStyle.Quart)) end) end
+							if instance:IsA("TextLabel") or instance:IsA("TextButton") or instance:IsA("TextBox") then pcall(function() tween(instance, {TextTransparency = 1}, nil, TweenInfo.new(0.4, Enum.EasingStyle.Quart)) end) end
+							if instance:IsA("UIStroke") then pcall(function() tween(instance, {Transparency = 1}, nil, TweenInfo.new(0.5, Enum.EasingStyle.Quart)) end) end
+						end
+						pcall(function() tween(KeySystem, {BackgroundTransparency = 1}, nil, TweenInfo.new(0.5, Enum.EasingStyle.Quart)) end)
+						task.wait(0.55)
+						KeySystem.Visible = false
+					end)
 				else
 					if AttemptsRemaining == 0 then
 
@@ -2303,7 +2620,27 @@ function Luna:CreateWindow(WindowSettings)
 					end
 					KeySystem.Input.InputBox.Text = "Incorrect Key"
 					AttemptsRemaining = AttemptsRemaining - 1
+					-- Animated wrong-key feedback: quick shake + red stroke flash.
+					local row = KeySystem.Input
+					local st = row:FindFirstChildOfClass("UIStroke")
+					local oldColor, oldTrans
+					if st then
+						oldColor, oldTrans = st.Color, st.Transparency
+						st.Color = Color3.fromRGB(255, 75, 75)
+						tween(st, {Transparency = 0}, nil, TweenInfo.new(0.12, Enum.EasingStyle.Quart))
+					end
+					task.spawn(function()
+						for _, r in ipairs({-4, 4, -3, 3, -2, 2, -1, 1, 0}) do
+							tween(row, {Rotation = r}, nil, TweenInfo.new(0.03, Enum.EasingStyle.Sine))
+							task.wait(0.035)
+						end
+						row.Rotation = 0
+					end)
 					task.wait(0.4)
+					if st then
+						st.Color = oldColor
+						tween(st, {Transparency = oldTrans}, nil, TweenInfo.new(0.3, Enum.EasingStyle.Quart))
+					end
 					KeySystem.Input.InputBox.Text = ""
 				end
 			end)
@@ -2317,39 +2654,50 @@ function Luna:CreateWindow(WindowSettings)
 
 	if WindowSettings.KeySystem then
 		repeat task.wait() until Passthrough
+		pcall(function()
+			if WindowSettings.LoadingEnabled then
+				LoadingFrame.BackgroundTransparency = 0
+				LoadingFrame.Visible = true
+			end
+		end)
 	end
 
 	if WindowSettings.LoadingEnabled then
 		task.wait(0.3)
-		TweenService:Create(LoadingFrame.Frame.Frame.Title, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
-		TweenService:Create(LoadingFrame.Frame.ImageLabel, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ImageTransparency = 0}):Play()
+		TweenService:Create(LoadingFrame.Frame.Frame.Title, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
+		TweenService:Create(LoadingFrame.Frame.ImageLabel, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {ImageTransparency = 0}):Play()
 		task.wait(0.05)
-		TweenService:Create(LoadingFrame.Frame.Frame.Subtitle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
-		TweenService:Create(LoadingFrame.Version, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+		TweenService:Create(LoadingFrame.Frame.Frame.Subtitle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
+		TweenService:Create(LoadingFrame.Version, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 		task.wait(0.29)
-		TweenService:Create(LoadingFrame.Frame.ImageLabel, TweenInfo.new(1.7, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 2, false, 0.2), {Rotation = 450}):Play()
+		TweenService:Create(LoadingFrame.Frame.ImageLabel, TweenInfo.new(1.7, Enum.EasingStyle.Quart, Enum.EasingDirection.Out, 2, false, 0.2), {Rotation = 450}):Play()
 
-		task.wait(3.32)
+		task.wait(1.1)
 
-		TweenService:Create(LoadingFrame.Frame.Frame.Title, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
-		TweenService:Create(LoadingFrame.Frame.ImageLabel, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {ImageTransparency = 1}):Play()
+		TweenService:Create(LoadingFrame.Frame.Frame.Title, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {TextTransparency = 1}):Play()
+		TweenService:Create(LoadingFrame.Frame.ImageLabel, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {ImageTransparency = 1}):Play()
 		task.wait(0.05)
-		TweenService:Create(LoadingFrame.Frame.Frame.Subtitle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
-		TweenService:Create(LoadingFrame.Version, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 1}):Play()
+		TweenService:Create(LoadingFrame.Frame.Frame.Subtitle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {TextTransparency = 1}):Play()
+		TweenService:Create(LoadingFrame.Version, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {TextTransparency = 1}):Play()
 		wait(0.3)
-		TweenService:Create(LoadingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
+		TweenService:Create(LoadingFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 1}):Play()
 	end
 
-	TweenService:Create(Main, TweenInfo.new(0.5, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {BackgroundTransparency = 0.2, Size = MainSize}):Play()
-	TweenService:Create(Main.Parent.ShadowHolder, TweenInfo.new(0.5, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Size = MainSize}):Play()
-	TweenService:Create(Main.Title.Title, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
-	TweenService:Create(Main.Title.subtitle, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
-	TweenService:Create(Main.Logo, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 0}):Play()
-	TweenService:Create(Navigation.Player.icon.ImageLabel, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {ImageTransparency = 0}):Play()
-	TweenService:Create(Navigation.Player.icon.UIStroke, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Transparency = 0}):Play()
-	TweenService:Create(Main.Line, TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
+	pcall(function() Main.AnchorPoint = Vector2.new(0.5, 0.5); Main.Position = UDim2.fromScale(0.5, 0.5); Main.Parent.ShadowHolder.AnchorPoint = Vector2.new(0.5, 0.5) end)
+	TweenService:Create(Main, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 0, Size = MainSize}):Play()
+	TweenService:Create(Main.Parent.ShadowHolder, TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = MainSize}):Play()
+	TweenService:Create(Main.Title.Title, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+	TweenService:Create(Main.Title.subtitle, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+	TweenService:Create(Main.Logo, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {ImageTransparency = 0}):Play()
+	TweenService:Create(Navigation.Player.icon.ImageLabel, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {ImageTransparency = 0}):Play()
+	TweenService:Create(Navigation.Player.icon.UIStroke, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Transparency = 0}):Play()
+	TweenService:Create(Main.Line, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {BackgroundTransparency = 0}):Play()
 	wait(0.4)
 	LoadingFrame.Visible = false
+	pcall(function() Navigation.Visible = true end)
+	pcall(function() Main.Elements.Visible = true end)
+	pcall(function() if dragBar then dragBar.Visible = true end end)
+	pcall(function() NEXO_SyncDragBar() end)
 
 	Draggable(Dragger, Main)
 	Draggable(LunaUI.MobileSupport, LunaUI.MobileSupport)
@@ -2364,22 +2712,177 @@ function Luna:CreateWindow(WindowSettings)
 
 	function Window:CreateHomeTab(HomeTabSettings)
 
+		if Window.HomeTab and HomeTabSettings == nil then return Window.HomeTab end
+		if Window.HomeTab then
+			pcall(function()
+				local old = Elements.Home:FindFirstChild("NexoAbout")
+				if old then old:Destroy() end
+			end)
+		end
+
 		HomeTabSettings = Kwargify({
 			Icon = 1,
 			SupportedExecutors = {"Vega X", "Delta", "Nihon", "Xeno"},
-			DiscordInvite = "noinvitelink"
+			DiscordInvite = "5aVNPxZdgp"
 		}, HomeTabSettings or {})
 
 		local HomeTab = {}
+		Window.HomeTab = HomeTab
+		task.defer(function() pcall(function() HomeTab:Activate() end) end)
+		task.delay(0.45, function() pcall(function() if Window.HomeTab then Window.HomeTab:Activate() end end) end)
 
 		local HomeTabButton = Navigation.Tabs.Home
 		HomeTabButton.Visible = true
+		pcall(function() HomeTabButton.TextLabel.Text = "About"; HomeTabButton.TextLabel.Visible = true; HomeTabButton.TextLabel.TextTransparency = 0; HomeTabButton.TextLabel.TextColor3 = Color3.fromRGB(255,255,255) end)
 		if HomeTabSettings.Icon == 2 then
 			HomeTabButton.ImageLabel.Image = GetIcon("dashboard", "Material")
 		end
 
 		local HomeTabPage = Elements.Home
 		HomeTabPage.Visible = true
+
+        -- ===== NEXO About card v2 (hero banner + action row) =====
+        pcall(function()
+            for _, ch in ipairs(HomeTabPage:GetChildren()) do
+                if ch:IsA("GuiObject") then ch.Visible = false end
+            end
+            local W = Color3.fromRGB(255,255,255)
+            local card = Instance.new("Frame")
+            card.Name = "NexoAbout"; card.BackgroundColor3 = Color3.fromRGB(0,0,0)
+            card.BackgroundTransparency = 0; card.Size = UDim2.new(1, -14, 0, 352)
+            card.LayoutOrder = -1; card.Position = UDim2.fromOffset(0,0); card.Parent = HomeTabPage
+            Instance.new("UICorner", card).CornerRadius = UDim.new(0, 16)
+
+            -- HERO BANNER: taller, faded into the card so text sits on top of it
+            local banner = Instance.new("ImageLabel")
+            banner.Name = "Banner"; banner.BackgroundColor3 = Color3.fromRGB(0,0,0); banner.BorderSizePixel = 0
+            banner.Position = UDim2.fromOffset(0, 0); banner.Size = UDim2.new(1, 0, 0, 150)
+            banner.ScaleType = Enum.ScaleType.Crop
+            banner.Image = "rbxassetid://118564901299957"; banner.Parent = card
+            Instance.new("UICorner", banner).CornerRadius = UDim.new(0, 16)
+            local fade = Instance.new("Frame")
+            fade.Name = "Fade"; fade.BorderSizePixel = 0; fade.BackgroundColor3 = Color3.fromRGB(0,0,0)
+            fade.AnchorPoint = Vector2.new(0, 1); fade.Position = UDim2.new(0, 0, 1, 0)
+            fade.Size = UDim2.new(1, 0, 0, 90); fade.ZIndex = 2; fade.Parent = banner
+            local fg = Instance.new("UIGradient", fade)
+            fg.Rotation = 90
+            fg.Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 1),
+                NumberSequenceKeypoint.new(1, 0)
+            })
+
+            -- BIG ROUND LOGO overlapping the banner
+            local logo = Instance.new("ImageLabel")
+            logo.Name = "Logo"; logo.BackgroundColor3 = Color3.fromRGB(0,0,0); logo.BorderSizePixel = 0
+            logo.AnchorPoint = Vector2.new(0, 0.5); logo.Position = UDim2.fromOffset(10, 150)
+            logo.Size = UDim2.fromOffset(72, 72); logo.ScaleType = Enum.ScaleType.Crop
+            logo.Image = "rbxassetid://93534184120392"; logo.ZIndex = 5; logo.Parent = card
+            Instance.new("UICorner", logo).CornerRadius = UDim.new(1, 0)
+
+            -- TITLE + TAGLINE
+            local title = Instance.new("TextLabel")
+            title.Name = "Name"; title.BackgroundTransparency = 1; title.ZIndex = 5
+            title.Position = UDim2.fromOffset(90, 132); title.Size = UDim2.new(1, -104, 0, 26)
+            title.Font = Enum.Font.GothamBold; title.TextSize = 22; title.TextColor3 = W
+            title.TextXAlignment = Enum.TextXAlignment.Left
+            title.Text = "NEXO HUB"; title.Parent = card
+            local tag = Instance.new("TextLabel")
+            tag.Name = "NexoKeepTag"; tag.BackgroundTransparency = 1; tag.ZIndex = 5
+            tag.Position = UDim2.fromOffset(90, 158); tag.Size = UDim2.new(1, -104, 0, 18)
+            tag.Font = Enum.Font.GothamMedium; tag.TextSize = 13
+            tag.TextColor3 = Color3.fromRGB(160, 160, 168)
+            tag.TextXAlignment = Enum.TextXAlignment.Left
+            tag.Text = "Premium Roblox Scripts"; tag.Parent = card
+
+            -- FEATURE ROWS
+            local featY = 206
+            local feats = {
+                "Clean, fast and modern script experience",
+                "Discord updates, support and exclusive releases",
+                "New features and projects added regularly",
+            }
+            for i, txt in ipairs(feats) do
+                local dot = Instance.new("Frame")
+                dot.Name = "NexoKeepDot"; dot.BorderSizePixel = 0; dot.BackgroundColor3 = W
+                dot.AnchorPoint = Vector2.new(0, 0.5)
+                dot.Position = UDim2.fromOffset(12, featY + (i - 1) * 24 + 8)
+                dot.Size = UDim2.fromOffset(5, 5); dot.Parent = card
+                Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
+                local row = Instance.new("TextLabel")
+                row.Name = "NexoKeepFeat"; row.BackgroundTransparency = 1
+                row.Position = UDim2.fromOffset(26, featY + (i - 1) * 24)
+                row.Size = UDim2.new(1, -44, 0, 18)
+                row.Font = Enum.Font.Gotham; row.TextSize = 13
+                row.TextColor3 = Color3.fromRGB(215, 215, 220)
+                row.TextXAlignment = Enum.TextXAlignment.Left
+                row.Text = txt; row.Parent = card
+            end
+
+            -- ACTION ROW: two pill buttons side by side
+            local row = Instance.new("Frame")
+            row.Name = "NexoKeepRow"; row.BackgroundTransparency = 1
+            row.AnchorPoint = Vector2.new(0.5, 1); row.Position = UDim2.new(0.5, 0, 1, -20)
+            row.Size = UDim2.new(1, -48, 0, 38); row.Parent = card
+            local rl = Instance.new("UIListLayout", row)
+            rl.FillDirection = Enum.FillDirection.Horizontal
+            rl.HorizontalAlignment = Enum.HorizontalAlignment.Center
+            rl.VerticalAlignment = Enum.VerticalAlignment.Center
+            rl.SortOrder = Enum.SortOrder.LayoutOrder
+            rl.Padding = UDim.new(0, 10)
+
+            local join = Instance.new("TextButton")
+            join.Name = "NexoKeepJoin"; join.AutoButtonColor = false; join.LayoutOrder = 1
+            join.BackgroundColor3 = W; join.Size = UDim2.new(0.5, -5, 1, 0)
+            join.Font = Enum.Font.GothamBold; join.TextSize = 14
+            join.TextColor3 = Color3.fromRGB(0,0,0); join.Text = "Join Discord"; join.Parent = row
+            Instance.new("UICorner", join).CornerRadius = UDim.new(1, 0)
+
+            local copy = Instance.new("TextButton")
+            copy.Name = "NexoKeepCopy"; copy.AutoButtonColor = false; copy.LayoutOrder = 2
+            copy.BackgroundColor3 = W; copy.BackgroundTransparency = 0
+            copy.Size = UDim2.new(0.5, -5, 1, 0)
+            copy.Font = Enum.Font.GothamBold; copy.TextSize = 14
+            copy.TextColor3 = Color3.fromRGB(0,0,0); copy.Text = "Copy Invite link"; copy.Parent = row
+            Instance.new("UICorner", copy).CornerRadius = UDim.new(1, 0)
+
+            local function code()
+                local c = tostring(HomeTabSettings.DiscordInvite or "")
+                if c == "" or c == "noinvitelink" or c == "nil" or c == "1234" then c = "5aVNPxZdgp" end
+                c = c:match("([%w%-]+)$") or c
+                return c
+            end
+            local function link()
+                return "https://discord.gg/" .. code()
+            end
+            join.MouseEnter:Connect(function() pcall(function() tween(join, {BackgroundColor3 = Color3.fromRGB(215,215,215)}) end) end)
+            join.MouseLeave:Connect(function() pcall(function() tween(join, {BackgroundColor3 = W}) end) end)
+            copy.MouseEnter:Connect(function() pcall(function() tween(copy, {BackgroundColor3 = Color3.fromRGB(215,215,215)}) end) end)
+            copy.MouseLeave:Connect(function() pcall(function() tween(copy, {BackgroundColor3 = W}) end) end)
+            join.MouseButton1Click:Connect(function()
+                local l = link()
+                pcall(function() (setclipboard or toclipboard)(l) end)
+                pcall(function()
+                    if request then
+                        request({
+                            Url = "http://127.0.0.1:6463/rpc?v=1",
+                            Method = "POST",
+                            Headers = {["Content-Type"] = "application/json", Origin = "https://discord.com"},
+                            Body = game:GetService("HttpService"):JSONEncode({
+                                cmd = "INVITE_BROWSER",
+                                nonce = game:GetService("HttpService"):GenerateGUID(false),
+                                args = {code = code()}
+                            })
+                        })
+                    end
+                end)
+                pcall(function() Luna:Notification({Title = "Discord", Content = "Opening invite - link copied too.", Icon = "star_rate", ImageSource = "Material"}) end)
+            end)
+            copy.MouseButton1Click:Connect(function()
+                local l = link()
+                pcall(function() (setclipboard or toclipboard)(l) end)
+                pcall(function() Luna:Notification({Title = "Copied", Content = l, Icon = "check", ImageSource = "Material"}) end)
+            end)
+        end)
 
 		function HomeTab:Activate()
 			tween(HomeTabButton.ImageLabel, {ImageColor3 = Color3.fromRGB(255,255,255)})
@@ -2414,7 +2917,7 @@ function Luna:CreateWindow(WindowSettings)
 
 		HomeTabPage.detailsholder.dashboard.Client.Title.Text = (isStudio and "Debugging (Studio)" or identifyexecutor()) or "Your Executor Does Not Support identifyexecutor."
 		for i,v in pairs(HomeTabSettings.SupportedExecutors) do
-			if isStudio then HomeTabPage.detailsholder.dashboard.Client.Subtitle.Text = "Luna Interface Suite - Debugging Mode" break end
+			if isStudio then HomeTabPage.detailsholder.dashboard.Client.Subtitle.Text = "NEXO - Debugging Mode" break end
 			if v == identifyexecutor() then
 				HomeTabPage.detailsholder.dashboard.Client.Subtitle.Text = "Your Executor Supports This Script."
 				break
@@ -2536,6 +3039,7 @@ function Luna:CreateWindow(WindowSettings)
 
 		TabButton.Name = TabSettings.Name
 		TabButton.TextLabel.Text = TabSettings.Name
+		pcall(function() TabButton.TextLabel.Visible = true; TabButton.TextLabel.TextTransparency = 0; TabButton.TextLabel.TextColor3 = Color3.fromRGB(255,255,255) end)
 		TabButton.Parent = Navigation.Tabs
 		TabButton.ImageLabel.Image = GetIcon(TabSettings.Icon, TabSettings.ImageSource)
 
@@ -2658,6 +3162,7 @@ function Luna:CreateWindow(WindowSettings)
 				end
 				Button.Visible = true
 				Button.Parent = TabPage
+				pcall(function() Button.UIStroke.Color = Color3.fromRGB(255,255,255) end)
 
 				Button.UIStroke.Transparency = 1
 				Button.Title.TextTransparency = 1
@@ -2665,46 +3170,46 @@ function Luna:CreateWindow(WindowSettings)
 					Button.Desc.TextTransparency = 1
 				end
 
-				TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-				TweenService:Create(Button.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
-				TweenService:Create(Button.Title, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+				TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+				TweenService:Create(Button.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
+				TweenService:Create(Button.Title, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 				if ButtonSettings.Description ~= nil and ButtonSettings.Description ~= "" then
-					TweenService:Create(Button.Desc, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+					TweenService:Create(Button.Desc, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 				end
 
 				Button.Interact["MouseButton1Click"]:Connect(function()
 					local Success,Response = pcall(ButtonSettings.Callback)
 
 					if not Success then
-						TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-						TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-						TweenService:Create(Button.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+						TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+						TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+						TweenService:Create(Button.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 						Button.Title.Text = "Callback Error"
-						print("Luna Interface Suite | "..ButtonSettings.Name.." Callback Error " ..tostring(Response))
+						print("NEXO | "..ButtonSettings.Name.." Callback Error " ..tostring(Response))
 						wait(0.5)
 						Button.Title.Text = ButtonSettings.Name
-						TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-						TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-						TweenService:Create(Button.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+						TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+						TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+						TweenService:Create(Button.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 					else
-						tween(Button.UIStroke, {Color = Color3.fromRGB(136, 131, 163)})
+						tween(Button.UIStroke, {Color = Color3.fromRGB(255,255,255)})
 						wait(0.2)
 						if ButtonV.Hover then
-							tween(Button.UIStroke, {Color = Color3.fromRGB(87, 84, 104)})
+							tween(Button.UIStroke, {Color = Color3.fromRGB(255,255,255)})
 						else
-							tween(Button.UIStroke, {Color = Color3.fromRGB(64,61,76)})
+							tween(Button.UIStroke, {Color = Color3.fromRGB(255,255,255)})
 						end
 					end
 				end)
 
 				Button["MouseEnter"]:Connect(function()
 					ButtonV.Hover = true
-					tween(Button.UIStroke, {Color = Color3.fromRGB(87, 84, 104)})
+					tween(Button.UIStroke, {Color = Color3.fromRGB(255,255,255)})
 				end)
 
 				Button["MouseLeave"]:Connect(function()
 					ButtonV.Hover = false
-					tween(Button.UIStroke, {Color = Color3.fromRGB(64,61,76)})
+					tween(Button.UIStroke, {Color = Color3.fromRGB(255,255,255)})
 				end)
 
 				function ButtonV:Set(ButtonSettings2)
@@ -2762,12 +3267,12 @@ function Luna:CreateWindow(WindowSettings)
 				Label.Text.TextTransparency = 1
 
 				if LabelSettings.Style ~= 1 then
-					TweenService:Create(Label, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.8}):Play()
+					TweenService:Create(Label, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.8}):Play()
 				else
-					TweenService:Create(Label, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 1}):Play()
+					TweenService:Create(Label, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 1}):Play()
 				end
-				TweenService:Create(Label.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
-				TweenService:Create(Label.Text, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+				TweenService:Create(Label.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
+				TweenService:Create(Label.Text, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 
 				function LabelV:Set(NewLabel)
 					LabelSettings.Text = NewLabel
@@ -2806,10 +3311,10 @@ function Luna:CreateWindow(WindowSettings)
 				Paragraph.Title.TextTransparency = 1
 				Paragraph.Text.TextTransparency = 1
 
-				TweenService:Create(Paragraph, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 1}):Play()
-				TweenService:Create(Paragraph.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
-				TweenService:Create(Paragraph.Title, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
-				TweenService:Create(Paragraph.Text, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+				TweenService:Create(Paragraph, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 1}):Play()
+				TweenService:Create(Paragraph.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
+				TweenService:Create(Paragraph.Title, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
+				TweenService:Create(Paragraph.Text, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 
 				function ParagraphV:Update()
 					Paragraph.Text.Size = UDim2.new(Paragraph.Text.Size.X.Scale, Paragraph.Text.Size.X.Offset, 0, math.huge)
@@ -2868,9 +3373,9 @@ function Luna:CreateWindow(WindowSettings)
 				Slider.UIStroke.Transparency = 1
 				Slider.Title.TextTransparency = 1
 
-				TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-				TweenService:Create(Slider.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
-				TweenService:Create(Slider.Title, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+				TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+				TweenService:Create(Slider.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
+				TweenService:Create(Slider.Title, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 
 				Slider.Main.Progress.Size =	UDim2.new(0, Slider.Main.AbsoluteSize.X * ((SliderSettings.CurrentValue + SliderSettings.Range[1]) / (SliderSettings.Range[2] - SliderSettings.Range[1])) > 5 and Slider.Main.AbsoluteSize.X * (SliderSettings.CurrentValue / (SliderSettings.Range[2] - SliderSettings.Range[1])) or 5, 1, 0)
 
@@ -2937,16 +3442,16 @@ function Luna:CreateWindow(WindowSettings)
 									SliderSettings.Callback(NewValue)
 								end)
 								if not Success then
-									TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-									TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-									TweenService:Create(Slider.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+									TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+									TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+									TweenService:Create(Slider.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 									Slider.Title.Text = "Callback Error"
-									print("Luna Interface Suite | "..SliderSettings.Name.." Callback Error " ..tostring(Response))
+									print("NEXO | "..SliderSettings.Name.." Callback Error " ..tostring(Response))
 									wait(0.5)
 									Slider.Title.Text = SliderSettings.Name
-									TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-									TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-									TweenService:Create(Slider.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+									TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+									TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+									TweenService:Create(Slider.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 								end
 
 								SliderSettings.CurrentValue = NewValue
@@ -2954,7 +3459,7 @@ function Luna:CreateWindow(WindowSettings)
 
 							end
 						else
-							TweenService:Create(Slider.Main.Progress, TweenInfo.new(0.1, Enum.EasingStyle.Back, Enum.EasingDirection.In, 0, false), {Size = UDim2.new(0, Location - Slider.Main.AbsolutePosition.X > 5 and Location - Slider.Main.AbsolutePosition.X or 5, 1, 0)}):Play()
+							TweenService:Create(Slider.Main.Progress, TweenInfo.new(0.1, Enum.EasingStyle.Quart, Enum.EasingDirection.In, 0, false), {Size = UDim2.new(0, Location - Slider.Main.AbsolutePosition.X > 5 and Location - Slider.Main.AbsolutePosition.X or 5, 1, 0)}):Play()
 							Loop:Disconnect()
 						end
 					end)
@@ -2964,22 +3469,22 @@ function Luna:CreateWindow(WindowSettings)
 
 					NewVal = NewVal or SliderSettings.CurrentValue
 
-					TweenService:Create(Slider.Main.Progress, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.InOut), {Size = UDim2.new(0, Slider.Main.AbsoluteSize.X * ((NewVal + SliderSettings.Range[1]) / (SliderSettings.Range[2] - SliderSettings.Range[1])) > 5 and Slider.Main.AbsoluteSize.X * (NewVal / (SliderSettings.Range[2] - SliderSettings.Range[1])) or 5, 1, 0)}):Play()
+					TweenService:Create(Slider.Main.Progress, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.InOut), {Size = UDim2.new(0, Slider.Main.AbsoluteSize.X * ((NewVal + SliderSettings.Range[1]) / (SliderSettings.Range[2] - SliderSettings.Range[1])) > 5 and Slider.Main.AbsoluteSize.X * (NewVal / (SliderSettings.Range[2] - SliderSettings.Range[1])) or 5, 1, 0)}):Play()
 					if not bleh then Slider.Value.Text = tostring(NewVal) end
 					local Success, Response = pcall(function()
 						SliderSettings.Callback(NewVal)
 					end)
 					if not Success then
-						TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-						TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-						TweenService:Create(Slider.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+						TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+						TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+						TweenService:Create(Slider.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 						Slider.Title.Text = "Callback Error"
-						print("Luna Interface Suite | "..SliderSettings.Name.." Callback Error " ..tostring(Response))
+						print("NEXO | "..SliderSettings.Name.." Callback Error " ..tostring(Response))
 						wait(0.5)
 						Slider.Title.Text = SliderSettings.Name
-						TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-						TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(30, 33, 40)}):Play()
-						TweenService:Create(Slider.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+						TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+						TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+						TweenService:Create(Slider.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 					end
 
 					SliderSettings.CurrentValue = NewVal
@@ -3030,8 +3535,7 @@ function Luna:CreateWindow(WindowSettings)
 				end
 
 				LunaUI.ThemeRemote:GetPropertyChangedSignal("Value"):Connect(function()
-					Slider.Main.color.Color = Luna.ThemeGradient
-					Slider.Main.UIStroke.color.Color = Luna.ThemeGradient
+					NEXO_WhiteSlider(Slider.Main)
 				end)
 
 				return SliderV
@@ -3073,32 +3577,15 @@ function Luna:CreateWindow(WindowSettings)
 					Toggle.Desc.TextTransparency = 1
 				end
 
-				TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
+				TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
 				if ToggleSettings.Description ~= nil and ToggleSettings.Description ~= "" then
-					TweenService:Create(Toggle.Desc, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+					TweenService:Create(Toggle.Desc, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 				end
-				TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
-				TweenService:Create(Toggle.Title, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+				TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
+				TweenService:Create(Toggle.Title, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 
 				local function Set(bool)
-					if bool then
-						Toggle.toggle.color.Enabled = true
-						tween(Toggle.toggle, {BackgroundTransparency = 0})
-
-						Toggle.toggle.UIStroke.color.Enabled = true
-						tween(Toggle.toggle.UIStroke, {Color = Color3.new(255,255,255)})
-
-						tween(Toggle.toggle.val, {BackgroundColor3 = Color3.fromRGB(255,255,255), Position = UDim2.new(1,-23,0.5,0), BackgroundTransparency = 0.45})
-					else
-						Toggle.toggle.color.Enabled = false
-						Toggle.toggle.UIStroke.color.Enabled = false
-
-						Toggle.toggle.UIStroke.Color = Color3.fromRGB(97,97,97)
-
-						tween(Toggle.toggle, {BackgroundTransparency = 1})
-
-						tween(Toggle.toggle.val, {BackgroundColor3 = Color3.fromRGB(97,97,97), Position = UDim2.new(0,5,0.5,0), BackgroundTransparency = 0})
-					end
+					NEXO_StyleSwitch(Toggle.toggle, bool)
 
 					ToggleV.CurrentValue = bool
 				end
@@ -3111,16 +3598,16 @@ function Luna:CreateWindow(WindowSettings)
 						ToggleSettings.Callback(ToggleSettings.CurrentValue)
 					end)
 					if not Success then
-						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-						TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+						TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 						Toggle.Title.Text = "Callback Error"
-						print("Luna Interface Suite | "..ToggleSettings.Name.." Callback Error " ..tostring(Response))
+						print("NEXO | "..ToggleSettings.Name.." Callback Error " ..tostring(Response))
 						wait(0.5)
 						Toggle.Title.Text = ToggleSettings.Name
-						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-						TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+						TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 					end
 				end)
 
@@ -3138,16 +3625,16 @@ function Luna:CreateWindow(WindowSettings)
 						ToggleSettings.Callback(ToggleSettings.CurrentValue)
 					end)
 					if not Success then
-						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-						TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+						TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 						Toggle.Title.Text = "Callback Error"
-						print("Luna Interface Suite | "..ToggleSettings.Name.." Callback Error " ..tostring(Response))
+						print("NEXO | "..ToggleSettings.Name.." Callback Error " ..tostring(Response))
 						wait(0.5)
 						Toggle.Title.Text = ToggleSettings.Name
-						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-						TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+						TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 					end
 				end
 
@@ -3182,16 +3669,16 @@ function Luna:CreateWindow(WindowSettings)
 						ToggleSettings.Callback(ToggleSettings.CurrentValue)
 					end)
 					if not Success then
-						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-						TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0}):Play()
+						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+						TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0}):Play()
 						Toggle.Title.Text = "Callback Error"
-						print("Luna Interface Suite | "..ToggleSettings.Name.." Callback Error " ..tostring(Response))
+						print("NEXO | "..ToggleSettings.Name.." Callback Error " ..tostring(Response))
 						wait(0.5)
 						Toggle.Title.Text = ToggleSettings.Name
-						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-						TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+						TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+						TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 					end
 				end
 
@@ -3257,14 +3744,14 @@ function Luna:CreateWindow(WindowSettings)
 				Bind.BindFrame.UIStroke.Transparency = 1
 				Bind.BindFrame.BindBox.TextTransparency = 1
 
-				TweenService:Create(Bind, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-				TweenService:Create(Bind.Title, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+				TweenService:Create(Bind, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+				TweenService:Create(Bind.Title, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 				if BindSettings.Description ~= nil and BindSettings.Description ~= "" then
-					TweenService:Create(Bind.Desc, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+					TweenService:Create(Bind.Desc, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 				end
-				TweenService:Create(Bind.BindFrame, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.9}):Play()
-				TweenService:Create(Bind.BindFrame.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Transparency = 0.3}):Play()
-				TweenService:Create(Bind.BindFrame.BindBox, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+				TweenService:Create(Bind.BindFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.9}):Play()
+				TweenService:Create(Bind.BindFrame.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {Transparency = 0.3}):Play()
+				TweenService:Create(Bind.BindFrame.BindBox, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 
 				Bind.BindFrame.BindBox.Text = BindSettings.CurrentBind
 				Bind.BindFrame.BindBox.Size = UDim2.new(0, Bind.BindFrame.BindBox.TextBounds.X + 20, 0, 42)
@@ -3300,16 +3787,16 @@ function Luna:CreateWindow(WindowSettings)
 								BindSettings.OnChangedCallback(BindSettings.CurrentBind)
 							end)
 							if not Success then
-								TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-								TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-								TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+								TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+								TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+								TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 								Bind.Title.Text = "Callback Error"
-								print("Luna Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
+								print("NEXO | "..BindSettings.Name.." Callback Error " ..tostring(Response))
 								wait(0.5)
 								Bind.Title.Text = BindSettings.Name
-								TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-								TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-								TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+								TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+								TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+								TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 							end
 							Bind.BindFrame.BindBox:ReleaseFocus()
 						end
@@ -3329,16 +3816,16 @@ function Luna:CreateWindow(WindowSettings)
 								BindSettings.Callback(BindV.Active)
 							end)
 							if not Success then
-								TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-								TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-								TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+								TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+								TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+								TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 								Bind.Title.Text = "Callback Error"
-								print("Luna Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
+								print("NEXO | "..BindSettings.Name.." Callback Error " ..tostring(Response))
 								wait(0.5)
 								Bind.Title.Text = BindSettings.Name
-								TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-								TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-								TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+								TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+								TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+								TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 							end
 						else
 							wait(0.1)
@@ -3349,16 +3836,16 @@ function Luna:CreateWindow(WindowSettings)
 											BindSettings.Callback(false)
 										end)
 										if not Success then
-											TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-											TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-											TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+											TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+											TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+											TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 											Bind.Title.Text = "Callback Error"
-											print("Luna Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
+											print("NEXO | "..BindSettings.Name.." Callback Error " ..tostring(Response))
 											wait(0.5)
 											Bind.Title.Text = BindSettings.Name
-											TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-											TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-											TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+											TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+											TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+											TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 										end
 										Loop:Disconnect()
 									else
@@ -3366,16 +3853,16 @@ function Luna:CreateWindow(WindowSettings)
 											BindSettings.Callback(true)
 										end)
 										if not Success then
-											TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-											TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-											TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+											TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+											TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+											TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 											Bind.Title.Text = "Callback Error"
-											print("Luna Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
+											print("NEXO | "..BindSettings.Name.." Callback Error " ..tostring(Response))
 											wait(0.5)
 											Bind.Title.Text = BindSettings.Name
-											TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-											TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-											TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+											TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+											TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+											TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 										end
 									end
 								end)
@@ -3385,7 +3872,7 @@ function Luna:CreateWindow(WindowSettings)
 				end)
 
 				Bind.BindFrame.BindBox:GetPropertyChangedSignal("Text"):Connect(function()
-					TweenService:Create(Bind.BindFrame, TweenInfo.new(0.55, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Size = UDim2.new(0, Bind.BindFrame.BindBox.TextBounds.X + 20, 0, 30)}):Play()
+					TweenService:Create(Bind.BindFrame, TweenInfo.new(0.55, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(0, Bind.BindFrame.BindBox.TextBounds.X + 20, 0, 30)}):Play()
 				end)
 
 				function BindV:Set(NewBindSettings)
@@ -3472,13 +3959,13 @@ function Luna:CreateWindow(WindowSettings)
 				Input.InputFrame.UIStroke.Transparency = 1
 				Input.InputFrame.InputBox.TextTransparency = 1
 
-				TweenService:Create(Input, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-				TweenService:Create(Input.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
-				TweenService:Create(Input.Title, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
-				if descriptionbool then TweenService:Create(Input.Desc, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play() end
-				TweenService:Create(Input.InputFrame, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.9}):Play()
-				TweenService:Create(Input.InputFrame.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Transparency = 0.3}):Play()
-				TweenService:Create(Input.InputFrame.InputBox, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+				TweenService:Create(Input, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+				TweenService:Create(Input.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
+				TweenService:Create(Input.Title, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
+				if descriptionbool then TweenService:Create(Input.Desc, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play() end
+				TweenService:Create(Input.InputFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.9}):Play()
+				TweenService:Create(Input.InputFrame.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {Transparency = 0.3}):Play()
+				TweenService:Create(Input.InputFrame.InputBox, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 
 				Input.InputFrame.InputBox.PlaceholderText = InputSettings.PlaceholderText
 				Input.InputFrame.Size = UDim2.new(0, Input.InputFrame.InputBox.TextBounds.X + 52, 0, 30)
@@ -3492,16 +3979,16 @@ function Luna:CreateWindow(WindowSettings)
 								InputV.CurrentValue = Input.InputFrame.InputBox.Text
 							end)
 							if not Success then
-								TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-								TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-								TweenService:Create(Input.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+								TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+								TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+								TweenService:Create(Input.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 								Input.Title.Text = "Callback Error"
-								print("Luna Interface Suite | "..InputSettings.Name.." Callback Error " ..tostring(Response))
+								print("NEXO | "..InputSettings.Name.." Callback Error " ..tostring(Response))
 								wait(0.5)
 								Input.Title.Text = InputSettings.Name
-								TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-								TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-								TweenService:Create(Input.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+								TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+								TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+								TweenService:Create(Input.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 							end
 						end
 					end
@@ -3527,22 +4014,22 @@ function Luna:CreateWindow(WindowSettings)
 							Input.InputFrame.InputBox.Text = Input.InputFrame.InputBox.Text:sub(1, InputSettings.MaxCharacters)
 						end
 					end
-					TweenService:Create(Input.InputFrame, TweenInfo.new(0.55, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Size = UDim2.new(0, Input.InputFrame.InputBox.TextBounds.X + 52, 0, 30)}):Play()
+					TweenService:Create(Input.InputFrame, TweenInfo.new(0.55, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(0, Input.InputFrame.InputBox.TextBounds.X + 52, 0, 30)}):Play()
 					if not InputSettings.Enter then
 						local Success, Response = pcall(function()
 							InputSettings.Callback(Input.InputFrame.InputBox.Text)
 						end)
 						if not Success then
-							TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-							TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-							TweenService:Create(Input.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+							TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+							TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+							TweenService:Create(Input.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 							Input.Title.Text = "Callback Error"
-							print("Luna Interface Suite | "..InputSettings.Name.." Callback Error " ..tostring(Response))
+							print("NEXO | "..InputSettings.Name.." Callback Error " ..tostring(Response))
 							wait(0.5)
 							Input.Title.Text = InputSettings.Name
-							TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-							TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-							TweenService:Create(Input.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+							TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+							TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+							TweenService:Create(Input.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 						end
 					end
 					InputV.CurrentValue = Input.InputFrame.InputBox.Text
@@ -3649,16 +4136,16 @@ function Luna:CreateWindow(WindowSettings)
 						DropdownSettings.Callback(param)
 					end)
 					if not Success then
-						TweenService:Create(Dropdown, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-						TweenService:Create(Dropdown, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-						TweenService:Create(Dropdown.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+						TweenService:Create(Dropdown, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+						TweenService:Create(Dropdown, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+						TweenService:Create(Dropdown.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 						Dropdown.Title.Text = "Callback Error"
-						print("Luna Interface Suite | "..DropdownSettings.Name.." Callback Error " ..tostring(Response))
+						print("NEXO | "..DropdownSettings.Name.." Callback Error " ..tostring(Response))
 						wait(0.5)
 						Dropdown.Title.Text = DropdownSettings.Name
-						TweenService:Create(Dropdown, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-						TweenService:Create(Dropdown, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-						TweenService:Create(Dropdown.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+						TweenService:Create(Dropdown, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+						TweenService:Create(Dropdown, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+						TweenService:Create(Dropdown.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 					end
 					if Success and c2 then
 						c2()
@@ -3982,16 +4469,16 @@ function Luna:CreateWindow(WindowSettings)
 						ColorPickerSettings.Callback(param)
 					end)
 					if not Success then
-						TweenService:Create(ColorPicker, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-						TweenService:Create(ColorPicker, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-						TweenService:Create(ColorPicker.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+						TweenService:Create(ColorPicker, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+						TweenService:Create(ColorPicker, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+						TweenService:Create(ColorPicker.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 						ColorPicker.Title.Text = "Callback Error"
-						print("Luna Interface Suite | "..ColorPickerSettings.Name.." Callback Error " ..tostring(Response))
+						print("NEXO | "..ColorPickerSettings.Name.." Callback Error " ..tostring(Response))
 						wait(0.5)
 						ColorPicker.Title.Text = ColorPickerSettings.Name
-						TweenService:Create(ColorPicker, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-						TweenService:Create(ColorPicker, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-						TweenService:Create(ColorPicker.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+						TweenService:Create(ColorPicker, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+						TweenService:Create(ColorPicker, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+						TweenService:Create(ColorPicker.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 					end
 					if Success and c2 then
 						c2()
@@ -4007,12 +4494,12 @@ function Luna:CreateWindow(WindowSettings)
 				ColorPicker.Interact.MouseButton1Down:Connect(function()
 					if not opened then
 						opened = true
-						tween(ColorPicker, {Size = UDim2.new( 1.042, -25,0, 165)}, nil, TweenInfo.new(0.6, Enum.EasingStyle.Exponential))
+						tween(ColorPicker, {Size = UDim2.new( 1.042, -25,0, 165)}, nil, TweenInfo.new(0.6, Enum.EasingStyle.Quart))
 						tween(Background, {Size = openedsize})
 						tween(Display, {BackgroundTransparency = 1})
 					else
 						opened = false
-						tween(ColorPicker, {Size = UDim2.new(1.042, -25,0, 38)}, nil, TweenInfo.new(0.6, Enum.EasingStyle.Exponential))
+						tween(ColorPicker, {Size = UDim2.new(1.042, -25,0, 38)}, nil, TweenInfo.new(0.6, Enum.EasingStyle.Quart))
 						tween(Background, {Size = closedsize})
 						tween(Display, {BackgroundTransparency = 0})
 					end
@@ -4220,6 +4707,7 @@ function Luna:CreateWindow(WindowSettings)
 			end
 			Button.Visible = true
 			Button.Parent = TabPage
+			pcall(function() Button.UIStroke.Color = Color3.fromRGB(255,255,255) end)
 
 			Button.UIStroke.Transparency = 1
 			Button.Title.TextTransparency = 1
@@ -4227,46 +4715,46 @@ function Luna:CreateWindow(WindowSettings)
 				Button.Desc.TextTransparency = 1
 			end
 
-			TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-			TweenService:Create(Button.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
-			TweenService:Create(Button.Title, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+			TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+			TweenService:Create(Button.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
+			TweenService:Create(Button.Title, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 			if ButtonSettings.Description ~= nil and ButtonSettings.Description ~= "" then
-				TweenService:Create(Button.Desc, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+				TweenService:Create(Button.Desc, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 			end
 
 			Button.Interact["MouseButton1Click"]:Connect(function()
 				local Success,Response = pcall(ButtonSettings.Callback)
 
 				if not Success then
-					TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-					TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-					TweenService:Create(Button.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+					TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+					TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+					TweenService:Create(Button.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 					Button.Title.Text = "Callback Error"
-					print("Luna Interface Suite | "..ButtonSettings.Name.." Callback Error " ..tostring(Response))
+					print("NEXO | "..ButtonSettings.Name.." Callback Error " ..tostring(Response))
 					wait(0.5)
 					Button.Title.Text = ButtonSettings.Name
-					TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-					TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-					TweenService:Create(Button.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+					TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+					TweenService:Create(Button, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+					TweenService:Create(Button.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 				else
-					tween(Button.UIStroke, {Color = Color3.fromRGB(136, 131, 163)})
+					tween(Button.UIStroke, {Color = Color3.fromRGB(255,255,255)})
 					wait(0.2)
 					if ButtonV.Hover then
-						tween(Button.UIStroke, {Color = Color3.fromRGB(87, 84, 104)})
+						tween(Button.UIStroke, {Color = Color3.fromRGB(255,255,255)})
 					else
-						tween(Button.UIStroke, {Color = Color3.fromRGB(64,61,76)})
+						tween(Button.UIStroke, {Color = Color3.fromRGB(255,255,255)})
 					end
 				end
 			end)
 
 			Button["MouseEnter"]:Connect(function()
 				ButtonV.Hover = true
-				tween(Button.UIStroke, {Color = Color3.fromRGB(87, 84, 104)})
+				tween(Button.UIStroke, {Color = Color3.fromRGB(255,255,255)})
 			end)
 
 			Button["MouseLeave"]:Connect(function()
 				ButtonV.Hover = false
-				tween(Button.UIStroke, {Color = Color3.fromRGB(64,61,76)})
+				tween(Button.UIStroke, {Color = Color3.fromRGB(255,255,255)})
 			end)
 
 			function ButtonV:Set(ButtonSettings2)
@@ -4323,12 +4811,12 @@ function Luna:CreateWindow(WindowSettings)
 			Label.Text.TextTransparency = 1
 
 			if LabelSettings.Style ~= 1 then
-				TweenService:Create(Label, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.8}):Play()
+				TweenService:Create(Label, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.8}):Play()
 			else
-				TweenService:Create(Label, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 1}):Play()
+				TweenService:Create(Label, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 1}):Play()
 			end
-			TweenService:Create(Label.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
-			TweenService:Create(Label.Text, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+			TweenService:Create(Label.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
+			TweenService:Create(Label.Text, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 
 			function LabelV:Set(NewLabel)
 				LabelSettings.Text = NewLabel
@@ -4366,10 +4854,10 @@ function Luna:CreateWindow(WindowSettings)
 			Paragraph.Title.TextTransparency = 1
 			Paragraph.Text.TextTransparency = 1
 
-			TweenService:Create(Paragraph, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 1}):Play()
-			TweenService:Create(Paragraph.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
-			TweenService:Create(Paragraph.Title, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
-			TweenService:Create(Paragraph.Text, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+			TweenService:Create(Paragraph, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 1}):Play()
+			TweenService:Create(Paragraph.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
+			TweenService:Create(Paragraph.Title, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
+			TweenService:Create(Paragraph.Text, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 
 			function ParagraphV:Update()
 				Paragraph.Text.Size = UDim2.new(Paragraph.Text.Size.X.Scale, Paragraph.Text.Size.X.Offset, 0, math.huge)
@@ -4427,9 +4915,9 @@ function Luna:CreateWindow(WindowSettings)
 			Slider.UIStroke.Transparency = 1
 			Slider.Title.TextTransparency = 1
 
-			TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-			TweenService:Create(Slider.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
-			TweenService:Create(Slider.Title, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+			TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+			TweenService:Create(Slider.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
+			TweenService:Create(Slider.Title, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 
 			Slider.Main.Progress.Size =	UDim2.new(0, Slider.Main.AbsoluteSize.X * ((SliderSettings.CurrentValue + SliderSettings.Range[1]) / (SliderSettings.Range[2] - SliderSettings.Range[1])) > 5 and Slider.Main.AbsoluteSize.X * (SliderSettings.CurrentValue / (SliderSettings.Range[2] - SliderSettings.Range[1])) or 5, 1, 0)
 
@@ -4496,16 +4984,16 @@ function Luna:CreateWindow(WindowSettings)
 								SliderSettings.Callback(NewValue)
 							end)
 							if not Success then
-								TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-								TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-								TweenService:Create(Slider.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+								TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+								TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+								TweenService:Create(Slider.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 								Slider.Title.Text = "Callback Error"
-								print("Luna Interface Suite | "..SliderSettings.Name.." Callback Error " ..tostring(Response))
+								print("NEXO | "..SliderSettings.Name.." Callback Error " ..tostring(Response))
 								wait(0.5)
 								Slider.Title.Text = SliderSettings.Name
-								TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-								TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-								TweenService:Create(Slider.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+								TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+								TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+								TweenService:Create(Slider.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 							end
 
 							SliderSettings.CurrentValue = NewValue
@@ -4513,7 +5001,7 @@ function Luna:CreateWindow(WindowSettings)
 
 						end
 					else
-						TweenService:Create(Slider.Main.Progress, TweenInfo.new(0.1, Enum.EasingStyle.Back, Enum.EasingDirection.In, 0, false), {Size = UDim2.new(0, Location - Slider.Main.AbsolutePosition.X > 5 and Location - Slider.Main.AbsolutePosition.X or 5, 1, 0)}):Play()
+						TweenService:Create(Slider.Main.Progress, TweenInfo.new(0.1, Enum.EasingStyle.Quart, Enum.EasingDirection.In, 0, false), {Size = UDim2.new(0, Location - Slider.Main.AbsolutePosition.X > 5 and Location - Slider.Main.AbsolutePosition.X or 5, 1, 0)}):Play()
 						Loop:Disconnect()
 					end
 				end)
@@ -4523,22 +5011,22 @@ function Luna:CreateWindow(WindowSettings)
 
 				NewVal = NewVal or SliderSettings.CurrentValue
 
-				TweenService:Create(Slider.Main.Progress, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.InOut), {Size = UDim2.new(0, Slider.Main.AbsoluteSize.X * ((NewVal + SliderSettings.Range[1]) / (SliderSettings.Range[2] - SliderSettings.Range[1])) > 5 and Slider.Main.AbsoluteSize.X * (NewVal / (SliderSettings.Range[2] - SliderSettings.Range[1])) or 5, 1, 0)}):Play()
+				TweenService:Create(Slider.Main.Progress, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.InOut), {Size = UDim2.new(0, Slider.Main.AbsoluteSize.X * ((NewVal + SliderSettings.Range[1]) / (SliderSettings.Range[2] - SliderSettings.Range[1])) > 5 and Slider.Main.AbsoluteSize.X * (NewVal / (SliderSettings.Range[2] - SliderSettings.Range[1])) or 5, 1, 0)}):Play()
 				if not bleh then Slider.Value.Text = tostring(NewVal) end
 				local Success, Response = pcall(function()
 					SliderSettings.Callback(NewVal)
 				end)
 				if not Success then
-					TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-					TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-					TweenService:Create(Slider.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+					TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+					TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+					TweenService:Create(Slider.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 					Slider.Title.Text = "Callback Error"
-					print("Luna Interface Suite | "..SliderSettings.Name.." Callback Error " ..tostring(Response))
+					print("NEXO | "..SliderSettings.Name.." Callback Error " ..tostring(Response))
 					wait(0.5)
 					Slider.Title.Text = SliderSettings.Name
-					TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-					TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(30, 33, 40)}):Play()
-					TweenService:Create(Slider.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+					TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+					TweenService:Create(Slider, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+					TweenService:Create(Slider.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 				end
 
 				SliderSettings.CurrentValue = NewVal
@@ -4589,8 +5077,7 @@ function Luna:CreateWindow(WindowSettings)
 			end
 
 			LunaUI.ThemeRemote:GetPropertyChangedSignal("Value"):Connect(function()
-				Slider.Main.color.Color = Luna.ThemeGradient
-				Slider.Main.UIStroke.color.Color = Luna.ThemeGradient
+				NEXO_WhiteSlider(Slider.Main)
 			end)
 
 			return SliderV
@@ -4631,32 +5118,15 @@ function Luna:CreateWindow(WindowSettings)
 				Toggle.Desc.TextTransparency = 1
 			end
 
-			TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
+			TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
 			if ToggleSettings.Description ~= nil and ToggleSettings.Description ~= "" then
-				TweenService:Create(Toggle.Desc, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+				TweenService:Create(Toggle.Desc, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 			end
-			TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
-			TweenService:Create(Toggle.Title, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+			TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
+			TweenService:Create(Toggle.Title, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 
 			local function Set(bool)
-				if bool then
-					Toggle.toggle.color.Enabled = true
-					tween(Toggle.toggle, {BackgroundTransparency = 0})
-
-					Toggle.toggle.UIStroke.color.Enabled = true
-					tween(Toggle.toggle.UIStroke, {Color = Color3.new(255,255,255)})
-
-					tween(Toggle.toggle.val, {BackgroundColor3 = Color3.fromRGB(255,255,255), Position = UDim2.new(1,-23,0.5,0), BackgroundTransparency = 0.45})
-				else
-					Toggle.toggle.color.Enabled = false
-					Toggle.toggle.UIStroke.color.Enabled = false
-
-					Toggle.toggle.UIStroke.Color = Color3.fromRGB(97,97,97)
-
-					tween(Toggle.toggle, {BackgroundTransparency = 1})
-
-					tween(Toggle.toggle.val, {BackgroundColor3 = Color3.fromRGB(97,97,97), Position = UDim2.new(0,5,0.5,0), BackgroundTransparency = 0})
-				end
+				NEXO_StyleSwitch(Toggle.toggle, bool)
 
 				ToggleV.CurrentValue = bool
 			end
@@ -4669,16 +5139,16 @@ function Luna:CreateWindow(WindowSettings)
 					ToggleSettings.Callback(ToggleSettings.CurrentValue)
 				end)
 				if not Success then
-					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-					TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+					TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 					Toggle.Title.Text = "Callback Error"
-					print("Luna Interface Suite | "..ToggleSettings.Name.." Callback Error " ..tostring(Response))
+					print("NEXO | "..ToggleSettings.Name.." Callback Error " ..tostring(Response))
 					wait(0.5)
 					Toggle.Title.Text = ToggleSettings.Name
-					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-					TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+					TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 				end
 			end)
 
@@ -4696,16 +5166,16 @@ function Luna:CreateWindow(WindowSettings)
 					ToggleSettings.Callback(ToggleSettings.CurrentValue)
 				end)
 				if not Success then
-					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-					TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+					TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 					Toggle.Title.Text = "Callback Error"
-					print("Luna Interface Suite | "..ToggleSettings.Name.." Callback Error " ..tostring(Response))
+					print("NEXO | "..ToggleSettings.Name.." Callback Error " ..tostring(Response))
 					wait(0.5)
 					Toggle.Title.Text = ToggleSettings.Name
-					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-					TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+					TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 				end
 			end
 
@@ -4740,16 +5210,16 @@ function Luna:CreateWindow(WindowSettings)
 					ToggleSettings.Callback(ToggleSettings.CurrentValue)
 				end)
 				if not Success then
-					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-					TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0}):Play()
+					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+					TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0}):Play()
 					Toggle.Title.Text = "Callback Error"
-					print("Luna Interface Suite | "..ToggleSettings.Name.." Callback Error " ..tostring(Response))
+					print("NEXO | "..ToggleSettings.Name.." Callback Error " ..tostring(Response))
 					wait(0.5)
 					Toggle.Title.Text = ToggleSettings.Name
-					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-					TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+					TweenService:Create(Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+					TweenService:Create(Toggle.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 				end
 			end
 
@@ -4814,14 +5284,14 @@ function Luna:CreateWindow(WindowSettings)
 			Bind.BindFrame.UIStroke.Transparency = 1
 			Bind.BindFrame.BindBox.TextTransparency = 1
 
-			TweenService:Create(Bind, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-			TweenService:Create(Bind.Title, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+			TweenService:Create(Bind, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+			TweenService:Create(Bind.Title, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 			if BindSettings.Description ~= nil and BindSettings.Description ~= "" then
-				TweenService:Create(Bind.Desc, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+				TweenService:Create(Bind.Desc, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 			end
-			TweenService:Create(Bind.BindFrame, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.9}):Play()
-			TweenService:Create(Bind.BindFrame.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Transparency = 0.3}):Play()
-			TweenService:Create(Bind.BindFrame.BindBox, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+			TweenService:Create(Bind.BindFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.9}):Play()
+			TweenService:Create(Bind.BindFrame.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {Transparency = 0.3}):Play()
+			TweenService:Create(Bind.BindFrame.BindBox, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 
 			Bind.BindFrame.BindBox.Text = BindSettings.CurrentBind
 			Bind.BindFrame.BindBox.Size = UDim2.new(0, Bind.BindFrame.BindBox.TextBounds.X + 20, 0, 42)
@@ -4857,16 +5327,16 @@ function Luna:CreateWindow(WindowSettings)
 							BindSettings.OnChangedCallback(BindSettings.CurrentBind)
 						end)
 						if not Success then
-							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-							TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+							TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 							Bind.Title.Text = "Callback Error"
-							print("Luna Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
+							print("NEXO | "..BindSettings.Name.." Callback Error " ..tostring(Response))
 							wait(0.5)
 							Bind.Title.Text = BindSettings.Name
-							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-							TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+							TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 						end
 						Bind.BindFrame.BindBox:ReleaseFocus()
 					end
@@ -4886,16 +5356,16 @@ function Luna:CreateWindow(WindowSettings)
 							BindSettings.Callback(BindV.Active)
 						end)
 						if not Success then
-							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-							TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+							TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 							Bind.Title.Text = "Callback Error"
-							print("Luna Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
+							print("NEXO | "..BindSettings.Name.." Callback Error " ..tostring(Response))
 							wait(0.5)
 							Bind.Title.Text = BindSettings.Name
-							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-							TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+							TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 						end
 					else
 						wait(0.1)
@@ -4906,16 +5376,16 @@ function Luna:CreateWindow(WindowSettings)
 										BindSettings.Callback(false)
 									end)
 									if not Success then
-										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-										TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+										TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 										Bind.Title.Text = "Callback Error"
-										print("Luna Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
+										print("NEXO | "..BindSettings.Name.." Callback Error " ..tostring(Response))
 										wait(0.5)
 										Bind.Title.Text = BindSettings.Name
-										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-										TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+										TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 									end
 									Loop:Disconnect()
 								else
@@ -4923,16 +5393,16 @@ function Luna:CreateWindow(WindowSettings)
 										BindSettings.Callback(true)
 									end)
 									if not Success then
-										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-										TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+										TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 										Bind.Title.Text = "Callback Error"
-										print("Luna Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
+										print("NEXO | "..BindSettings.Name.." Callback Error " ..tostring(Response))
 										wait(0.5)
 										Bind.Title.Text = BindSettings.Name
-										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-										TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+										TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 									end
 								end
 							end)
@@ -4942,7 +5412,7 @@ function Luna:CreateWindow(WindowSettings)
 			end)
 
 			Bind.BindFrame.BindBox:GetPropertyChangedSignal("Text"):Connect(function()
-				TweenService:Create(Bind.BindFrame, TweenInfo.new(0.55, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Size = UDim2.new(0, Bind.BindFrame.BindBox.TextBounds.X + 20, 0, 30)}):Play()
+				TweenService:Create(Bind.BindFrame, TweenInfo.new(0.55, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(0, Bind.BindFrame.BindBox.TextBounds.X + 20, 0, 30)}):Play()
 			end)
 
 			function BindV:Set(NewBindSettings)
@@ -5022,14 +5492,14 @@ function Luna:CreateWindow(WindowSettings)
 			Bind.BindFrame.UIStroke.Transparency = 1
 			Bind.BindFrame.BindBox.TextTransparency = 1
 
-			TweenService:Create(Bind, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-			TweenService:Create(Bind.Title, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+			TweenService:Create(Bind, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+			TweenService:Create(Bind.Title, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 			if BindSettings.Description ~= nil and BindSettings.Description ~= "" then
-				TweenService:Create(Bind.Desc, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+				TweenService:Create(Bind.Desc, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 			end
-			TweenService:Create(Bind.BindFrame, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.9}):Play()
-			TweenService:Create(Bind.BindFrame.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Transparency = 0.3}):Play()
-			TweenService:Create(Bind.BindFrame.BindBox, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+			TweenService:Create(Bind.BindFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.9}):Play()
+			TweenService:Create(Bind.BindFrame.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {Transparency = 0.3}):Play()
+			TweenService:Create(Bind.BindFrame.BindBox, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 
 			Bind.BindFrame.BindBox.Text = BindSettings.CurrentBind
 			Bind.BindFrame.BindBox.Size = UDim2.new(0, Bind.BindFrame.BindBox.TextBounds.X + 16, 0, 42)
@@ -5079,16 +5549,16 @@ function Luna:CreateWindow(WindowSettings)
 							BindSettings.Callback(BindV.Active)
 						end)
 						if not Success then
-							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-							TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+							TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 							Bind.Title.Text = "Callback Error"
-							print("Luna Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
+							print("NEXO | "..BindSettings.Name.." Callback Error " ..tostring(Response))
 							wait(0.5)
 							Bind.Title.Text = BindSettings.Name
-							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-							TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+							TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+							TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 						end
 					else
 						wait(0.1)
@@ -5099,16 +5569,16 @@ function Luna:CreateWindow(WindowSettings)
 										BindSettings.Callback(false)
 									end)
 									if not Success then
-										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-										TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+										TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 										Bind.Title.Text = "Callback Error"
-										print("Luna Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
+										print("NEXO | "..BindSettings.Name.." Callback Error " ..tostring(Response))
 										wait(0.5)
 										Bind.Title.Text = BindSettings.Name
-										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-										TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+										TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 									end
 									Loop:Disconnect()
 								else
@@ -5116,16 +5586,16 @@ function Luna:CreateWindow(WindowSettings)
 										BindSettings.Callback(true)
 									end)
 									if not Success then
-										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-										TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+										TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 										Bind.Title.Text = "Callback Error"
-										print("Luna Interface Suite | "..BindSettings.Name.." Callback Error " ..tostring(Response))
+										print("NEXO | "..BindSettings.Name.." Callback Error " ..tostring(Response))
 										wait(0.5)
 										Bind.Title.Text = BindSettings.Name
-										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-										TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+										TweenService:Create(Bind, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+										TweenService:Create(Bind.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 									end
 								end
 							end)
@@ -5135,7 +5605,7 @@ function Luna:CreateWindow(WindowSettings)
 			end)
 
 			Bind.BindFrame.BindBox:GetPropertyChangedSignal("Text"):Connect(function()
-				TweenService:Create(Bind.BindFrame, TweenInfo.new(0.55, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Size = UDim2.new(0, Bind.BindFrame.BindBox.TextBounds.X + 16, 0, 30)}):Play()
+				TweenService:Create(Bind.BindFrame, TweenInfo.new(0.55, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(0, Bind.BindFrame.BindBox.TextBounds.X + 16, 0, 30)}):Play()
 			end)
 
 			function BindV:Set(NewBindSettings)
@@ -5216,13 +5686,13 @@ function Luna:CreateWindow(WindowSettings)
 			Input.InputFrame.UIStroke.Transparency = 1
 			Input.InputFrame.InputBox.TextTransparency = 1
 
-			TweenService:Create(Input, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-			TweenService:Create(Input.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
-			TweenService:Create(Input.Title, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
-			if descriptionbool then TweenService:Create(Input.Desc, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play() end
-			TweenService:Create(Input.InputFrame, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.9}):Play()
-			TweenService:Create(Input.InputFrame.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {Transparency = 0.3}):Play()
-			TweenService:Create(Input.InputFrame.InputBox, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
+			TweenService:Create(Input, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+			TweenService:Create(Input.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
+			TweenService:Create(Input.Title, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
+			if descriptionbool then TweenService:Create(Input.Desc, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play() end
+			TweenService:Create(Input.InputFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.9}):Play()
+			TweenService:Create(Input.InputFrame.UIStroke, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {Transparency = 0.3}):Play()
+			TweenService:Create(Input.InputFrame.InputBox, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {TextTransparency = 0}):Play()
 
 			Input.InputFrame.InputBox.PlaceholderText = InputSettings.PlaceholderText
 			Input.InputFrame.Size = UDim2.new(0, Input.InputFrame.InputBox.TextBounds.X + 52, 0, 30)
@@ -5236,16 +5706,16 @@ function Luna:CreateWindow(WindowSettings)
 							InputV.CurrentValue = Input.InputFrame.InputBox.Text
 						end)
 						if not Success then
-							TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-							TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-							TweenService:Create(Input.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+							TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+							TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+							TweenService:Create(Input.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 							Input.Title.Text = "Callback Error"
-							print("Luna Interface Suite | "..InputSettings.Name.." Callback Error " ..tostring(Response))
+							print("NEXO | "..InputSettings.Name.." Callback Error " ..tostring(Response))
 							wait(0.5)
 							Input.Title.Text = InputSettings.Name
-							TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-							TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-							TweenService:Create(Input.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+							TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+							TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+							TweenService:Create(Input.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 						end
 					end
 				end
@@ -5271,22 +5741,22 @@ function Luna:CreateWindow(WindowSettings)
 						Input.InputFrame.InputBox.Text = Input.InputFrame.InputBox.Text:sub(1, InputSettings.MaxCharacters)
 					end
 				end
-				TweenService:Create(Input.InputFrame, TweenInfo.new(0.55, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {Size = UDim2.new(0, Input.InputFrame.InputBox.TextBounds.X + 52, 0, 30)}):Play()
+				TweenService:Create(Input.InputFrame, TweenInfo.new(0.55, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = UDim2.new(0, Input.InputFrame.InputBox.TextBounds.X + 52, 0, 30)}):Play()
 				if not InputSettings.Enter then
 					local Success, Response = pcall(function()
 						InputSettings.Callback(Input.InputFrame.InputBox.Text)
 					end)
 					if not Success then
-						TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-						TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-						TweenService:Create(Input.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+						TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+						TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+						TweenService:Create(Input.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 						Input.Title.Text = "Callback Error"
-						print("Luna Interface Suite | "..InputSettings.Name.." Callback Error " ..tostring(Response))
+						print("NEXO | "..InputSettings.Name.." Callback Error " ..tostring(Response))
 						wait(0.5)
 						Input.Title.Text = InputSettings.Name
-						TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-						TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-						TweenService:Create(Input.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+						TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+						TweenService:Create(Input, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+						TweenService:Create(Input.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 					end
 				end
 				InputV.CurrentValue = Input.InputFrame.InputBox.Text
@@ -5392,16 +5862,16 @@ function Luna:CreateWindow(WindowSettings)
 					DropdownSettings.Callback(param)
 				end)
 				if not Success then
-					TweenService:Create(Dropdown, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-					TweenService:Create(Dropdown, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-					TweenService:Create(Dropdown.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+					TweenService:Create(Dropdown, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+					TweenService:Create(Dropdown, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+					TweenService:Create(Dropdown.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 					Dropdown.Title.Text = "Callback Error"
-					print("Luna Interface Suite | "..DropdownSettings.Name.." Callback Error " ..tostring(Response))
+					print("NEXO | "..DropdownSettings.Name.." Callback Error " ..tostring(Response))
 					wait(0.5)
 					Dropdown.Title.Text = DropdownSettings.Name
-					TweenService:Create(Dropdown, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-					TweenService:Create(Dropdown, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-					TweenService:Create(Dropdown.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+					TweenService:Create(Dropdown, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+					TweenService:Create(Dropdown, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+					TweenService:Create(Dropdown.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 				end
 				if Success and c2 then
 					c2()
@@ -5724,16 +6194,16 @@ function Luna:CreateWindow(WindowSettings)
 					ColorPickerSettings.Callback(param)
 				end)
 				if not Success then
-					TweenService:Create(ColorPicker, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0}):Play()
-					TweenService:Create(ColorPicker, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
-					TweenService:Create(ColorPicker.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 1}):Play()
+					TweenService:Create(ColorPicker, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0}):Play()
+					TweenService:Create(ColorPicker, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(85, 0, 0)}):Play()
+					TweenService:Create(ColorPicker.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 1}):Play()
 					ColorPicker.Title.Text = "Callback Error"
-					print("Luna Interface Suite | "..ColorPickerSettings.Name.." Callback Error " ..tostring(Response))
+					print("NEXO | "..ColorPickerSettings.Name.." Callback Error " ..tostring(Response))
 					wait(0.5)
 					ColorPicker.Title.Text = ColorPickerSettings.Name
-					TweenService:Create(ColorPicker, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundTransparency = 0.5}):Play()
-					TweenService:Create(ColorPicker, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {BackgroundColor3 = Color3.fromRGB(32, 30, 38)}):Play()
-					TweenService:Create(ColorPicker.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Transparency = 0.5}):Play()
+					TweenService:Create(ColorPicker, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundTransparency = 0.5}):Play()
+					TweenService:Create(ColorPicker, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {BackgroundColor3 = Color3.fromRGB(0, 0, 0)}):Play()
+					TweenService:Create(ColorPicker.UIStroke, TweenInfo.new(0.7, Enum.EasingStyle.Quart), {Transparency = 0.5}):Play()
 				end
 				if Success and c2 then
 					c2()
@@ -5749,12 +6219,12 @@ function Luna:CreateWindow(WindowSettings)
 			ColorPicker.Interact.MouseButton1Down:Connect(function()
 				if not opened then
 					opened = true
-					tween(ColorPicker, {Size = UDim2.new( 1.042, -25,0, 165)}, nil, TweenInfo.new(0.6, Enum.EasingStyle.Exponential))
+					tween(ColorPicker, {Size = UDim2.new( 1.042, -25,0, 165)}, nil, TweenInfo.new(0.6, Enum.EasingStyle.Quart))
 					tween(Background, {Size = openedsize})
 					tween(Display, {BackgroundTransparency = 1})
 				else
 					opened = false
-					tween(ColorPicker, {Size = UDim2.new(1.042, -25,0, 38)}, nil, TweenInfo.new(0.6, Enum.EasingStyle.Exponential))
+					tween(ColorPicker, {Size = UDim2.new(1.042, -25,0, 38)}, nil, TweenInfo.new(0.6, Enum.EasingStyle.Quart))
 					tween(Background, {Size = closedsize})
 					tween(Display, {BackgroundTransparency = 0})
 				end
@@ -5937,7 +6407,7 @@ function Luna:CreateWindow(WindowSettings)
 			Title.Visible = true
 			Title.Parent = TabPage
 			Title.TextTransparency = 1
-			TweenService:Create(Title, TweenInfo.new(0.4, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+			TweenService:Create(Title, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
 
 			Tab:CreateSection("Config Creator")
 
@@ -6200,7 +6670,7 @@ function Luna:CreateWindow(WindowSettings)
 			Title.Visible = true
 			Title.Parent = TabPage
 			Title.TextTransparency = 1
-			TweenService:Create(Title, TweenInfo.new(0.4, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
+			TweenService:Create(Title, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {TextTransparency = 0}):Play()
 
 			Tab:CreateSection("Custom Editor")
 
@@ -6413,19 +6883,159 @@ function Luna:CreateWindow(WindowSettings)
 	for _, TopbarButton in ipairs(Main.Controls:GetChildren()) do
 		if TopbarButton.ClassName == "Frame" and TopbarButton.Name ~= "Theme" then
 			TopbarButton.Visible = true
-			tween(TopbarButton, {BackgroundTransparency = 0.25})
+			tween(TopbarButton, {BackgroundTransparency = 0})
 			tween(TopbarButton.UIStroke, {Transparency = 0.5})
 			tween(TopbarButton.ImageLabel, {ImageTransparency = 0.25})
 		end
 	end
 
-	Main.Controls.Close.ImageLabel.MouseButton1Click:Connect(function()
-		Hide(Main, Window.Bind, true)
-		dragBar.Visible = false
-		Window.State = false
-		if UserInputService.KeyboardEnabled == false then
-			LunaUI.MobileSupport.Visible = true
+	-- ===== NEXO: single, crash-proof show/hide controller =====
+	local NexoBusy = false
+	local function NexoForceShow()
+		pcall(function()
+			if not Window.State then return end
+			if (not Main.Visible) or Main.Size.X.Offset < 60 then
+				Main.Visible = true
+				Main.BackgroundTransparency = 0
+				local target = MainSize
+				if SizeBleh and SizeBleh.X.Offset > 60 then target = SizeBleh end
+				Main.Size = target
+				Main.Elements.Visible = true
+				Main.Elements.Parent.Visible = true
+				if not Window.Size then Main.Navigation.Visible = true end
+				for _, b in ipairs(Main.Controls:GetChildren()) do
+					if b:IsA("Frame") and b.Name ~= "Theme" then b.Visible = true end
+				end
+				if Main.Parent:FindFirstChild("ShadowHolder") then
+					Main.Parent.ShadowHolder.Visible = true
+					Main.Parent.ShadowHolder.ImageTransparency = 0
+				end
+			end
+		end)
+	end
+	local function NexoSetWindow(show)
+		if NexoBusy then return end
+		NexoBusy = true
+		if show then
+			Window.State = true
+			pcall(function() LunaUI.Enabled = true end)
+			pcall(function()
+				Main.AnchorPoint = Vector2.new(0.5, 0.5)
+				Main.Position = UDim2.fromScale(0.5, 0.5)
+				if Main.Parent:FindFirstChild("ShadowHolder") then
+					Main.Parent.ShadowHolder.AnchorPoint = Vector2.new(0.5, 0.5)
+					Main.Parent.ShadowHolder.Visible = true
+					Main.Parent.ShadowHolder.ImageTransparency = 0
+				end
+			end)
+			pcall(function() Unhide(Main, Window.CurrentTab) end)
+			pcall(function() if Window.HomeTab then Window.HomeTab:Activate() end end)
+			pcall(function() LunaUI.MobileSupport.Visible = false end)
+			pcall(function() if dragBar then dragBar.Visible = not Window.Size end end)
+			pcall(function() NEXO_SyncDragBar() end)
+			task.delay(0.45, NexoForceShow)
+		else
+			Window.State = false
+			pcall(function() if dragBar then dragBar.Visible = false end end)
+			pcall(function() Hide(Main, Window.Bind, true) end)
+			pcall(function() Main.Visible = false end)
+			pcall(function() LunaUI.MobileSupport.Visible = false end)
 		end
+		NexoBusy = false
+	end
+	Window.SetVisible = NexoSetWindow
+	function Window:Toggle()
+		NexoSetWindow(not Window.State)
+	end
+
+	-- NEXO: circular mini button to hide / open the UI
+	pcall(function()
+		local oldMini = LunaUI:FindFirstChild("NexoMini")
+		if oldMini then oldMini:Destroy() end
+		local mini = Instance.new("ImageButton")
+		mini.Name = "NexoMini"
+		mini.AutoButtonColor = false
+		mini.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+		mini.BackgroundTransparency = 0.1
+		mini.BorderSizePixel = 0
+		mini.Image = ""
+		mini.AnchorPoint = Vector2.new(0.5, 0.5)
+		mini.Position = UDim2.new(0, 54, 0.5, 0)
+		mini.Size = UDim2.fromOffset(48, 48)
+		mini.ClipsDescendants = true
+		mini.ZIndex = 2000000001
+		mini.Active = true
+		mini.Parent = LunaUI
+		Instance.new("UICorner", mini).CornerRadius = UDim.new(1, 0)
+		local mst = Instance.new("UIStroke", mini)
+		mst.Color = Color3.fromRGB(255, 255, 255)
+		mst.Thickness = 2.5
+		mst.Transparency = 0.08
+		local icon = Instance.new("ImageLabel")
+		icon.Name = "NexoKeepMiniIcon"
+		icon.BackgroundTransparency = 1
+		icon.AnchorPoint = Vector2.new(0.5, 0.5)
+		icon.Position = UDim2.fromScale(0.5, 0.5)
+		icon.Size = UDim2.fromScale(1, 1)
+		icon.ScaleType = Enum.ScaleType.Crop
+		icon.Image = "rbxassetid://93534184120392"
+		icon.ZIndex = 2000000002
+		icon.Parent = mini
+		Instance.new("UICorner", icon).CornerRadius = UDim.new(1, 0)
+		local function NexoClampMini()
+			pcall(function()
+				local vp = Camera.ViewportSize
+				local half = mini.AbsoluteSize.X / 2
+				local r = half + 6
+				local ax = mini.AbsolutePosition.X + half
+				local ay = mini.AbsolutePosition.Y + mini.AbsoluteSize.Y / 2
+				local cx = math.clamp(ax, r, math.max(r, vp.X - r))
+				local cy = math.clamp(ay, r, math.max(r, vp.Y - r))
+				if math.abs(cx - ax) > 0.5 or math.abs(cy - ay) > 0.5 then
+					mini.Position = UDim2.fromOffset(cx, cy)
+				end
+			end)
+		end
+		pcall(function()
+			Camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+				task.delay(0.12, NexoClampMini)
+			end)
+		end)
+		for _, d in ipairs({0.2, 0.8, 2}) do task.delay(d, NexoClampMini) end
+		local dragging, dragStart, startPos, moved
+		mini.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				dragging = true
+				moved = false
+				dragStart = input.Position
+				startPos = mini.Position
+				pcall(function() tween(mini, {Size = UDim2.fromOffset(44, 44)}) end)
+			end
+		end)
+		UserInputService.InputChanged:Connect(function(input)
+			if not dragging then return end
+			if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+				local d = input.Position - dragStart
+				if math.abs(d.X) > 4 or math.abs(d.Y) > 4 then moved = true end
+				mini.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
+			end
+		end)
+		UserInputService.InputEnded:Connect(function(input)
+			if not dragging then return end
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				dragging = false
+				pcall(function() tween(mini, {Size = UDim2.fromOffset(48, 48)}) end)
+				NexoClampMini()
+				if not moved then NexoSetWindow(not Window.State) end
+			end
+		end)
+		mini.MouseEnter:Connect(function() pcall(function() tween(mst, {Transparency = 0}) end) end)
+		mini.MouseLeave:Connect(function() pcall(function() tween(mst, {Transparency = 0.08}) end) end)
+		pcall(function() LunaUI.MobileSupport.Visible = false end)
+	end)
+
+	Main.Controls.Close.ImageLabel.MouseButton1Click:Connect(function()
+		NexoSetWindow(false)
 	end)
 	Main.Controls.Close["MouseEnter"]:Connect(function()
 		tween(Main.Controls.Close.ImageLabel, {ImageColor3 = Color3.new(1,1,1)})
@@ -6436,13 +7046,9 @@ function Luna:CreateWindow(WindowSettings)
 
 	UserInputService.InputBegan:Connect(function(input, gpe)
 		if gpe then return end
-		if Window.State then return end
-		if input.KeyCode == Window.Bind then
-			Unhide(Main, Window.CurrentTab)
-			LunaUI.MobileSupport.Visible = false
-			dragBar.Visible = true
-			Window.State = true
-		end
+		if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+		if input.KeyCode ~= Window.Bind then return end
+		NexoSetWindow(not Window.State)
 	end)
 
 	Main.Logo.MouseButton1Click:Connect(function()
@@ -6463,6 +7069,7 @@ function Luna:CreateWindow(WindowSettings)
 		else
 			Maximise(Main)
 			dragBar.Visible = true
+			pcall(function() NEXO_SyncDragBar() end)
 		end
 	end)
 	Main.Controls.ToggleSize["MouseEnter"]:Connect(function()
@@ -6486,12 +7093,141 @@ function Luna:CreateWindow(WindowSettings)
 	end)
 
 	LunaUI.MobileSupport.Interact.MouseButton1Click:Connect(function()
-		Unhide(Main, Window.CurrentTab)
-		dragBar.Visible = true
-		Window.State = true
-		LunaUI.MobileSupport.Visible = false
+		NexoSetWindow(true)
 	end)
 
+    -- ===== NEXO: Save Settings quick button (left of minimize) + popup =====
+    pcall(function()
+        local _ob = Main.Controls:FindFirstChild("SaveSettings"); if _ob then _ob:Destroy() end
+        local _op = LunaUI:FindFirstChild("NexoSavePanel"); if _op then _op:Destroy() end
+        local saveBtn = Main.Controls.Close:Clone()
+        saveBtn.Name = "SaveSettings"; saveBtn.LayoutOrder = -1; saveBtn.Visible = true
+        saveBtn.Parent = Main.Controls
+        local ico = GetIcon("settings", "Material") or GetIcon("build", "Material")
+        saveBtn.ImageLabel.Image = ico or "rbxassetid://6031280882"
+        local minX = math.huge
+        for _, c in ipairs(Main.Controls:GetChildren()) do
+            if c:IsA("Frame") and c ~= saveBtn then minX = math.min(minX, c.Position.X.Offset) end
+        end
+        if minX ~= math.huge then
+            saveBtn.Position = UDim2.new(saveBtn.Position.X.Scale, minX - 28, saveBtn.Position.Y.Scale, saveBtn.Position.Y.Offset)
+        end
+        local panel = Instance.new("Frame")
+        panel.Name = "NexoSavePanel"; panel.BackgroundColor3 = Color3.fromRGB(0,0,0); panel.BackgroundTransparency = 0.1
+        panel.Visible = false; panel.ZIndex = 2000000000; panel.AnchorPoint = Vector2.new(0.5, 0.5)
+        panel.Position = UDim2.new(0.5, 0, 0.5, 0); panel.Size = UDim2.fromOffset(232, 92); panel.Parent = Main
+        Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 12)
+        pcall(function()
+            Main.Navigation:GetPropertyChangedSignal("Visible"):Connect(function()
+                if not Main.Navigation.Visible then panel.Visible = false end
+            end)
+            Main:GetPropertyChangedSignal("Visible"):Connect(function()
+                if not Main.Visible then panel.Visible = false end
+            end)
+        end)
+        local pst = Instance.new("UIStroke", panel); pst.Color = Color3.fromRGB(255,255,255); pst.Transparency = 0.6
+        local head = Instance.new("TextLabel")
+        head.BackgroundTransparency = 1; head.ZIndex = 2000000001; head.Position = UDim2.fromOffset(14, 10)
+        head.Size = UDim2.new(1,-28,0,18); head.Font = Enum.Font.GothamBold; head.TextSize = 14
+        head.TextColor3 = Color3.fromRGB(255,255,255); head.TextXAlignment = Enum.TextXAlignment.Left
+        head.Text = "Quick Settings"; head.Parent = panel
+        local lab = Instance.new("TextLabel")
+        lab.BackgroundTransparency = 1; lab.ZIndex = 2000000001; lab.Position = UDim2.fromOffset(14, 48)
+        lab.Size = UDim2.new(1,-70,0,22); lab.Font = Enum.Font.GothamMedium; lab.TextSize = 13
+        lab.TextColor3 = Color3.fromRGB(255,255,255); lab.TextXAlignment = Enum.TextXAlignment.Left
+        lab.Text = "Save Settings"; lab.Parent = panel
+        local track = Instance.new("TextButton")
+        track.Name = "Background"; track.AutoButtonColor = false; track.Text = ""; track.ZIndex = 2000000001
+        track.AnchorPoint = Vector2.new(1, 0.5); track.Position = UDim2.new(1, -14, 0, 59)
+        track.Size = UDim2.fromOffset(44, 22); track.BackgroundColor3 = Color3.fromRGB(40,40,40); track.Parent = panel
+        Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
+        local knob = Instance.new("Frame")
+        knob.Name = "val"; knob.ZIndex = 2000000002; knob.AnchorPoint = Vector2.new(0,0.5)
+        knob.Position = UDim2.new(0, 2, 0.5, 0); knob.Size = UDim2.fromOffset(18,18)
+        knob.BackgroundColor3 = Color3.fromRGB(255,255,255); knob.Parent = track
+        Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
+        local saveOn = false
+        pcall(function() if isfile and isfile(Luna.Folder .. "/settings/autoload.txt") then saveOn = true end end)
+        local function render()
+            tween(track, {BackgroundColor3 = saveOn and Color3.fromRGB(255,255,255) or Color3.fromRGB(40,40,40)})
+            tween(knob, {Position = saveOn and UDim2.new(1,-20,0.5,0) or UDim2.new(0,2,0.5,0), BackgroundColor3 = saveOn and Color3.fromRGB(0,0,0) or Color3.fromRGB(255,255,255)})
+        end
+        render()
+        track.MouseButton1Click:Connect(function()
+            saveOn = not saveOn; render()
+            if saveOn then
+                pcall(function()
+                    Luna:SaveConfig("NEXO_AutoSave")
+                    if writefile then writefile(Luna.Folder .. "/settings/autoload.txt", "NEXO_AutoSave") end
+                end)
+                pcall(function() Luna:Notification({Title = "Save Settings", Content = "ON - settings saved to your executor workspace.", Icon = "star_rate", ImageSource = "Material"}) end)
+            else
+                pcall(function() if delfile and isfile and isfile(Luna.Folder .. "/settings/autoload.txt") then delfile(Luna.Folder .. "/settings/autoload.txt") end end)
+                pcall(function() Luna:Notification({Title = "Save Settings", Content = "OFF - settings will not be saved.", Icon = "star_rate", ImageSource = "Material"}) end)
+            end
+        end)
+        saveBtn.ImageLabel.MouseButton1Click:Connect(function()
+            panel.Visible = not panel.Visible
+            if panel.Visible then
+                panel.AnchorPoint = Vector2.new(0.5, 0.5)
+                panel.Position = UDim2.new(0.5, 0, 0.5, 0)
+            end
+        end)
+        saveBtn.ImageLabel.MouseEnter:Connect(function() tween(saveBtn.ImageLabel, {ImageColor3 = Color3.new(1,1,1)}) end)
+        saveBtn.ImageLabel.MouseLeave:Connect(function() tween(saveBtn.ImageLabel, {ImageColor3 = Color3.fromRGB(195,195,195)}) end)
+        task.spawn(function()
+            while panel.Parent do
+                if saveOn then pcall(function() Luna:SaveConfig("NEXO_AutoSave") end) end
+                task.wait(5)
+            end
+        end)
+        task.delay(3, function() if saveOn then pcall(function() Luna:LoadAutoloadConfig() end) end end)
+    end)
+
+    -- ===== NEXO: thin vertical divider between tabs and content =====
+    pcall(function()
+        local old = Main:FindFirstChild("NexoKeepTabLine"); if old then old:Destroy() end
+        local vl = Instance.new("Frame")
+        vl.Name = "NexoKeepTabLine"; vl.BorderSizePixel = 0
+        vl.BackgroundColor3 = Color3.fromRGB(255,255,255); vl.BackgroundTransparency = 0.78
+        vl.AnchorPoint = Vector2.new(0.5, 0); vl.ZIndex = 2000000000
+        vl.Size = UDim2.new(0, 1, 1, 0); vl.Parent = Main
+        local nav = Main.Navigation
+        local function place()
+            pcall(function()
+                local mp, np, ns = Main.AbsolutePosition, nav.AbsolutePosition, nav.AbsoluteSize
+                -- NEXO: snap to whole pixels so the line never looks blurry / offset,
+                -- and run the full height of the nav so the bottom gap is filled.
+                local x = math.floor((np.X - mp.X) + ns.X + 0.5)
+                local y = math.floor((np.Y - mp.Y) + 0.5)
+                local h = math.floor(math.max(ns.Y, 20) + 0.5)
+                vl.Size = UDim2.new(0, 1, 0, h)
+                vl.Position = UDim2.new(0, x, 0, y)
+            end)
+        end
+        place()
+        vl.Visible = nav.Visible and Main.Visible
+        nav:GetPropertyChangedSignal("AbsoluteSize"):Connect(place)
+        nav:GetPropertyChangedSignal("AbsolutePosition"):Connect(place)
+        nav:GetPropertyChangedSignal("Visible"):Connect(function() vl.Visible = nav.Visible and Main.Visible end)
+        Main:GetPropertyChangedSignal("Visible"):Connect(function() vl.Visible = nav.Visible and Main.Visible end)
+        task.defer(place); task.delay(0.5, place)
+    end)
+    pcall(function() if Main.Controls:FindFirstChild("Theme") then Main.Controls.Theme.Visible = false end end)
+    pcall(function()
+        Main.Navigation.ClipsDescendants = true
+        if Main.Navigation:FindFirstChild("Tabs") then
+            Main.Navigation.Tabs.ClipsDescendants = true
+            for _, tb in ipairs(Main.Navigation.Tabs:GetChildren()) do
+                if tb:IsA("GuiObject") then tb.ClipsDescendants = true end
+            end
+        end
+    end)
+	task.defer(function()
+		pcall(function()
+			if not Window.HomeTab then Window:CreateHomeTab() end
+		end)
+	end)
 	return Window
 end
 
@@ -6504,41 +7240,6 @@ function Luna:Destroy()
 		end
 	end
 	LunaUI:Destroy()
-end
-
-if (getgenv and not getgenv().ConfirmLuna) or (not getgenv) then
-	Luna:Notification({
-    	Title = "Luna Is Deprecated",
-    	Icon = "warning",
-    	ImageSource = "Material",
-    	Content = "If you are not the script developer, ignore this message. \n\n The Luna Interface Library Is Deprecated And Not Recommended to Use. A New Library Is Available at nebulasoftworks.xyz/starlight. If you insist on using Luna, set the getgenv().ConfirmLuna variable to true. "
-	})
-end
-
-if isStudio then
-	local Window = Luna:CreateWindow({
-		Name = "Nebula Client - Luna Hub | Blade Ball",
-		Subtitle = "by Nebula Softworks",
-		LogoID = "123795201100198",
-		LoadingEnabled = true,
-		LoadingTitle = "Nebula Client (Luna Hub)",
-		LoadingSubtitle = "Loading script for Blade Ball",
-		KeySystem = true,
-		KeySettings = {
-			Title = "Nebula Client | Key System",
-			Subtitle = "Blade Ball",
-			Note = "Please Enter Your Key To Use Nebula Client",
-			FileName = "Key",
-			SaveKey = true,
-			Key = {"Example Key"},
-			SecondAction = {
-				Enabled = true,
-				Type = "Link",
-				Parameter = ""
-			}
-		}
-	})
-
 end
 
 return Luna
