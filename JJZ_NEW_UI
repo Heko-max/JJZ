@@ -2215,8 +2215,44 @@ function Library:_addCard(ctx, info, isSection)
 	function tab:SetImage(v) self.Icon.Image = img(v) end
 	function tab:Remove()    self.Frame:Destroy() end
 
-	-- add a SECTION inside this tab. same command, same card design.
+	--=====================================================
+	--  STRUCTURE BLOCKER  (this is the rule of the whole UI)
+	--    Pages page      ->  TABS only
+	--    inside a TAB    ->  SECTIONS only
+	--    inside a SECTION->  CONTROLS only (button / slider / toggle ...)
+	--  anything placed in the wrong level is refused with a warning,
+	--  it is never drawn, and a harmless dummy handle is returned so
+	--  your script keeps running instead of erroring.
+	--=====================================================
+	local deadMeta
+	deadMeta = {
+		__index = function()
+			return function() return setmetatable({}, deadMeta) end
+		end,
+	}
+
+	local function refuse(what, why)
+		warn("[NEXO HUB] " .. what .. " was BLOCKED. " .. why)
+		return setmetatable({}, deadMeta)
+	end
+
+	-- wraps every control so it only works inside a SECTION
+	local function controlOnly(name, fn)
+		return function(self, o, ...)
+			if not self.IsSection then
+				return refuse(name,
+					"controls live INSIDE a section. Do:  local s = tab:AddSection({ title = \"...\" })  then  s:" .. name .. "({ ... })")
+			end
+			return fn(self, o, ...)
+		end
+	end
+
+	-- a SECTION may only be added inside a TAB, never inside another section
 	function tab:AddSection(sectionInfo)
+		if self.IsSection then
+			return refuse("AddSection",
+				"a section cannot hold another section. Put your controls in this section instead.")
+		end
 		local lib = self.Library
 		return lib:_addCard(lib:_sectionList(self), sectionInfo, true)
 	end
@@ -2224,31 +2260,32 @@ function Library:_addCard(ctx, info, isSection)
 	function tab:Open() self.Library:OpenSection(self) end
 	function tab:Back() self.Library:CloseSection() end
 
-	-- REAL CONTROLS. they all land in the rounded box inside this card.
-	function tab:AddButton(o) return self.Library:_addButton(self, o) end
-	function tab:AddToggle(o) return self.Library:_addToggle(self, o) end
-	function tab:AddSwitch(o) return self.Library:_addToggle(self, o) end
-	function tab:AddSlider(o) return self.Library:_addSlider(self, o) end
-	function tab:AddComboButton(o) return self.Library:_addCombo(self, o) end
-	function tab:AddComboButtons(o) return self.Library:_addCombo(self, o) end
+	-- REAL CONTROLS. section only. they land in the rounded box you see
+	-- after you click the section.
+	tab.AddButton      = controlOnly("AddButton",      function(self, o) return self.Library:_addButton(self, o) end)
+	tab.AddToggle      = controlOnly("AddToggle",      function(self, o) return self.Library:_addToggle(self, o) end)
+	tab.AddSwitch      = controlOnly("AddSwitch",      function(self, o) return self.Library:_addToggle(self, o) end)
+	tab.AddSlider      = controlOnly("AddSlider",      function(self, o) return self.Library:_addSlider(self, o) end)
+	tab.AddComboButton = controlOnly("AddComboButton", function(self, o) return self.Library:_addCombo(self, o) end)
+	tab.AddComboButtons= controlOnly("AddComboButtons",function(self, o) return self.Library:_addCombo(self, o) end)
 
-	-- EXTRA CONTROLS
-	function tab:AddLabel(o)       return self.Library:_addLabel(self, o) end
-	function tab:AddParagraph(o)   return self.Library:_addParagraph(self, o) end
-	function tab:AddDivider()      return self.Library:_addDivider(self) end
-	function tab:AddInput(o)       return self.Library:_addInput(self, o) end
-	function tab:AddTextbox(o)     return self.Library:_addInput(self, o) end
-	function tab:AddKeybind(o)     return self.Library:_addKeybind(self, o) end
-	function tab:AddDropdown(o)    return self.Library:_addDropdown(self, o) end
-	function tab:AddMultiDropdown(o)
+	-- EXTRA CONTROLS. section only as well.
+	tab.AddLabel       = controlOnly("AddLabel",       function(self, o) return self.Library:_addLabel(self, o) end)
+	tab.AddParagraph   = controlOnly("AddParagraph",   function(self, o) return self.Library:_addParagraph(self, o) end)
+	tab.AddDivider     = controlOnly("AddDivider",     function(self)    return self.Library:_addDivider(self) end)
+	tab.AddInput       = controlOnly("AddInput",       function(self, o) return self.Library:_addInput(self, o) end)
+	tab.AddTextbox     = controlOnly("AddTextbox",     function(self, o) return self.Library:_addInput(self, o) end)
+	tab.AddKeybind     = controlOnly("AddKeybind",     function(self, o) return self.Library:_addKeybind(self, o) end)
+	tab.AddDropdown    = controlOnly("AddDropdown",    function(self, o) return self.Library:_addDropdown(self, o) end)
+	tab.AddMultiDropdown = controlOnly("AddMultiDropdown", function(self, o)
 		o = o or {}
 		o.multi = true
 		return self.Library:_addDropdown(self, o)
-	end
-	function tab:AddColorPicker(o) return self.Library:_addColorPicker(self, o) end
+	end)
+	tab.AddColorPicker = controlOnly("AddColorPicker", function(self, o) return self.Library:_addColorPicker(self, o) end)
 
-	-- INFO BUTTON: a normal button that opens the black popup
-	function tab:AddInfoButton(o)
+	-- INFO BUTTON: a normal button that opens the black popup. section only.
+	tab.AddInfoButton = controlOnly("AddInfoButton", function(self, o)
 		o = o or {}
 		local lib = self.Library
 		return lib:_addButton(self, {
@@ -2257,7 +2294,8 @@ function Library:_addCard(ctx, info, isSection)
 				lib:ShowInfo({ title = o.title or o.text or "HOW TO USE", text = o.info or o.body or "" })
 			end,
 		})
-	end
+	end)
+
 
 	cardHandle = tab
 	ctx.Items[index] = tab
@@ -2415,7 +2453,12 @@ function Library:_showLevel(card, forward)
 		ctx.List.CanvasPosition = Vector2.new(0, 0)
 		self.CurrentSection = card
 		if self.EmptyHint then
-			self.EmptyHint.Text = "Nothing inside yet. Use AddSection / AddButton / AddToggle / AddSlider"
+			-- level aware hint: a tab can only hold sections, a section can only hold controls
+			if card.IsSection then
+				self.EmptyHint.Text = "This section is empty. Add controls with section:AddButton / AddToggle / AddSlider"
+			else
+				self.EmptyHint.Text = "This tab is empty. Add sections with tab:AddSection({ title = \"...\" })"
+			end
 			self.EmptyHint.Visible = (#card.Sections == 0 and card.ControlBox == nil)
 		end
 	else
