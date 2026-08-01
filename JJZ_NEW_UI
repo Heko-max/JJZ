@@ -43,9 +43,8 @@ local IMAGES = {
 	Background  = "7189379343",     -- fills the entire panel behind everything
 	Logo        = "87628150067132", -- "HOHO" logo, top-left
 	Banner      = "87628150067132", -- big PREMIUM+ / V4.0 artwork on the Home page
-	Discord     = "87628150067132", -- social icon 1
-	YouTube     = "87628150067132", -- social icon 2
-	TikTok      = "87628150067132", -- social icon 3
+	Discord     = "87628150067132", -- social button 1 (Discord)
+	YouTube     = "87628150067132", -- social button 2 (YouTube)
 	Card1Icon   = "87628150067132", -- Home card 1
 	Card2Icon   = "87628150067132", -- Home card 2
 	Card3Icon   = "87628150067132", -- Home card 3
@@ -92,6 +91,16 @@ local SHOW_COLOR_TUNER = false
 local SHOW_BOX_TUNER = false
 
 -- social icons: true = plain icons only (no box), like the reference image
+-- THE 2 SOCIAL LINKS ON THE FRONT PAGE. change them to your own any time.
+local SOCIAL_LINKS = {
+	Discord = "https://discord.gg/THze2YxMX",
+	YouTube = "https://www.youtube.com/@ne_xoonbuild",
+}
+
+-- how big the icon pops when your mouse is over it, and how fast
+local SOCIAL_HOVER_SCALE = 1.45
+local SOCIAL_HOVER_TIME  = 0.22
+
 local SOCIAL_PLAIN = true
 -- true = paint the social icons in the theme colour, false = keep the raw image
 local SOCIAL_TINT  = false
@@ -1412,17 +1421,20 @@ function Library:_buildHomePage()
 		hlist(LAYOUT.SocialGap),
 	})
 
+	-- ONLY 2 SOCIAL BUTTONS NOW: DISCORD AND YOUTUBE.
+	-- click = the link is copied to your clipboard AND opened for you.
 	local socialItems = {
-		{ name = "Discord", id = IMAGES.Discord },
-		{ name = "YouTube", id = IMAGES.YouTube },
-		{ name = "TikTok",  id = IMAGES.TikTok  },
+		{ name = "Discord", id = IMAGES.Discord, link = SOCIAL_LINKS.Discord },
+		{ name = "YouTube", id = IMAGES.YouTube, link = SOCIAL_LINKS.YouTube },
 	}
 
 	for i, data in ipairs(socialItems) do
 		-- SOCIAL_PLAIN = true -> just the icon, no box behind it (like the image)
-		local box = new("Frame", {
+		local box = new("TextButton", {
 			Name = data.name,
 			LayoutOrder = i,
+			Text = "",
+			AutoButtonColor = false,
 			Size = UDim2.fromOffset(LAYOUT.SocialBox, LAYOUT.SocialBox),
 			BackgroundColor3 = THEME.SocialBox,
 			BackgroundTransparency = SOCIAL_PLAIN and 1 or 0,
@@ -1431,8 +1443,11 @@ function Library:_buildHomePage()
 			Parent = self.Socials,
 		}, {
 			corner(12),
+			new("UIScale", { Name = "Pop", Scale = 1 }),
 			new("ImageLabel", {
 				Name = "Icon",
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.5),
 				Size = UDim2.fromScale(1, 1),
 				BackgroundTransparency = 1,
 				Image = img(data.id),
@@ -1444,6 +1459,26 @@ function Library:_buildHomePage()
 		if not SOCIAL_PLAIN then
 			stroke(THEME.Stroke, 1, 0.3).Parent = box
 		end
+
+		-- HOVER POP:  small dot  ->  big dot
+		local pop = box:FindFirstChild("Pop")
+		local function popTo(target, time)
+			if not pop then return end
+			TweenService:Create(pop, TweenInfo.new(time, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+				Scale = target,
+			}):Play()
+		end
+
+		box.MouseEnter:Connect(function() popTo(SOCIAL_HOVER_SCALE, SOCIAL_HOVER_TIME) end)
+		box.MouseLeave:Connect(function() popTo(1, SOCIAL_HOVER_TIME) end)
+
+		box.MouseButton1Click:Connect(function()
+			-- a tiny squeeze so you can feel the click
+			popTo(SOCIAL_HOVER_SCALE * 0.82, 0.08)
+			task.delay(0.08, function() popTo(SOCIAL_HOVER_SCALE, SOCIAL_HOVER_TIME) end)
+
+			self:OpenLink(data.link, data.name)
+		end)
 
 		table.insert(self.SocialBoxes, box)
 	end
@@ -4968,6 +5003,57 @@ function Library:_buildTuner()
 	}, { corner(6), padding(6, 6, 6, 6) })
 
 	self:_applyLayout()
+end
+
+--=====================================================
+--  LINKS: copy to clipboard + open it for the player
+--=====================================================
+function Library:OpenLink(link, name)
+	if not link or link == "" then return false end
+	name = name or "Link"
+
+	-- 1) copy to the clipboard (executor function, different name on each one)
+	local copied = false
+	local setter = (setclipboard or toclipboard or set_clipboard
+		or (syn and syn.write_clipboard) or (Clipboard and Clipboard.set))
+	if setter then
+		copied = pcall(setter, link)
+	end
+
+	-- 2) open it. Discord invites get the real Roblox invite prompt when possible.
+	local opened = false
+	local code = string.match(link, "discord%.gg/([%w%-]+)")
+	if code then
+		opened = pcall(function()
+			game:GetService("GuiService"):OpenBrowserWindow(link)
+		end)
+		if not opened and request then
+			opened = pcall(function()
+				request({
+					Url = "http://127.0.0.1:6463/rpc?v=1",
+					Method = "POST",
+					Headers = { ["Content-Type"] = "application/json", Origin = "https://discord.com" },
+					Body = HttpService:JSONEncode({
+						cmd = "INVITE_BROWSER",
+						nonce = HttpService:GenerateGUID(false),
+						args = { code = code },
+					}),
+				})
+			end)
+		end
+	else
+		opened = pcall(function()
+			game:GetService("GuiService"):OpenBrowserWindow(link)
+		end)
+	end
+
+	self:Notify({
+		text = copied and (name .. " link copied to your clipboard")
+			or (name .. " link: " .. link),
+		time = 4,
+	})
+
+	return copied or opened
 end
 
 --=====================================================
