@@ -53,13 +53,19 @@ local IMAGES = {
 	BackIcon    = "72257591594286",  -- the GO BACK button on the right of the search bar
 	MiniIcon    = "134473690393403", -- the round HIDE / OPEN icon floating on the left of the screen
 	CloseIcon   = "",               -- X button of the info popup. leave empty to use a text X
-	NotifyIcon  = "88268938907436", -- default notification image. leave empty to fall back to the Logo
+	NotifyIcon  = "",               -- leave empty -> every notification uses the LOGO above
 }
 
--- SOCIAL ICON SIZE: every social icon is drawn inside the same square box and
--- is scaled to the SAME size, so a wide logo can never look bigger than a
--- round one. 1 = fills the whole box, lower = more breathing room.
-local SOCIAL_ICON_SCALE = 0.82
+-- SOCIAL ICON SIZE
+-- every social icon is forced into the EXACT same square, so the size of the
+-- uploaded image (big, small, wide, tall) makes no difference at all.
+local SOCIAL_ICON_SCALE = 1      -- 1 = fills the whole square, lower = padding
+
+-- how the artwork is placed inside that square:
+--   "fill" -> stretched to fill it. every icon ends up EXACTLY the same size
+--   "crop" -> zoomed in and cropped. same size, keeps the shape, cuts edges
+--   "fit"  -> shrunk to fit. keeps the shape, wide logos look smaller
+local SOCIAL_ICON_MODE = "fill"
 
 -- per icon fine tuning, only if one artwork has extra empty space baked in
 local SOCIAL_ICON_TWEAK = {
@@ -219,8 +225,8 @@ local LAYOUT = {
 	BannerHeight   = 344,
 	BannerOffsetY  = -16,
 
-	SocialBox      = 50,
-	SocialGap      = 14,
+	SocialBox      = 68,  -- size of each social icon in pixels. bigger = bigger icons
+	SocialGap      = 16,
 	SocialOffsetY  = 56,  -- push the 3 social icons down
 
 	CardsHeight    = 134,
@@ -1491,8 +1497,8 @@ function Library:_buildHomePage()
 				Name = "Icon",
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				Position = UDim2.fromScale(0.5, 0.5),
-				-- SAME SIZE FOR EVERY SOCIAL ICON: one square area + Fit, so each
-				-- logo is scaled into an identical box no matter its shape
+				-- EXACT SAME SIZE FOR EVERY SOCIAL ICON. the square below never
+				-- changes, so the resolution of the uploaded image does nothing.
 				Size = UDim2.fromScale(
 					SOCIAL_ICON_SCALE * (SOCIAL_ICON_TWEAK[data.name] or 1),
 					SOCIAL_ICON_SCALE * (SOCIAL_ICON_TWEAK[data.name] or 1)
@@ -1500,8 +1506,9 @@ function Library:_buildHomePage()
 				BackgroundTransparency = 1,
 				Image = img(data.id),
 				ImageColor3 = SOCIAL_TINT and THEME.Accent or Color3.fromRGB(255, 255, 255),
-				-- Fit keeps the artwork inside the square and never stretches it
-				ScaleType = Enum.ScaleType.Fit,
+				ScaleType = (SOCIAL_ICON_MODE == "fit" and Enum.ScaleType.Fit)
+					or (SOCIAL_ICON_MODE == "crop" and Enum.ScaleType.Crop)
+					or Enum.ScaleType.Stretch,
 			}, { corner(12), new("UIAspectRatioConstraint", { AspectRatio = 1 }) }),
 		})
 
