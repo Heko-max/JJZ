@@ -5020,30 +5020,49 @@ function Library:OpenLink(link, name)
 		copied = pcall(setter, link)
 	end
 
-	-- 2) open it. Discord invites get the real Roblox invite prompt when possible.
+	-- 2) OPEN IT FOR REAL.
 	local opened = false
+
+	-- the executor http function, whatever it is called on your executor
+	local req = (syn and syn.request) or (http and http.request) or http_request or request
+
+	-- DISCORD: talk to the Discord app on this pc and make it open the invite
 	local code = string.match(link, "discord%.gg/([%w%-]+)")
-	if code then
+	if code and req then
+		pcall(function()
+			req({
+				Url = "http://127.0.0.1:6463/rpc?v=1",
+				Method = "POST",
+				Headers = { ["Content-Type"] = "application/json", Origin = "https://discord.com" },
+				Body = HttpService:JSONEncode({
+					cmd = "INVITE_BROWSER",
+					nonce = HttpService:GenerateGUID(false),
+					args = { code = code },
+				}),
+			})
+			opened = true
+		end)
+	end
+
+	-- ANY LINK (youtube too): open the browser
+	if not opened then
+		local browser = rawget(getfenv(), "openbrowser") or rawget(getfenv(), "OpenBrowser")
+		if browser then
+			opened = pcall(browser, link)
+		end
+	end
+
+	if not opened then
 		opened = pcall(function()
 			game:GetService("GuiService"):OpenBrowserWindow(link)
 		end)
-		if not opened and request then
-			opened = pcall(function()
-				request({
-					Url = "http://127.0.0.1:6463/rpc?v=1",
-					Method = "POST",
-					Headers = { ["Content-Type"] = "application/json", Origin = "https://discord.com" },
-					Body = HttpService:JSONEncode({
-						cmd = "INVITE_BROWSER",
-						nonce = HttpService:GenerateGUID(false),
-						args = { code = code },
-					}),
-				})
-			end)
-		end
-	else
-		opened = pcall(function()
+	end
+
+	-- last try: the Roblox prompt (works inside the game window)
+	if not opened then
+		pcall(function()
 			game:GetService("GuiService"):OpenBrowserWindow(link)
+			opened = true
 		end)
 	end
 
