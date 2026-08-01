@@ -225,8 +225,8 @@ local LAYOUT = {
 	BannerHeight   = 344,
 	BannerOffsetY  = -16,
 
-	SocialBox      = 68,  -- size of each social icon in pixels. bigger = bigger icons
-	SocialGap      = 16,
+	SocialBox      = 70,  -- size of each social icon in pixels. bigger = bigger icons
+	SocialOffsetY  = 56,
 	SocialOffsetY  = 56,  -- push the 3 social icons down
 
 	CardsHeight    = 134,
