@@ -115,7 +115,7 @@ local BACK_FALLBACK_TEXT = "<"
 --=====================================================
 --  DEVICE SCALING (PC / phone / iPad / Android)
 --=====================================================
-local UI_SIZE     = 0.75 -- overall size. 1 = original, lower = smaller everywhere
+local UI_SIZE     = 0.72 -- overall size. 1 = original, lower = smaller everywhere
 local SCREEN_FILL = 0.92
 local MIN_SCALE   = 0.40
 local MAX_SCALE   = 1.00
