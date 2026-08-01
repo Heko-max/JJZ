@@ -225,8 +225,10 @@ local LAYOUT = {
 	BannerHeight   = 344,
 	BannerOffsetY  = -16,
 
-	SocialBox      = 70,  -- size of each social icon in pixels. bigger = bigger icons
-	SocialOffsetY  = 56,
+	-- SOCIAL ICON SIZE: this is the ONE number to change.
+	-- 34 = tiny, 42 = small, 52 = medium, 64 = big
+	SocialBox      = 42,
+	SocialGap      = 12,  -- space between the icons
 	SocialOffsetY  = 56,  -- push the 3 social icons down
 
 	CardsHeight    = 134,
@@ -278,7 +280,8 @@ local LAYOUT = {
 	-- NOTIFICATIONS (they stack in the bottom right corner)
 	NotifyWidth    = 330, -- width of one notification
 	NotifyHeight   = 66,  -- height of one notification
-	NotifyIcon     = 44,  -- size of the image inside a notification
+	NotifyIcon     = 44,  -- size of the image box inside a notification
+	NotifyIconZoom = 0.72, -- zoom of the image. lower = more zoomed OUT / smaller
 	NotifyPad      = 12,  -- padding inside a notification
 	NotifyGap      = 10,  -- space between two stacked notifications
 	NotifyTime     = 4,   -- seconds a notification stays on screen
@@ -1043,15 +1046,19 @@ function Library:Notify(info)
 
 	if image then
 		-- RULE 1: the image and the text never touch, there is always a gap
+		-- ZOOMED OUT: Fit keeps the whole logo visible instead of cropping into
+		-- it, and NotifyIconZoom shrinks it a bit inside its box.
+		local zoom = LAYOUT.NotifyIconZoom or 0.72
+		local iconSize = math.floor(LAYOUT.NotifyIcon * zoom)
 		icon = new("ImageLabel", {
 			Name = "Icon",
 			AnchorPoint = Vector2.new(0, 0.5),
-			Position = UDim2.new(0, pad, 0.5, 0),
-			Size = UDim2.fromOffset(LAYOUT.NotifyIcon, LAYOUT.NotifyIcon),
+			Position = UDim2.new(0, pad + math.floor((LAYOUT.NotifyIcon - iconSize) / 2), 0.5, 0),
+			Size = UDim2.fromOffset(iconSize, iconSize),
 			BackgroundTransparency = 1,
 			Image = img(image),
 			ImageTransparency = 1,
-			ScaleType = Enum.ScaleType.Crop,
+			ScaleType = Enum.ScaleType.Fit,
 			ZIndex = 82,
 			Parent = card,
 		}, { corner(10) })
