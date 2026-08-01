@@ -189,7 +189,7 @@ local LAYOUT = {
 	HeroHeight     = 278,
 	HeroLeftWidth  = 0.40,
 	BannerWidth    = 0.60,
-	BannerHeight   = 292,
+	BannerHeight   = 300,
 	BannerOffsetY  = -14,
 
 	SocialBox      = 50,
