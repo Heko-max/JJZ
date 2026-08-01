@@ -54,7 +54,7 @@ local IMAGES = {
 	BackIcon    = "87628150067132", -- the GO BACK button on the right of the search bar
 	MiniIcon    = "87628150067132", -- the round HIDE / OPEN icon floating on the left of the screen
 	CloseIcon   = "",               -- X button of the info popup. leave empty to use a text X
-	NotifyIcon  = "88268938907436",               -- default notification image. leave empty for text only
+	NotifyIcon  = "",               -- default notification image. leave empty for text only
 }
 
 -- 0 = background image fully visible, 1 = fully hidden.
@@ -116,7 +116,7 @@ local BACK_FALLBACK_TEXT = "<"
 --  DEVICE SCALING (PC / phone / iPad / Android)
 --=====================================================
 local UI_SIZE     = 0.72 -- overall size. 1 = original, lower = smaller everywhere
-local SCREEN_FILL = 0.92
+local SCREEN_FILL = 0.80 -- most of the screen the panel may take up
 local MIN_SCALE   = 0.40
 local MAX_SCALE   = 1.00
 
@@ -189,7 +189,7 @@ local LAYOUT = {
 	HeroHeight     = 278,
 	HeroLeftWidth  = 0.40,
 	BannerWidth    = 0.60,
-	BannerHeight   = 400,
+	BannerHeight   = 292,
 	BannerOffsetY  = -14,
 
 	SocialBox      = 50,
