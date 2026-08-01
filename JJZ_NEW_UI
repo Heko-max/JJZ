@@ -187,8 +187,8 @@ local LAYOUT = {
 	ArrowOffsetX   = 70,  -- push the whole arrow row to the right
 
 	HeroHeight     = 278,
-	HeroLeftWidth  = 0.40,
-	BannerWidth    = 0.80,
+	HeroLeftWidth  = 0.60,
+	BannerWidth    = 0.70,
 	BannerHeight   = 292,
 	BannerOffsetY  = -14,
 
