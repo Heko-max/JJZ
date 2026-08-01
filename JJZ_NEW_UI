@@ -73,11 +73,15 @@ local SOCIAL_ICON_TWEAK = {
 	YouTube = 1,
 }
 
--- YOUTUBE LOGO WITHOUT AN IMAGE ID
--- true  -> the youtube icon is DRAWN with code (no upload, cannot get banned)
--- false -> the icon uses IMAGES.YouTube instead
+-- SOCIAL LOGOS WITHOUT AN IMAGE ID
+-- true  -> the icon is DRAWN with code (no upload, cannot get banned)
+-- false -> the icon uses the image id from the IMAGES table instead
 local YOUTUBE_DRAWN = true
 local YOUTUBE_COLOR = Color3.fromRGB(255, 0, 0)
+
+local DISCORD_DRAWN = true
+local DISCORD_COLOR = Color3.fromRGB(88, 101, 242)   -- discord blurple
+local DISCORD_FACE  = Color3.fromRGB(255, 255, 255)  -- the two eyes
 
 -- 0 = background image fully visible, 1 = fully hidden.
 local BACKGROUND_TRANSPARENCY = 0
@@ -1526,11 +1530,74 @@ function Library:_buildHomePage()
 		return body
 	end
 
+	-- DISCORD LOGO DRAWN BY CODE (no image id needed either).
+	-- Real clyde shape: wide rounded head on top, a flared skirt under it, two
+	-- pointed horns at the bottom corners, and two white oval eyes.
+	local function drawDiscordLogo(parent)
+		-- everything is built inside this box so the whole logo scales together
+		local body = new("Frame", {
+			Name = "DCBody",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromScale(1, 0.80),
+			BackgroundTransparency = 1,
+			Parent = parent,
+		})
+
+		local function shape(name, x, y, w, h, radius, rot, z)
+			return new("Frame", {
+				Name = name,
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(x, y),
+				Size = UDim2.fromScale(w, h),
+				Rotation = rot or 0,
+				BackgroundColor3 = DISCORD_COLOR,
+				BorderSizePixel = 0,
+				ZIndex = z or 2,
+				Parent = body,
+			}, {
+				new("UICorner", { CornerRadius = UDim.new(radius, 0) }),
+			})
+		end
+
+		-- 1) the two pointed horns at the bottom left and bottom right
+		shape("HornLeft",  0.135, 0.760, 0.30, 0.42, 0.34, -28, 2)
+		shape("HornRight", 0.865, 0.760, 0.30, 0.42, 0.34,  28, 2)
+
+		-- 2) the flared skirt that joins the horns to the head
+		shape("Skirt", 0.5, 0.660, 0.80, 0.40, 0.30, 0, 3)
+
+		-- 3) the wide rounded head on top
+		shape("Head", 0.5, 0.420, 0.90, 0.66, 0.50, 0, 4)
+
+		-- 4) fills the small dip between the head and the skirt
+		shape("Neck", 0.5, 0.560, 0.86, 0.30, 0.18, 0, 5)
+
+		-- 5) the two white oval eyes, always on top
+		for _, side in ipairs({ -1, 1 }) do
+			new("Frame", {
+				Name = side < 0 and "EyeLeft" or "EyeRight",
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5 + side * 0.175, 0.470),
+				Size = UDim2.fromScale(0.145, 0.235),
+				BackgroundColor3 = DISCORD_FACE,
+				BorderSizePixel = 0,
+				ZIndex = 9,
+				Parent = body,
+			}, {
+				new("UICorner", { CornerRadius = UDim.new(1, 0) }),
+			})
+		end
+
+		return body
+	end
+
 	-- ONLY 2 SOCIAL BUTTONS NOW: DISCORD AND YOUTUBE.
 	-- click = the link is copied to your clipboard AND opened for you.
 	-- draw = built with code instead of an image id.
 	local socialItems = {
-		{ name = "Discord", id = IMAGES.Discord, link = SOCIAL_LINKS.Discord },
+		{ name = "Discord", id = IMAGES.Discord, link = SOCIAL_LINKS.Discord,
+		  draw = DISCORD_DRAWN and drawDiscordLogo or nil },
 		{ name = "YouTube", id = IMAGES.YouTube, link = SOCIAL_LINKS.YouTube,
 		  draw = YOUTUBE_DRAWN and drawYouTubeLogo or nil },
 	}
