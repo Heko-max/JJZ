@@ -75,13 +75,25 @@ local SOCIAL_ICON_TWEAK = {
 
 -- SOCIAL LOGOS WITHOUT AN IMAGE ID
 -- true  -> the icon is DRAWN with code (no upload, cannot get banned)
--- false -> the icon uses the image id from the IMAGES table instead
-local YOUTUBE_DRAWN = true
+-- false -> the icon uses the image id from the IMAGES table (default now)
+local YOUTUBE_DRAWN = false
 local YOUTUBE_COLOR = Color3.fromRGB(255, 0, 0)
 
-local DISCORD_DRAWN = true
+local DISCORD_DRAWN = false
 local DISCORD_COLOR = Color3.fromRGB(88, 101, 242)   -- discord blurple
 local DISCORD_FACE  = Color3.fromRGB(255, 255, 255)  -- the two eyes
+
+-- RED EFFECT ON TOP OF AN ICON
+-- SOCIAL_TINT_COLOR   = paints the image itself in this color
+-- SOCIAL_TINT_OVERLAY = 0 no red layer on top, 1 fully red layer on top
+local SOCIAL_TINT_COLOR = {
+	Discord = Color3.fromRGB(255, 0, 0),  -- set to nil for the normal blurple
+	YouTube = nil,                        -- youtube keeps its own colors
+}
+local SOCIAL_TINT_OVERLAY = {
+	Discord = 0.75,  -- extra red layer on top so it really reads as red
+	YouTube = 0,
+}
 
 -- 0 = background image fully visible, 1 = fully hidden.
 local BACKGROUND_TRANSPARENCY = 0
@@ -1530,48 +1542,59 @@ function Library:_buildHomePage()
 		return body
 	end
 
-	-- DISCORD LOGO DRAWN BY CODE (no image id needed either). It is a blurple
-	-- rounded face with two pointed bottom corners and two white eyes.
+	-- DISCORD LOGO DRAWN BY CODE (no image id needed either).
+	-- Real clyde shape: wide rounded head on top, a flared skirt under it, two
+	-- pointed horns at the bottom corners, and two white oval eyes.
 	local function drawDiscordLogo(parent)
+		-- everything is built inside this box so the whole logo scales together
 		local body = new("Frame", {
 			Name = "DCBody",
 			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.46),
-			Size = UDim2.fromScale(0.92, 0.66),
-			BackgroundColor3 = DISCORD_COLOR,
-			BorderSizePixel = 0,
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromScale(1, 0.80),
+			BackgroundTransparency = 1,
 			Parent = parent,
-		}, {
-			new("UICorner", { CornerRadius = UDim.new(0.42, 0) }),
 		})
 
-		-- the two pointed tails at the bottom left and bottom right
-		for _, side in ipairs({ -1, 1 }) do
-			new("Frame", {
-				Name = side < 0 and "TailLeft" or "TailRight",
+		local function shape(name, x, y, w, h, radius, rot, z)
+			return new("Frame", {
+				Name = name,
 				AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.fromScale(0.5 + side * 0.34, 0.86),
-				Size = UDim2.fromScale(0.30, 0.44),
-				Rotation = side * 18,
+				Position = UDim2.fromScale(x, y),
+				Size = UDim2.fromScale(w, h),
+				Rotation = rot or 0,
 				BackgroundColor3 = DISCORD_COLOR,
 				BorderSizePixel = 0,
-				ZIndex = 2,
+				ZIndex = z or 2,
 				Parent = body,
 			}, {
-				new("UICorner", { CornerRadius = UDim.new(0.40, 0) }),
+				new("UICorner", { CornerRadius = UDim.new(radius, 0) }),
 			})
 		end
 
-		-- the two white eyes
+		-- 1) the two pointed horns at the bottom left and bottom right
+		shape("HornLeft",  0.135, 0.760, 0.30, 0.42, 0.34, -28, 2)
+		shape("HornRight", 0.865, 0.760, 0.30, 0.42, 0.34,  28, 2)
+
+		-- 2) the flared skirt that joins the horns to the head
+		shape("Skirt", 0.5, 0.660, 0.80, 0.40, 0.30, 0, 3)
+
+		-- 3) the wide rounded head on top
+		shape("Head", 0.5, 0.420, 0.90, 0.66, 0.50, 0, 4)
+
+		-- 4) fills the small dip between the head and the skirt
+		shape("Neck", 0.5, 0.560, 0.86, 0.30, 0.18, 0, 5)
+
+		-- 5) the two white oval eyes, always on top
 		for _, side in ipairs({ -1, 1 }) do
 			new("Frame", {
 				Name = side < 0 and "EyeLeft" or "EyeRight",
 				AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.fromScale(0.5 + side * 0.20, 0.50),
-				Size = UDim2.fromScale(0.17, 0.30),
+				Position = UDim2.fromScale(0.5 + side * 0.175, 0.470),
+				Size = UDim2.fromScale(0.145, 0.235),
 				BackgroundColor3 = DISCORD_FACE,
 				BorderSizePixel = 0,
-				ZIndex = 4,
+				ZIndex = 9,
 				Parent = body,
 			}, {
 				new("UICorner", { CornerRadius = UDim.new(1, 0) }),
@@ -1619,7 +1642,9 @@ function Library:_buildHomePage()
 				),
 				BackgroundTransparency = 1,
 				Image = img(data.id),
-				ImageColor3 = SOCIAL_TINT and THEME.Accent or Color3.fromRGB(255, 255, 255),
+				ImageColor3 = SOCIAL_TINT_COLOR[data.name]
+					or (SOCIAL_TINT and THEME.Accent)
+					or Color3.fromRGB(255, 255, 255),
 				ScaleType = (SOCIAL_ICON_MODE == "fit" and Enum.ScaleType.Fit)
 					or (SOCIAL_ICON_MODE == "crop" and Enum.ScaleType.Crop)
 					or Enum.ScaleType.Stretch,
@@ -1632,6 +1657,26 @@ function Library:_buildHomePage()
 			if slot then
 				slot.Image = ""
 				data.draw(slot)
+			end
+		else
+			-- RED EFFECT: a second copy of the same image, painted red, laid on
+			-- top of the first one. Exact same size, so nothing shifts.
+			local strength = SOCIAL_TINT_OVERLAY[data.name] or 0
+			local slot = box:FindFirstChild("Icon")
+			if slot and strength > 0 then
+				new("ImageLabel", {
+					Name = "RedGlow",
+					AnchorPoint = Vector2.new(0.5, 0.5),
+					Position = UDim2.fromScale(0.5, 0.5),
+					Size = UDim2.fromScale(1, 1),
+					BackgroundTransparency = 1,
+					Image = slot.Image,
+					ImageColor3 = Color3.fromRGB(255, 0, 0),
+					ImageTransparency = 1 - strength,
+					ScaleType = slot.ScaleType,
+					ZIndex = (slot.ZIndex or 1) + 1,
+					Parent = slot,
+				})
 			end
 		end
 
