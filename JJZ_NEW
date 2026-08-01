@@ -76,10 +76,10 @@ local SOCIAL_ICON_TWEAK = {
 -- SOCIAL LOGOS WITHOUT AN IMAGE ID
 -- true  -> the icon is DRAWN with code (no upload, cannot get banned)
 -- false -> the icon uses the image id from the IMAGES table (default now)
-local YOUTUBE_DRAWN = false
+local YOUTUBE_DRAWN = true   -- youtube is DRAWN with code, no image id used
 local YOUTUBE_COLOR = Color3.fromRGB(255, 0, 0)
 
-local DISCORD_DRAWN = false
+local DISCORD_DRAWN = false  -- discord uses IMAGES.Discord
 local DISCORD_COLOR = Color3.fromRGB(88, 101, 242)   -- discord blurple
 local DISCORD_FACE  = Color3.fromRGB(255, 255, 255)  -- the two eyes
 
@@ -87,11 +87,11 @@ local DISCORD_FACE  = Color3.fromRGB(255, 255, 255)  -- the two eyes
 -- SOCIAL_TINT_COLOR   = paints the image itself in this color
 -- SOCIAL_TINT_OVERLAY = 0 no red layer on top, 1 fully red layer on top
 local SOCIAL_TINT_COLOR = {
-	Discord = Color3.fromRGB(255, 0, 0),  -- set to nil for the normal blurple
-	YouTube = nil,                        -- youtube keeps its own colors
+	Discord = nil,  -- no red effect, the discord image keeps its own colors
+	YouTube = nil,
 }
 local SOCIAL_TINT_OVERLAY = {
-	Discord = 0.75,  -- extra red layer on top so it really reads as red
+	Discord = 0,    -- 0 = no red layer on top
 	YouTube = 0,
 }
 
@@ -248,9 +248,9 @@ local LAYOUT = {
 	BannerOffsetY  = -16,
 
 	-- SOCIAL ICON SIZE: this is the ONE number to change.
-	-- 34 = tiny, 42 = small, 52 = medium, 64 = big
-	SocialBox      = 42,
-	SocialGap      = 12,  -- space between the icons
+	-- 34 = tiny, 42 = small, 56 = medium, 68 = big, 80 = very big
+	SocialBox      = 62,
+	SocialGap      = 28,  -- space between the two icons
 	SocialOffsetY  = 56,  -- push the 3 social icons down
 
 	CardsHeight    = 134,
@@ -1503,16 +1503,18 @@ function Library:_buildHomePage()
 	-- nothing that can get moderated). It is a red rounded box with a white
 	-- play triangle built out of small frames.
 	local function drawYouTubeLogo(parent)
+		-- fills the WHOLE square, exactly like an image icon does, so the drawn
+		-- youtube logo ends up the exact same size as the discord image
 		local body = new("Frame", {
 			Name = "YTBody",
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.fromScale(1, 0.70),   -- youtube box is wider than it is tall
+			Size = UDim2.fromScale(1, 1),
 			BackgroundColor3 = YOUTUBE_COLOR,
 			BorderSizePixel = 0,
 			Parent = parent,
 		}, {
-			new("UICorner", { CornerRadius = UDim.new(0.26, 0) }),
+			new("UICorner", { CornerRadius = UDim.new(0.24, 0) }),
 		})
 
 		-- the white play triangle, drawn row by row
@@ -1520,7 +1522,7 @@ function Library:_buildHomePage()
 			Name = "YTPlay",
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.55, 0.5),
-			Size = UDim2.fromScale(0.30, 0.46),
+			Size = UDim2.fromScale(0.26, 0.40),
 			BackgroundTransparency = 1,
 			Parent = body,
 		})
