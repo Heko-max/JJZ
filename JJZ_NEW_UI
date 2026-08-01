@@ -1,24 +1,24 @@
 --[[
-	HOHO HUB UI LIBRARY
+	NEXO HUB UI LIBRARY
 	-------------------
 	A standalone Roblox UI library. Drop this file on GitHub and load it with:
 
-		local HohoHub = loadstring(game:HttpGet(
-			"https://raw.githubusercontent.com/USER/REPO/main/HohoHub_Library.lua?v=" .. tostring(tick()),
+		local NexoHub = loadstring(game:HttpGet(
+			"https://raw.githubusercontent.com/USER/REPO/main/NexoHub_Library.lua?v=" .. tostring(tick()),
 			true
 		))()
 
-		local ui = HohoHub:CreateWindow({
+		local ui = NexoHub:CreateWindow({
 			welcome  = "WELCOME BACK",
 			subtitle = "Thank you for using our services.",
-			folder   = "HohoHub",
+			folder   = "NexoHub",
 			toggleKey = "RightShift",
 			autoload = true,
 		})
 
 	This file contains the library ONLY - no example tabs are built, nothing is
-	shown until you call CreateWindow. See HohoHub_Example.lua for a full demo
-	and HohoHub_Commands.txt for every command.
+	shown until you call CreateWindow. See NexoHub_Example.lua for a full demo
+	and NexoHub_Commands.txt for every command.
 
 	STRUCTURE RULE:
 		WINDOW  holds TABS
@@ -41,7 +41,7 @@ local HttpService = game:GetService("HttpService")
 --=====================================================
 local IMAGES = {
 	Background  = "7189379343",     -- fills the entire panel behind everything
-	Logo        = "87628150067132", -- "HOHO" logo, top-left
+	Logo        = "87628150067132", -- "NEXO" logo, top-left
 	Banner      = "87628150067132", -- big PREMIUM+ / V4.0 artwork on the Home page
 	Discord     = "87628150067132", -- social button 1 (Discord)
 	YouTube     = "87628150067132", -- social button 2 (YouTube)
@@ -133,8 +133,21 @@ local MAX_SCALE   = 1.00
 --  2) TEXT - EDIT EVERY WORD HERE
 --=====================================================
 local TEXT = {
-	Welcome  = 'Welcome to the <font color="rgb(255,0,0)">Premium Version</font> of HOHO HUB',
-	Subtitle = "Thank you for using our services. We are committed to bringing the best experience to our users! Thank you for using our services. We are committed to bringing the best experience to our users! Thank you for using our services. We are committed to bringing the best experience to our users! Thank you for using our services. We are committed to bringing the best experience to our users! Thank you for using our services. We are committed to bringing the best experience to our users! Thank you for using our services. We are committed to bringing the best experience to our users!Thank you for using our services. We are committed to bringing the best experience to our users!Thank you for using our services. We are committed to bringing the best experience to our users!Thank you for using our services. We are committed to bringing the best experience to our users!Thank you for using our services. We are committed to bringing the best experience to our users!Thank you for using our services. We are committed to bringing the best experience to our users!",
+	Welcome  = 'Welcome to the <font color="rgb(255,0,0)">Premium Version</font> of NEXO HUB',
+	Subtitle = table.concat({
+		"Welcome to NEXO HUB, your all-in-one script experience.",
+		"Built for speed, stability and a clean modern interface.",
+		"Every feature is tested before it reaches your screen.",
+		"Auto-updates keep you on the newest build at all times.",
+		"Fully optimised for PC, phone, iPad and Android devices.",
+		"Save and load your own configs with a single click.",
+		"Smooth animations with almost zero performance cost.",
+		"Custom themes let you style the hub however you like.",
+		"Regular updates, new games and new features every week.",
+		"Friendly support team ready to help whenever you need it.",
+		"Undetected, lightweight and easy for beginners to use.",
+		"Thank you for choosing NEXO HUB. Enjoy your journey!",
+	}, "\n"),
 
 	Nav = { "Home", "Pages", "Credits" }, -- order shown left to right
 	ActiveNav = 1,                        -- page shown when the UI opens
@@ -148,7 +161,7 @@ local TEXT = {
 		{ title = "Settings", desc = "Personalize your favourite script hub however you like." },
 	},
 
-	Credits = "HOHO HUB\n\nPut your credits here.",
+	Credits = "NEXO HUB\n\nPut your credits here.",
 }
 
 --=====================================================
@@ -617,11 +630,11 @@ function Library.new()
 	local self = setmetatable({}, Library)
 
 	-- RUN IT TWICE AND YOU STILL GET ONE UI:
-	-- any old HohoHub screen is deleted before the new one is built
+	-- any old NexoHub screen is deleted before the new one is built
 	local function wipeOld(holder)
 		if not holder then return end
 		for _, old in ipairs(holder:GetChildren()) do
-			if old:IsA("ScreenGui") and old.Name == "HohoHub" then
+			if old:IsA("ScreenGui") and old.Name == "NexoHub" then
 				old:Destroy()
 			end
 		end
@@ -638,7 +651,7 @@ function Library.new()
 	self.NavButtons  = {}
 
 	self.Gui = new("ScreenGui", {
-		Name = "HohoHub",
+		Name = "NexoHub",
 		ResetOnSpawn = false,
 		IgnoreGuiInset = true,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
@@ -1531,7 +1544,7 @@ function Library:AddHomeTab(info)
 	info = info or {}
 
 	if #self.HomeTabs >= MAX_HOME_TABS then
-		warn("[HOHO HUB] the front page holds " .. MAX_HOME_TABS .. " tabs only")
+		warn("[NEXO HUB] the front page holds " .. MAX_HOME_TABS .. " tabs only")
 		return nil
 	end
 
@@ -1734,7 +1747,7 @@ function Library:SetFrontPageTab(slot, tabName, override)
 
 	local target = self:FindTab(tabName)
 	if not target then
-		warn("[HOHO HUB] there is no tab called '" .. tostring(tabName) .. "' in Pages")
+		warn("[NEXO HUB] there is no tab called '" .. tostring(tabName) .. "' in Pages")
 		return nil
 	end
 
@@ -4056,14 +4069,14 @@ end
 
 -- change where the files live:  ui:SetFolder("MyHub")
 function Library:SetFolder(name)
-	self.Folder = name or "HohoHub"
+	self.Folder = name or "NexoHub"
 	self:_ensureFolders()
 	return self.Folder
 end
 
 function Library:_ensureFolders()
 	if not fsReady() then return false end
-	local root = self.Folder or "HohoHub"
+	local root = self.Folder or "NexoHub"
 	if type(FS.isFolder) == "function" and type(FS.makeFolder) == "function" then
 		if not FS.isFolder(root) then FS.makeFolder(root) end
 		if not FS.isFolder(root .. "/configs") then FS.makeFolder(root .. "/configs") end
@@ -4072,11 +4085,11 @@ function Library:_ensureFolders()
 end
 
 function Library:_configPath(name)
-	return (self.Folder or "HohoHub") .. "/configs/" .. tostring(name) .. ".json"
+	return (self.Folder or "NexoHub") .. "/configs/" .. tostring(name) .. ".json"
 end
 
 function Library:_autoloadPath()
-	return (self.Folder or "HohoHub") .. "/autoload.txt"
+	return (self.Folder or "NexoHub") .. "/autoload.txt"
 end
 
 -- ui:SaveConfig("my setup")
@@ -4146,7 +4159,7 @@ function Library:ListConfigs()
 	self:_ensureFolders()
 
 	local ok, files = pcall(function()
-		return FS.list((self.Folder or "HohoHub") .. "/configs")
+		return FS.list((self.Folder or "NexoHub") .. "/configs")
 	end)
 	if (not ok) or type(files) ~= "table" then return out end
 
@@ -5108,13 +5121,13 @@ end
 --=====================================================
 --  PUBLIC ENTRY POINT (this is what loadstring returns)
 --=====================================================
-local HohoHub = {}
-HohoHub.Library = Library
-HohoHub.Version = "1.0"
+local NexoHub = {}
+NexoHub.Library = Library
+NexoHub.Version = "1.0"
 
--- HohoHub:CreateWindow({ ... }) builds the window and hands you the ui object.
+-- NexoHub:CreateWindow({ ... }) builds the window and hands you the ui object.
 -- every option is optional.
-function HohoHub:CreateWindow(opts)
+function NexoHub:CreateWindow(opts)
 	opts = opts or {}
 	local ui = Library.new()
 
@@ -5135,13 +5148,13 @@ function HohoHub:CreateWindow(opts)
 		task.defer(function() ui:LoadAutoload(true) end)
 	end
 
-	HohoHub.Window = ui
+	NexoHub.Window = ui
 	return ui
 end
 
--- short alias: HohoHub.new({ ... })
-function HohoHub.new(opts)
-	return HohoHub:CreateWindow(opts)
+-- short alias: NexoHub.new({ ... })
+function NexoHub.new(opts)
+	return NexoHub:CreateWindow(opts)
 end
 
-return HohoHub
+return NexoHub
