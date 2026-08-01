@@ -54,7 +54,7 @@ local IMAGES = {
 	BackIcon    = "87628150067132", -- the GO BACK button on the right of the search bar
 	MiniIcon    = "87628150067132", -- the round HIDE / OPEN icon floating on the left of the screen
 	CloseIcon   = "",               -- X button of the info popup. leave empty to use a text X
-	NotifyIcon  = "",               -- default notification image. leave empty for text only
+	NotifyIcon  = "88268938907436",               -- default notification image. leave empty for text only
 }
 
 -- 0 = background image fully visible, 1 = fully hidden.
