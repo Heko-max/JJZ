@@ -134,7 +134,7 @@ local MAX_SCALE   = 1.00
 --=====================================================
 local TEXT = {
 	Welcome  = 'Welcome to the <font color="rgb(255,0,0)">Premium Version</font> of HOHO HUB',
-	Subtitle = "Thank you for using our services. We are committed to bringing the best experience to our users!",
+	Subtitle = "Thank you for using our services. We are committed to bringing the best experience to our users! Thank you for using our services. We are committed to bringing the best experience to our users! Thank you for using our services. We are committed to bringing the best experience to our users! Thank you for using our services. We are committed to bringing the best experience to our users! Thank you for using our services. We are committed to bringing the best experience to our users! Thank you for using our services. We are committed to bringing the best experience to our users!Thank you for using our services. We are committed to bringing the best experience to our users!Thank you for using our services. We are committed to bringing the best experience to our users!Thank you for using our services. We are committed to bringing the best experience to our users!Thank you for using our services. We are committed to bringing the best experience to our users!Thank you for using our services. We are committed to bringing the best experience to our users!",
 
 	Nav = { "Home", "Pages", "Credits" }, -- order shown left to right
 	ActiveNav = 1,                        -- page shown when the UI opens
