@@ -53,7 +53,7 @@ local IMAGES = {
 	BackIcon    = "87628150067132", -- the GO BACK button on the right of the search bar
 	MiniIcon    = "88268938907436", -- the round HIDE / OPEN icon floating on the left of the screen
 	CloseIcon   = "",               -- X button of the info popup. leave empty to use a text X
-	NotifyIcon  = "88268938907436",               -- default notification image. leave empty for text only
+	NotifyIcon  = "88268938907436", -- default notification image. leave empty for text only
 }
 
 -- 0 = background image fully visible, 1 = fully hidden.
@@ -280,8 +280,25 @@ local LAYOUT = {
 }
 
 local function img(id)
-	if id == nil or id == "" then return "" end
-	if tostring(id):match("^%d+$") then return "rbxassetid://" .. id end
+	if id == nil or id == false or id == "" then return "" end
+	if type(id) == "number" then return "rbxassetid://" .. tostring(math.floor(id)) end
+	id = tostring(id)
+	if id:match("^%d+$") then return "rbxassetid://" .. id end
+	return id
+end
+
+-- ICON PICKER: every card (tab, section, home card) accepts the icon under
+-- any of these names ->  image / icon / imageId / iconId / imageID / iconID
+-- pass "" or false to hide the icon, pass nothing to use the default one.
+local function pickIcon(info, fallback)
+	info = info or {}
+	local id = info.image
+	if id == nil then id = info.icon end
+	if id == nil then id = info.imageId end
+	if id == nil then id = info.iconId end
+	if id == nil then id = info.imageID end
+	if id == nil then id = info.iconID end
+	if id == nil then return fallback end
 	return id
 end
 
@@ -1688,24 +1705,33 @@ function Library:AddHomeTab(info)
 			Name = "Icon",
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
-			Image = img(info.image or IMAGES.Card1Icon),
+			Image = img(pickIcon(info, IMAGES["Card" .. math.min(index, 3) .. "Icon"] or IMAGES.Card1Icon)),
 			ScaleType = Enum.ScaleType.Crop,
 		}, { corner(12) }),
 	})
 	table.insert(self.IconSlots, slot)
+
+	slot.Visible = (slot.Icon.Image ~= "")
 
 	local tab = {
 		Frame = card,
 		Title = title,
 		Desc  = desc,
 		Icon  = slot.Icon,
+		IconSlot = slot,
 		Glow  = glow,
 		Library = self,
 	}
 
 	function tab:SetTitle(v) self.Title.Text = v end
 	function tab:SetDesc(v)  self.Desc.Text = v end
-	function tab:SetImage(v) self.Icon.Image = img(v) end
+	function tab:SetImage(v)
+		self.Icon.Image = img(v)
+		if self.IconSlot then self.IconSlot.Visible = (self.Icon.Image ~= "") end
+		return self
+	end
+	tab.SetIcon    = tab.SetImage
+	tab.SetImageId = tab.SetImage
 	function tab:Remove()
 		local lib = self.Library
 		for i, t in ipairs(lib.HomeTabs) do
@@ -2187,10 +2213,15 @@ function Library:_addCard(ctx, info, isSection)
 			Name = "Icon",
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
-			Image = img(info.image or IMAGES.TabIcon),
+			-- ICON: works exactly the same on a TAB and on a SECTION.
+			-- image / icon / imageId / iconId are all accepted.
+			Image = img(pickIcon(info, IMAGES.TabIcon)),
 			ScaleType = Enum.ScaleType.Crop,
 		}, { corner(12) }),
 	})
+
+	-- image = "" or image = false hides the icon completely
+	slot.Visible = (slot.Icon.Image ~= "")
 
 	local tab = {
 		Frame     = card,
@@ -2198,6 +2229,7 @@ function Library:_addCard(ctx, info, isSection)
 		Desc      = desc,
 		Pill      = pill,
 		Icon      = slot.Icon,
+		IconSlot  = slot,
 		Glow      = glow,
 		Library   = self,
 		IsSection = isSection or false,
@@ -2206,7 +2238,20 @@ function Library:_addCard(ctx, info, isSection)
 
 	function tab:SetTitle(v) self.Title.Text = v end
 	function tab:SetDesc(v)  self.Desc.Text = v end
-	function tab:SetImage(v) self.Icon.Image = img(v) end
+
+	-- CHANGE THE ICON AT ANY TIME (tab or section, same command):
+	--   myTab:SetImage("87628150067132")
+	--   mySection:SetIcon("rbxassetid://87628150067132")
+	--   mySection:SetIcon("")   -- hides the icon
+	function tab:SetImage(v)
+		self.Icon.Image = img(v)
+		if self.IconSlot then self.IconSlot.Visible = (self.Icon.Image ~= "") end
+		return self
+	end
+	tab.SetIcon    = tab.SetImage
+	tab.SetImageId = tab.SetImage
+	function tab:GetImage() return self.Icon.Image end
+
 	function tab:Remove()    self.Frame:Destroy() end
 
 	--=====================================================
