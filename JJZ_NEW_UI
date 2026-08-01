@@ -40,20 +40,31 @@ local HttpService = game:GetService("HttpService")
 --  1) IMAGE IDS - REPLACE THESE WITH YOUR OWN
 --=====================================================
 local IMAGES = {
-	Background  = "107056911907270",     -- fills the entire panel behind everything
+	Background  = "107056911907270", -- fills the entire panel behind everything
 	Logo        = "116677845668287", -- "NEXO" logo, top-left
 	Banner      = "132582095265277", -- big PREMIUM+ / V4.0 artwork on the Home page
-	Discord     = "10367063073", -- social button 1 (Discord)
-	YouTube     = "4884068617", -- social button 2 (YouTube)
+	Discord     = "10367063073",     -- social button 1 (Discord)
+	YouTube     = "4884068617",      -- social button 2 (YouTube)
 	Card1Icon   = "87628150067132", -- Home card 1
 	Card2Icon   = "87628150067132", -- Home card 2
 	Card3Icon   = "87628150067132", -- Home card 3
 	TabIcon     = "87628150067132", -- default icon for a tab with no image set
 	SearchIcon  = "118685771787843", -- the magnifier icon inside the search bar
-	BackIcon    = "72257591594286", -- the GO BACK button on the right of the search bar
+	BackIcon    = "72257591594286",  -- the GO BACK button on the right of the search bar
 	MiniIcon    = "134473690393403", -- the round HIDE / OPEN icon floating on the left of the screen
 	CloseIcon   = "",               -- X button of the info popup. leave empty to use a text X
-	NotifyIcon  = "88268938907436", -- default notification image. leave empty for text only
+	NotifyIcon  = "88268938907436", -- default notification image. leave empty to fall back to the Logo
+}
+
+-- SOCIAL ICON SIZE: every social icon is drawn inside the same square box and
+-- is scaled to the SAME size, so a wide logo can never look bigger than a
+-- round one. 1 = fills the whole box, lower = more breathing room.
+local SOCIAL_ICON_SCALE = 0.82
+
+-- per icon fine tuning, only if one artwork has extra empty space baked in
+local SOCIAL_ICON_TWEAK = {
+	Discord = 1,
+	YouTube = 1,
 }
 
 -- 0 = background image fully visible, 1 = fully hidden.
@@ -991,8 +1002,16 @@ function Library:Notify(info)
 	local life = info.time or info.duration or LAYOUT.NotifyTime
 	local pad = LAYOUT.NotifyPad
 
-	local image = info.image or info.icon
-	if image == "" then image = nil end
+	-- NOTIFICATION IMAGE
+	--   ui:Notify({ text = "hi", image = "1234567890" })  -> your own image id
+	--   ui:Notify({ text = "hi" })                        -> falls back to the LOGO
+	--   ui:Notify({ text = "hi", image = false })         -> text only, no image
+	local image = pickIcon(info, nil)
+	if image == nil then
+		image = IMAGES.NotifyIcon
+		if image == nil or image == "" then image = IMAGES.Logo end
+	end
+	if image == false or image == "" then image = nil end
 
 	local card = new("Frame", {
 		Name = "Notification",
@@ -1472,12 +1491,18 @@ function Library:_buildHomePage()
 				Name = "Icon",
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				Position = UDim2.fromScale(0.5, 0.5),
-				Size = UDim2.fromScale(1, 1),
+				-- SAME SIZE FOR EVERY SOCIAL ICON: one square area + Fit, so each
+				-- logo is scaled into an identical box no matter its shape
+				Size = UDim2.fromScale(
+					SOCIAL_ICON_SCALE * (SOCIAL_ICON_TWEAK[data.name] or 1),
+					SOCIAL_ICON_SCALE * (SOCIAL_ICON_TWEAK[data.name] or 1)
+				),
 				BackgroundTransparency = 1,
 				Image = img(data.id),
 				ImageColor3 = SOCIAL_TINT and THEME.Accent or Color3.fromRGB(255, 255, 255),
-				ScaleType = SOCIAL_PLAIN and Enum.ScaleType.Fit or Enum.ScaleType.Crop,
-			}, { corner(12) }),
+				-- Fit keeps the artwork inside the square and never stretches it
+				ScaleType = Enum.ScaleType.Fit,
+			}, { corner(12), new("UIAspectRatioConstraint", { AspectRatio = 1 }) }),
 		})
 
 		if not SOCIAL_PLAIN then
