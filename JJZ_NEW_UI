@@ -41,7 +41,7 @@ local HttpService = game:GetService("HttpService")
 --=====================================================
 local IMAGES = {
 	Background  = "7189379343",     -- fills the entire panel behind everything
-	Logo        = "87628150067132", -- "NEXO" logo, top-left
+	Logo        = "113138285610703", -- "NEXO" logo, top-left
 	Banner      = "87628150067132", -- big PREMIUM+ / V4.0 artwork on the Home page
 	Discord     = "87628150067132", -- social button 1 (Discord)
 	YouTube     = "87628150067132", -- social button 2 (YouTube)
@@ -51,9 +51,9 @@ local IMAGES = {
 	TabIcon     = "87628150067132", -- default icon for a tab with no image set
 	SearchIcon  = "87628150067132", -- the magnifier icon inside the search bar
 	BackIcon    = "87628150067132", -- the GO BACK button on the right of the search bar
-	MiniIcon    = "87628150067132", -- the round HIDE / OPEN icon floating on the left of the screen
+	MiniIcon    = "88268938907436", -- the round HIDE / OPEN icon floating on the left of the screen
 	CloseIcon   = "",               -- X button of the info popup. leave empty to use a text X
-	NotifyIcon  = "",               -- default notification image. leave empty for text only
+	NotifyIcon  = "88268938907436",               -- default notification image. leave empty for text only
 }
 
 -- 0 = background image fully visible, 1 = fully hidden.
@@ -133,20 +133,14 @@ local MAX_SCALE   = 1.00
 --  2) TEXT - EDIT EVERY WORD HERE
 --=====================================================
 local TEXT = {
-	Welcome  = 'Welcome to the <font color="rgb(255,0,0)">Premium Version</font> of NEXO HUB',
+	Welcome  = 'Welcome back to <font color="rgb(255,0,0)">NEXO HUB</font>',
+	-- keep each line SHORT so it never wraps. 5 lines fits this box perfectly.
 	Subtitle = table.concat({
-		"Welcome to NEXO HUB, your all-in-one script experience.",
-		"Built for speed, stability and a clean modern interface.",
-		"Every feature is tested before it reaches your screen.",
-		"Auto-updates keep you on the newest build at all times.",
-		"Fully optimised for PC, phone, iPad and Android devices.",
-		"Save and load your own configs with a single click.",
-		"Smooth animations with almost zero performance cost.",
-		"Custom themes let you style the hub however you like.",
-		"Regular updates, new games and new features every week.",
-		"Friendly support team ready to help whenever you need it.",
-		"Undetected, lightweight and easy for beginners to use.",
-		"Thank you for choosing NEXO HUB. Enjoy your journey!",
+		"Fast, clean and always up to date.",
+		"Tabs hold sections, sections hold controls.",
+		"Save configs and autoload your favourite.",
+		"Works on PC, phone and every executor.",
+		"Press RightShift to hide the panel.",
 	}, "\n"),
 
 	Nav = { "Home", "Pages", "Credits" }, -- order shown left to right
