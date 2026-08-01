@@ -1617,10 +1617,21 @@ function Library:AddHomeTab(info)
 		Parent = textCol,
 	}, { clampText(26) })
 
-	local desc = new("TextLabel", {
-		Name = "Desc",
+	-- front page cards get the same rounded background pill as the tabs
+	local descPill = new("Frame", {
+		Name = "DescPill",
 		LayoutOrder = 2,
 		Size = UDim2.new(1, 0, 1, -38),
+		BackgroundColor3 = THEME.DescPill,
+		BackgroundTransparency = 0.1,
+		BorderSizePixel = 0,
+		ClipsDescendants = true,
+		Parent = textCol,
+	}, { corner(12), padding(4, 12, 4, 12) })
+
+	local desc = new("TextLabel", {
+		Name = "Desc",
+		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
 		Font = Enum.Font.Gotham,
 		Text = info.desc or "",
@@ -1629,7 +1640,7 @@ function Library:AddHomeTab(info)
 		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Top,
-		Parent = textCol,
+		Parent = descPill,
 	}, { clampText(14) })
 
 	local slot = new("Frame", {
