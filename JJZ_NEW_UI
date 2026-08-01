@@ -44,7 +44,7 @@ local IMAGES = {
 	Logo        = "116677845668287", -- "NEXO" logo, top-left
 	Banner      = "132582095265277", -- big PREMIUM+ / V4.0 artwork on the Home page
 	Discord     = "10367063073",     -- social button 1 (Discord)
-	YouTube     = "4998023807",      -- social button 2 (YouTube)
+	YouTube     = "4884068617",      -- social button 2 (YouTube)
 	Card1Icon   = "87628150067132", -- Home card 1
 	Card2Icon   = "87628150067132", -- Home card 2
 	Card3Icon   = "87628150067132", -- Home card 3
@@ -72,6 +72,12 @@ local SOCIAL_ICON_TWEAK = {
 	Discord = 1,
 	YouTube = 1,
 }
+
+-- YOUTUBE LOGO WITHOUT AN IMAGE ID
+-- true  -> the youtube icon is DRAWN with code (no upload, cannot get banned)
+-- false -> the icon uses IMAGES.YouTube instead
+local YOUTUBE_DRAWN = true
+local YOUTUBE_COLOR = Color3.fromRGB(255, 0, 0)
 
 -- 0 = background image fully visible, 1 = fully hidden.
 local BACKGROUND_TRANSPARENCY = 0
@@ -1477,11 +1483,56 @@ function Library:_buildHomePage()
 		hlist(LAYOUT.SocialGap),
 	})
 
+	-- YOUTUBE LOGO DRAWN BY CODE (no image id needed, nothing to upload,
+	-- nothing that can get moderated). It is a red rounded box with a white
+	-- play triangle built out of small frames.
+	local function drawYouTubeLogo(parent)
+		local body = new("Frame", {
+			Name = "YTBody",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromScale(1, 0.70),   -- youtube box is wider than it is tall
+			BackgroundColor3 = YOUTUBE_COLOR,
+			BorderSizePixel = 0,
+			Parent = parent,
+		}, {
+			new("UICorner", { CornerRadius = UDim.new(0.26, 0) }),
+		})
+
+		-- the white play triangle, drawn row by row
+		local holder = new("Frame", {
+			Name = "YTPlay",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.55, 0.5),
+			Size = UDim2.fromScale(0.30, 0.46),
+			BackgroundTransparency = 1,
+			Parent = body,
+		})
+
+		local ROWS = 28
+		for r = 1, ROWS do
+			local t = (r - 0.5) / ROWS                 -- 0 at the top, 1 at the bottom
+			local w = 1 - math.abs(t - 0.5) * 2        -- widest in the middle
+			new("Frame", {
+				Name = "Row" .. r,
+				Position = UDim2.fromScale(0, (r - 1) / ROWS),
+				Size = UDim2.new(w, 0, 1 / ROWS, 1),   -- +1px so there are no gaps
+				BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+				BorderSizePixel = 0,
+				Parent = holder,
+			})
+		end
+
+		return body
+	end
+
 	-- ONLY 2 SOCIAL BUTTONS NOW: DISCORD AND YOUTUBE.
 	-- click = the link is copied to your clipboard AND opened for you.
+	-- draw = built with code instead of an image id.
 	local socialItems = {
 		{ name = "Discord", id = IMAGES.Discord, link = SOCIAL_LINKS.Discord },
-		{ name = "YouTube", id = IMAGES.YouTube, link = SOCIAL_LINKS.YouTube },
+		{ name = "YouTube", id = IMAGES.YouTube, link = SOCIAL_LINKS.YouTube,
+		  draw = YOUTUBE_DRAWN and drawYouTubeLogo or nil },
 	}
 
 	for i, data in ipairs(socialItems) do
@@ -1518,6 +1569,15 @@ function Library:_buildHomePage()
 					or Enum.ScaleType.Stretch,
 			}, { corner(12), new("UIAspectRatioConstraint", { AspectRatio = 1 }) }),
 		})
+
+		-- if this social is drawn by code, blank the image and build the shapes
+		if data.draw then
+			local slot = box:FindFirstChild("Icon")
+			if slot then
+				slot.Image = ""
+				data.draw(slot)
+			end
+		end
 
 		if not SOCIAL_PLAIN then
 			stroke(THEME.Stroke, 1, 0.3).Parent = box
