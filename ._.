@@ -1,0 +1,55 @@
+-- ============================================================
+--  NEXO HUB - 30 SECOND TEST
+--  Run THIS first. It uses nothing from your script.
+--  It only answers one question: does the library itself work?
+-- ============================================================
+
+local URL = "https://raw.githubusercontent.com/Heko-max/JJZ/refs/heads/main/JJZ_NEW_UI"
+local NexoHub do
+    local ok, src = pcall(game.HttpGet, game, URL .. "?v=" .. tostring(tick()), true)
+    if not ok then
+        error("[NexoHub] HTTP request failed: " .. tostring(src), 0)
+    end
+    if src:sub(1, 3) == "404" or src:find("^Not Found") then
+        error("[NexoHub] File not found at:\n" .. URL, 0)
+    end
+    local chunk, compileErr = loadstring(src)
+    if not chunk then
+        error("[NexoHub] Library failed to compile: " .. tostring(compileErr), 0)
+    end
+    NexoHub = chunk()
+    if type(NexoHub) ~= "table" then
+        error("[NexoHub] Library returned " .. type(NexoHub)
+            .. ", expected a table. Make sure the last line of the library is `return NexoHub`.", 0)
+    end
+end
+warn("[TEST 1] library downloaded and returned a table")
+
+local ui = NexoHub:CreateWindow({
+    welcome   = 'Welcome back to <font color="rgb(255,0,0)">NEXO HUB</font>',
+    subtitle  = "JuJutsu Zero [V2]",
+    credits   = "Made by HeKo",
+    folder    = "NexoHub",
+    toggleKey = "RightShift",
+    accent    = Color3.fromRGB(255, 0, 0),
+    autoload  = true,
+})
+warn("[TEST 2] CreateWindow returned: " .. type(ui))
+
+local tab = ui:AddTab({ title = "Farm", desc = "Auto Quast , Lazy Sorcerer Quast Ect", image = "131790884061966" })
+warn("[TEST 3] AddTab returned: " .. type(tab))
+
+local sec = tab:AddSection({ title = "Auto Quest", desc = "Auto Quest , Select Quest Ect", icon = "" })
+warn("[TEST 4] AddSection returned: " .. type(sec))
+
+sec:AddButton({ text = "TEST BUTTON", callback = function() ui:Notify({ text = "button works", time = 3 }) end })
+sec:AddToggle({ text = "TEST TOGGLE", default = false, callback = function(on) print("toggle", on) end })
+sec:AddSlider({ text = "TEST SLIDER", min = 0, max = 10, default = 5, step = 1, callback = function(v) print(v) end })
+sec:AddDropdown({ text = "TEST DROPDOWN", options = { "A", "B" }, default = "A", callback = function(v) print(v) end })
+sec:AddInput({ text = "TEST INPUT", default = "", placeholder = "type", clearOnEnter = false, callback = function(t) print(t) end })
+sec:AddLabel({ text = "TEST LABEL" })
+warn("[TEST 5] all 6 control types created")
+
+pcall(function() ui:Show() end)
+ui:Notify({ text = "NEXO HUB test loaded successfully!", time = 5 })
+warn("[TEST 6] DONE - if you can see the window, the library is fine")
