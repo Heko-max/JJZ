@@ -1,18 +1,3 @@
---[[
-    NEXOHUB SPLIT LOADER  -  2 PARTS
-    ------------------------------------------------------------------
-    This is the ONLY file you execute. It downloads part1 + part2 from
-    two different repos, glues them back into ONE chunk of Lua, runs it.
-
-        part1   part2
-          |       |
-          +-------+
-              |
-             ONE
-
-    A single part is NOT valid Lua on its own -- only the join is.
---]]
-
 local PARTS = {
     "https://raw.githubusercontent.com/Heko-max/JJZ/refs/heads/main/JJZ_1",
     "https://raw.githubusercontent.com/Heko-max/JJZ/refs/heads/main/JJZ_2",
