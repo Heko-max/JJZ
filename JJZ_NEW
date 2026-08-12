@@ -740,7 +740,7 @@ function Library.new()
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromOffset(LAYOUT.PanelWidth, 575),
-		BackgroundColor3 = THEME.Panel,
+		BackgroundColor3 = Color3.fromRGB(30, 30, 32), -- slightly grey instead of pure black
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		Active = true,
@@ -778,11 +778,16 @@ function Library.new()
 			Rotation = -90,
 			Offset = Vector2.new(0, 0),
 			Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0.00, Color3.fromRGB(157, 2, 31)),
-				ColorSequenceKeypoint.new(0.47, Color3.fromRGB(47, 29, 32)),
-				ColorSequenceKeypoint.new(1.00, Color3.fromRGB(24, 24, 24)),
+				ColorSequenceKeypoint.new(0.00, Color3.fromRGB(190, 4, 38)),
+				ColorSequenceKeypoint.new(0.47, Color3.fromRGB(58, 33, 36)),
+				ColorSequenceKeypoint.new(1.00, Color3.fromRGB(30, 30, 32)),
 			}),
-			Transparency = NumberSequence.new(0.85),
+			-- stronger at the bottom, still soft towards the top
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0.00, 0.62),
+				NumberSequenceKeypoint.new(0.45, 0.78),
+				NumberSequenceKeypoint.new(1.00, 0.85),
+			}),
 		}),
 		new("ImageLabel", {
 			Name = "BACKGROUND_PATTERN",
@@ -1697,21 +1702,12 @@ function Library:AddHomeTab(info)
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.new(1, -6, 1, -6),
-		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
+		BackgroundColor3 = Color3.fromRGB(20, 20, 20), -- reference PANEL colour, flat
 		BackgroundTransparency = 0.5,
 		BorderSizePixel = 0,
 		ZIndex = 0,
 		Parent = card,
 	}, { corner(10) })
-	new("UIGradient", {
-		Rotation = 45,
-		Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0.00, Color3.fromRGB(157, 2, 31)),
-			ColorSequenceKeypoint.new(0.64, Color3.fromRGB(76, 22, 32)),
-			ColorSequenceKeypoint.new(1.00, Color3.fromRGB(36, 29, 30)),
-		}),
-		Parent = cardGrad,
-	})
 	local cardStroke = new("UIStroke", {
 		Color = Color3.fromRGB(255, 255, 255),
 		Thickness = 2.5,
