@@ -223,26 +223,90 @@ local TEXT = {
 --  3) THEME - EDIT EVERY COLOUR HERE
 --=====================================================
 local THEME = {
-	Panel       = Color3.fromRGB(0, 0, 0),       -- PURE BLACK
-	Card        = Color3.fromRGB(0, 0, 0),       -- PURE BLACK
-	TabCard     = Color3.fromRGB(0, 0, 0),       -- PURE BLACK
-	Accent      = Color3.fromRGB(255, 0, 0),     -- PURE RED. change this one for a new theme colour
-	AccentDark  = Color3.fromRGB(120, 0, 0),
-	Text        = Color3.fromRGB(245, 245, 248),
-	SubText     = Color3.fromRGB(178, 178, 188),
-	NavIdle     = Color3.fromRGB(150, 150, 160),
-	Stroke      = Color3.fromRGB(74, 36, 36),
-	SocialBox   = Color3.fromRGB(0, 0, 0),       -- PURE BLACK
-	TunerBg     = Color3.fromRGB(0, 0, 0),       -- PURE BLACK
-	TunerField  = Color3.fromRGB(0, 0, 0),       -- PURE BLACK
-	SearchBar   = Color3.fromRGB(0, 0, 0),       -- PURE BLACK search bar fill
-	DescPill    = Color3.fromRGB(24, 24, 24),    -- soft black behind a tab description, so the pill is visible
-	LaserShine  = Color3.fromRGB(255, 228, 228), -- bright silver shine in an outline
-	ControlAccent = Color3.fromRGB(228, 44, 44),  -- outline on buttons / switches / sliders
-	ControlText = Color3.fromRGB(228, 10, 10),    -- button text, switch tick, slider bar. your tuned match
-	LaserSoft   = Color3.fromRGB(150, 18, 18),   -- dim, NO shine. used on the control outlines
-	LaserEdge   = Color3.fromRGB(140, 0, 0),     -- deep end of an outline
+	-- EXACT HOHO HUB PALETTE (pulled 1:1 from the live UI)
+	Panel       = Color3.fromRGB(24, 24, 24),    -- MAIN_UI background
+	Card        = Color3.fromRGB(20, 20, 20),    -- every card / button fill (0.5 transparent)
+	TabCard     = Color3.fromRGB(20, 20, 20),
+	Accent      = Color3.fromRGB(157, 2, 31),    -- HOHO red
+	AccentDark  = Color3.fromRGB(76, 22, 32),    -- HOHO dark red
+	Text        = Color3.fromRGB(255, 255, 255),
+	SubText      = Color3.fromRGB(117, 117, 117), -- HOHO placeholder / dim text
+	NavIdle     = Color3.fromRGB(117, 117, 117),
+	Stroke      = Color3.fromRGB(76, 22, 32),
+	SocialBox   = Color3.fromRGB(20, 20, 20),
+	TunerBg     = Color3.fromRGB(24, 24, 24),
+	TunerField  = Color3.fromRGB(20, 20, 20),
+	SearchBar   = Color3.fromRGB(20, 20, 20),    -- HOHO SearchBox fill
+	DescPill    = Color3.fromRGB(24, 24, 24),
+	LaserShine  = Color3.fromRGB(255, 51, 51),   -- HOHO bright red
+	ControlAccent = Color3.fromRGB(157, 2, 31),
+	ControlText = Color3.fromRGB(255, 255, 255),
+	LaserSoft   = Color3.fromRGB(76, 22, 32),
+	LaserEdge   = Color3.fromRGB(24, 18, 19),
 }
+
+--=====================================================
+--  HOHO EXACT GRADIENT / STROKE / SIZE VALUES
+--  every number below is copied straight out of the live HOHO UI
+--=====================================================
+local HOHO = {
+	PanelBg    = Color3.fromRGB(24, 24, 24),
+	CardBg     = Color3.fromRGB(20, 20, 20),
+	CardTrans  = 0.5,
+	CardRot    = -57,
+	BarRot     = -90,
+	IconRot    = -144,
+	CardThick  = 2,
+	BarThick   = 2.5,
+	BarOffset  = Vector2.new(0, 0.1),
+	ScrollBar  = 0,
+}
+
+local function hohoSeq(list)
+	local keys = {}
+	for _, k in ipairs(list) do
+		table.insert(keys, ColorSequenceKeypoint.new(k[1], Color3.fromRGB(k[2], k[3], k[4])))
+	end
+	return ColorSequence.new(keys)
+end
+
+-- card / button FILL gradient
+local HOHO_CARD_FILL = hohoSeq({
+	{ 0.00000, 157, 2, 31 },
+	{ 0.52504, 76, 22, 32 },
+	{ 0.81520, 40, 19, 23 },
+	{ 1.00000, 24, 18, 19 },
+})
+
+-- card / button OUTLINE gradient
+local HOHO_CARD_STROKE = hohoSeq({
+	{ 0.00000, 157, 2, 31 },
+	{ 0.75302, 76, 22, 32 },
+	{ 1.00000, 20, 19, 19 },
+})
+
+-- search bar FILL gradient
+local HOHO_BAR_FILL = hohoSeq({
+	{ 0.00000, 157, 2, 31 },
+	{ 0.06909, 76, 22, 32 },
+	{ 0.80656, 28, 24, 25 },
+	{ 1.00000, 24, 24, 24 },
+})
+
+-- search bar OUTLINE gradient
+local HOHO_BAR_STROKE = hohoSeq({
+	{ 0.00000, 157, 2, 31 },
+	{ 0.28670, 76, 22, 32 },
+	{ 0.65630, 28, 24, 25 },
+	{ 1.00000, 24, 24, 24 },
+})
+
+-- red icon / logo tint gradient
+local HOHO_ICON = hohoSeq({
+	{ 0.00000, 157, 2, 31 },
+	{ 0.42487, 163, 5, 33 },
+	{ 1.00000, 255, 51, 51 },
+})
 
 --=====================================================
 --  4) LAYOUT - EDIT EVERY SIZE HERE
@@ -282,7 +346,7 @@ local LAYOUT = {
 
 	-- Pages page (the tab list)
 	TabColumns     = 2,   -- tabs per row  ->  Tab | Tab
-	TabHeight      = 144, -- height of one tab card
+	TabHeight      = 160, -- HOHO card aspect ratio 2.915
 	TabGap         = 16,  -- space between tab cards
 	TabPad         = 16,  -- inner padding of a tab card
 	TabIcon        = 108, -- tab image size
@@ -291,10 +355,10 @@ local LAYOUT = {
 	TabDivider     = 0,   -- line between the columns. 0 = no line, 2 = thin line
 	TabScrollPad   = 10,  -- space kept on the right for the scrollbar
 
-	SearchHeight   = 52,  -- height of the search bar
-	SearchIcon     = 28,  -- size of the search icon
+	SearchHeight   = 76,  -- HOHO: 0.1161 of the panel height
+	SearchIcon     = 34,  -- HOHO magnifier size
 	SearchGap      = 14,  -- extra space between the search bar and the first tab row
-	BackButton     = 58,  -- width of the go back button, right of the search bar
+	BackButton     = 76,  -- HOHO RETURN_BUTTON: 0.078 of the panel width
 	BackGap        = 12,  -- space between the search bar and the go back button
 
 	-- SWITCHES / BUTTONS / SLIDERS (they live in a rounded box)
@@ -388,61 +452,26 @@ local function corner(r)
 end
 
 local function stroke(color, thickness, transparency)
+	-- EXACT HOHO OUTLINE: white UIStroke painted by the HOHO red gradient
 	local s = new("UIStroke", {
-		Color = color or THEME.Stroke,
-		Thickness = thickness or 1,
+		Color = Color3.fromRGB(255, 255, 255),
+		Thickness = thickness or HOHO.CardThick,
 		Transparency = transparency or 0,
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 	})
 
-	-- POLISHED / SILVER / LASER EFFECT on every purple outline
-	if LASER_OUTLINE and (color == nil or color == THEME.Accent) then
-		new("UIGradient", {
-			Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0.00, THEME.LaserEdge),
-				ColorSequenceKeypoint.new(0.18, THEME.Accent),
-				ColorSequenceKeypoint.new(0.35, THEME.LaserShine),
-				ColorSequenceKeypoint.new(0.50, THEME.Accent),
-				ColorSequenceKeypoint.new(0.65, THEME.LaserShine),
-				ColorSequenceKeypoint.new(0.82, THEME.Accent),
-				ColorSequenceKeypoint.new(1.00, THEME.LaserEdge),
-			}),
-			Rotation = 35,
-			Parent = s,
-		})
-	end
+	new("UIGradient", {
+		Color = HOHO_CARD_STROKE,
+		Rotation = HOHO.CardRot,
+		Parent = s,
+	})
 
 	return s
 end
 
--- a calmer outline: same laser colours but much less shiny, plus a soft
--- "erased" fade so the line quietly disappears at both ends.
--- used on the control box and on every button / switch / slider.
 local function softStroke(color, thickness, transparency, erase)
-	local s = stroke(color, thickness, transparency)
-	erase = erase or OUTLINE_ERASE
-
-	local g = s:FindFirstChildOfClass("UIGradient")
-	if not g then
-		g = new("UIGradient", { Rotation = 35, Parent = s })
-	end
-
-	-- NO shine at all here: just a dim, even line that darkens at the ends
-	g.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0.00, THEME.LaserEdge),
-		ColorSequenceKeypoint.new(0.50, THEME.LaserSoft),
-		ColorSequenceKeypoint.new(1.00, THEME.LaserEdge),
-	})
-
-	-- the erase effect: the outline fades out near the ends
-	g.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0.00, erase),
-		NumberSequenceKeypoint.new(0.20, 0),
-		NumberSequenceKeypoint.new(0.80, 0),
-		NumberSequenceKeypoint.new(1.00, erase),
-	})
-
-	return s
+	-- HOHO uses ONE outline style everywhere, so this matches stroke() exactly
+	return stroke(color, thickness, transparency)
 end
 
 -- the outline used by BUTTONS, SWITCHES and SLIDERS.
@@ -463,9 +492,10 @@ end
 local function refreshControlColors()
 	for _, e in ipairs(CONTROL_STROKES) do
 		if e.stroke and e.stroke.Parent then
-			e.stroke.Color = THEME.ControlAccent
+			e.stroke.Color = Color3.fromRGB(255, 255, 255)
 			if e.grad then
-				e.grad.Color = ColorSequence.new(THEME.ControlAccent)
+				e.grad.Color = HOHO_CARD_STROKE
+				e.grad.Rotation = HOHO.CardRot
 			end
 		end
 	end
@@ -502,27 +532,19 @@ end
 -- fade = false  ->  a solid line all the way round, no transparency at all
 -- fade = true   ->  the line fades a little into the TOP RIGHT corner
 local function plainStroke(color, thickness, transparency, fade)
-	local c = color or THEME.ControlAccent
-
+	-- buttons / switches / sliders get the SAME outline as every HOHO card
 	local s = new("UIStroke", {
-		Color = c,
-		Thickness = thickness or 1.4,
+		Color = Color3.fromRGB(255, 255, 255),
+		Thickness = thickness or HOHO.CardThick,
 		Transparency = transparency or 0,
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 	})
 
 	local g = new("UIGradient", {
-		Color = ColorSequence.new(c), -- flat: no silver, no laser, no glint
-		Rotation = -45, -- the fade runs into the TOP RIGHT corner
+		Color = HOHO_CARD_STROKE,
+		Rotation = HOHO.CardRot,
 		Parent = s,
 	})
-
-	if fade == false then
-		g.Transparency = NumberSequence.new(0)
-	else
-		table.insert(FADED_STROKES, g)
-		g.Transparency = fadeSequence()
-	end
 
 	table.insert(CONTROL_STROKES, { stroke = s, grad = g })
 
@@ -698,6 +720,117 @@ local function makeDraggable(frame, handle)
 end
 
 --=====================================================
+--  HOHO SKIN
+--  a pure LOOK pass: it repaints what already exists with the exact
+--  HOHO colours, gradients, outlines, fonts and scrollbars.
+--  it never adds, removes or changes a single behaviour.
+--=====================================================
+local SKIN_SKIP_FILL = {
+	Main = true, GRADIENT = true, BACKGROUND_IMAGE = true, BACKGROUND_PATTERN = true,
+	Background = true, Hover = true, Ripple = true, DescPill = true, Hit = true,
+	Fill = true, Switch = true, Swatch = true, Notifications = true,
+}
+local SKIN_ACCENT_FILL = { Fill = true, Switch = true }
+local SKIN_BAR = { SearchBar = true, BackButton = true }
+
+local function hohoFontOf(inst)
+	local weight = Enum.FontWeight.Regular
+	local style  = Enum.FontStyle.Normal
+	local name = ""
+	pcall(function() name = tostring(inst.Font) end)
+
+	if name == "" or name:find("Unknown") then
+		local cur = inst.FontFace
+		if cur then
+			weight = cur.Weight
+			style  = cur.Style
+		end
+	elseif name:find("Bold") or name:find("Black") then
+		weight = Enum.FontWeight.Bold
+	elseif name:find("Medium") or name:find("SemiBold") then
+		weight = Enum.FontWeight.SemiBold
+	end
+
+	return Font.new(SANS_FONT, weight, style)
+end
+
+local function hohoSkin(inst)
+	pcall(function()
+		-- SCROLLBARS: HOHO hides them completely (scrolling still works)
+		if inst:IsA("ScrollingFrame") then
+			inst.ScrollBarThickness = HOHO.ScrollBar
+			inst.ScrollBarImageColor3 = THEME.Accent
+		end
+
+		-- OUTLINES: white stroke painted by the HOHO red gradient
+		if inst:IsA("UIStroke") and inst.Thickness > 0 then
+			local bar = inst.Parent and SKIN_BAR[inst.Parent.Name] or false
+			inst.Color = Color3.fromRGB(255, 255, 255)
+			inst.Thickness = bar and HOHO.BarThick or HOHO.CardThick
+			inst.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+			local g = inst:FindFirstChildOfClass("UIGradient")
+			if not g then g = Instance.new("UIGradient") g.Parent = inst end
+			g.Color = bar and HOHO_BAR_STROKE or HOHO_CARD_STROKE
+			g.Rotation = bar and HOHO.BarRot or HOHO.CardRot
+			g.Transparency = NumberSequence.new(0)
+		end
+
+		-- FILLS: 20,20,20 at 0.5 with the HOHO red corner gradient
+		if (inst:IsA("Frame") or inst:IsA("TextButton") or inst:IsA("ImageButton"))
+			and inst.BackgroundTransparency < 1
+			and inst:FindFirstChildOfClass("UICorner")
+			and not SKIN_SKIP_FILL[inst.Name] then
+			local bar = SKIN_BAR[inst.Name] or false
+			inst.BackgroundColor3 = HOHO.CardBg
+			inst.BackgroundTransparency = HOHO.CardTrans
+			local g = inst:FindFirstChildOfClass("UIGradient")
+			if not g then g = Instance.new("UIGradient") g.Parent = inst end
+			g.Color = bar and HOHO_BAR_FILL or HOHO_CARD_FILL
+			g.Rotation = bar and HOHO.BarRot or HOHO.CardRot
+			g.Offset = bar and HOHO.BarOffset or Vector2.new(0, 0)
+		end
+
+		-- switch tick / slider bar stay solid HOHO red
+		if SKIN_ACCENT_FILL[inst.Name] and inst:IsA("GuiObject") then
+			inst.BackgroundColor3 = THEME.Accent
+		end
+
+		-- the search / back icons get the HOHO red icon gradient
+		if inst:IsA("ImageLabel") and inst.Name == "Icon"
+			and inst.Parent and SKIN_BAR[inst.Parent.Name]
+			and not inst:FindFirstChildOfClass("UIGradient") then
+			local g = Instance.new("UIGradient")
+			g.Color = HOHO_ICON
+			g.Rotation = HOHO.IconRot
+			g.Parent = inst
+		end
+
+		-- TEXT: SourceSansPro, HOHO weights, pure white, dim grey placeholders
+		if inst:IsA("TextLabel") or inst:IsA("TextButton") or inst:IsA("TextBox") then
+			if inst.Name ~= "Name" then
+				inst.FontFace = hohoFontOf(inst)
+			end
+			inst.TextColor3 = Color3.fromRGB(255, 255, 255)
+			if inst:IsA("TextBox") then
+				inst.PlaceholderColor3 = THEME.SubText
+				inst.FontFace = Font.new(SANS_FONT, Enum.FontWeight.SemiBold, Enum.FontStyle.Italic)
+			end
+		end
+	end)
+end
+
+local function hohoSkinAll(root)
+	if not root then return end
+	hohoSkin(root)
+	for _, d in ipairs(root:GetDescendants()) do
+		hohoSkin(d)
+	end
+	root.DescendantAdded:Connect(function(d)
+		task.defer(hohoSkin, d)
+	end)
+end
+
+--=====================================================
 --  LIBRARY
 --=====================================================
 local Library = {}
@@ -741,7 +874,7 @@ function Library.new()
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromOffset(LAYOUT.PanelWidth, 575),
-		BackgroundColor3 = Color3.fromRGB(38, 38, 40), -- slightly grey instead of pure black
+		BackgroundColor3 = HOHO.PanelBg, -- HOHO MAIN_UI background 24,24,24
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		Active = true,
@@ -780,8 +913,8 @@ function Library.new()
 			Offset = Vector2.new(0, 0),
 			Color = ColorSequence.new({
 				ColorSequenceKeypoint.new(0.00, Color3.fromRGB(157, 2, 31)),
-				ColorSequenceKeypoint.new(0.47, Color3.fromRGB(50, 31, 34)),
-				ColorSequenceKeypoint.new(1.00, Color3.fromRGB(36, 36, 38)),
+				ColorSequenceKeypoint.new(0.47, Color3.fromRGB(76, 22, 32)),
+				ColorSequenceKeypoint.new(1.00, Color3.fromRGB(24, 24, 24)),
 			}),
 			-- soft red, only a hint of it along the bottom
 			Transparency = NumberSequence.new({
@@ -870,6 +1003,9 @@ function Library.new()
 
 	-- the round HIDE / OPEN icon on the left of the screen
 	self:_buildMiniIcon()
+
+	-- HOHO SKIN: repaint everything (now and anything added later) 1:1
+	hohoSkinAll(self.Gui)
 
 	return self
 end
