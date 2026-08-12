@@ -206,7 +206,7 @@ local TEXT = {
 	Nav = { "Home", "Pages", "Credits" }, -- order shown left to right
 	ActiveNav = 1,                        -- page shown when the UI opens
 
-	ArrowCount = 5,
+	ArrowCount = 4,
 	Arrow = ">>",
 
 	Cards = {
@@ -257,9 +257,9 @@ local LAYOUT = {
 	LogoWidth      = 132,
 	LogoHeight     = 69,
 
-	ArrowSize      = 36,  -- size of one >> arrow box
-	ArrowText      = 26,  -- font size of the >> arrows
-	ArrowGap       = 14,  -- space between the arrows
+	ArrowSize      = 60,  -- size of one >> arrow box
+	ArrowText      = 34,  -- font size of the >> arrows
+	ArrowGap       = 15,  -- space between the arrows
 	ArrowOffsetX   = 70,  -- push the whole arrow row to the right
 
 	HeroHeight     = 330,
@@ -1428,7 +1428,7 @@ function Library:_buildHeader()
 			Font = Enum.Font.GothamBold,
 			Text = TEXT.Arrow,
 			TextSize = LAYOUT.ArrowText,
-			TextColor3 = (i % 2 == 0) and THEME.Accent or THEME.Text,
+			TextColor3 = (i % 2 == 0) and Color3.fromRGB(248, 4, 46) or Color3.fromRGB(255, 255, 255),
 			Parent = arrows,
 		})
 	end
@@ -1437,24 +1437,25 @@ function Library:_buildHeader()
 		Name = "Nav",
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, 0, 0.5, 0),
-		Size = UDim2.new(0.38, 0, 0, 32),
+		Size = UDim2.new(0.38, 0, 0, 68),
 		BackgroundTransparency = 1,
 		ClipsDescendants = true,
 		Parent = self.Header,
-	}, { hlist(40, Enum.HorizontalAlignment.Right) })
+	}, { hlist(8, Enum.HorizontalAlignment.Right) })
 
 	for i, label in ipairs(TEXT.Nav) do
 		local btn = new("TextButton", {
 			Name = label,
 			LayoutOrder = i,
 			AutomaticSize = Enum.AutomaticSize.X,
-			Size = UDim2.fromOffset(0, 30),
+			Size = UDim2.fromOffset(0, 68),
 			BackgroundTransparency = 1,
 			AutoButtonColor = false,
 			Font = Enum.Font.GothamMedium,
 			Text = label,
-			TextSize = 21,
-			TextColor3 = THEME.NavIdle,
+			TextSize = 41,
+			TextColor3 = Color3.fromRGB(255, 255, 255),
+			TextTransparency = 0.5,
 			Parent = nav,
 		})
 		btn.MouseButton1Click:Connect(function()
@@ -1489,7 +1490,8 @@ function Library:SelectPage(name, back)
 		end
 	end
 	for label, btn in pairs(self.NavButtons) do
-		btn.TextColor3 = (label == name) and THEME.Accent or THEME.NavIdle
+		btn.TextColor3 = (label == name) and Color3.fromRGB(255, 51, 51) or Color3.fromRGB(255, 255, 255)
+		btn.TextTransparency = (label == name) and 0 or 0.5
 	end
 	self.CurrentPage = name
 end
