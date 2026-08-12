@@ -2200,22 +2200,54 @@ function Library:_addCard(ctx, info, isSection)
 		Name = (isSection and "Section" or "Tab") .. index,
 		Position = UDim2.new((col - 1) / cols, (col - 1) * LAYOUT.TabGap / cols, 0, 0),
 		Size = UDim2.new(1 / cols, -LAYOUT.TabGap * (cols - 1) / cols, 1, 0),
-		BackgroundColor3 = THEME.TabCard,
-		BackgroundTransparency = 0.1,
+		BackgroundColor3 = Color3.fromRGB(20, 20, 20), -- reference card colour
+		BackgroundTransparency = 0.5,
 		BorderSizePixel = 0,
-		ClipsDescendants = true,
+		ClipsDescendants = false, -- the reference card does not clip its outline
 		ZIndex = 2,
 		Parent = row,
 	}, {
-		corner(18),
-		stroke(THEME.Accent, 1.6, 0.3),
-		padding(LAYOUT.TabPad, LAYOUT.TabPad, LAYOUT.TabPad, LAYOUT.TabPad),
+		new("UICorner", { CornerRadius = UDim.new(0.1, 0) }),
+	})
+
+	-- gradient body + gradient outline, exactly like the reference card
+	local cardGrad = new("Frame", {
+		Name = "Gradient",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ZIndex = 0,
+		Parent = card,
+	}, { new("UICorner", { CornerRadius = UDim.new(0.1, 0) }) })
+	new("UIGradient", {
+		Rotation = -57,
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0.00000, Color3.fromRGB(157, 2, 31)),
+			ColorSequenceKeypoint.new(0.52504, Color3.fromRGB(76, 22, 32)),
+			ColorSequenceKeypoint.new(0.81520, Color3.fromRGB(40, 19, 23)),
+			ColorSequenceKeypoint.new(1.00000, Color3.fromRGB(24, 18, 19)),
+		}),
+		Parent = cardGrad,
+	})
+	local cardStroke = new("UIStroke", {
+		Color = Color3.fromRGB(255, 255, 255),
+		Thickness = 2,
+		Parent = cardGrad,
+	})
+	new("UIGradient", {
+		Rotation = -57,
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0.00000, Color3.fromRGB(157, 2, 31)),
+			ColorSequenceKeypoint.new(0.75302, Color3.fromRGB(76, 22, 32)),
+			ColorSequenceKeypoint.new(1.00000, Color3.fromRGB(20, 19, 19)),
+		}),
+		Parent = cardStroke,
 	})
 
 	-- HOVER + CLICK HIGHLIGHT
 	-- both layers sit BEHIND the text and the image, and inside the card, so the
 	-- glow never covers the title, the description or the game icon
-	local pad = LAYOUT.TabPad
+	local pad = 0 -- reference card is scale based, no inner padding
 
 	local glow = new("Frame", {
 		Name = "Hover",
@@ -2226,7 +2258,7 @@ function Library:_addCard(ctx, info, isSection)
 		BorderSizePixel = 0,
 		ZIndex = 0,
 		Parent = card,
-	}, { corner(18) })
+	}, { new("UICorner", { CornerRadius = UDim.new(0.1, 0) }) })
 
 	local ripple = new("Frame", {
 		Name = "Ripple",
@@ -2294,78 +2326,83 @@ function Library:_addCard(ctx, info, isSection)
 		end)
 	end
 
-	-- RULE 1: the text column reserves the icon width plus a GAP
-	local textCol = new("Frame", {
-		Name = "Text",
-		Size = UDim2.new(1, -(LAYOUT.TabIcon + LAYOUT.GAP), 1, 0),
-		BackgroundTransparency = 1,
-		ClipsDescendants = true,
-		Parent = card,
-	}, { vlist(8) })
-
+	-- title placed by scale, exactly like the reference card
 	local title = new("TextLabel", {
 		Name = "Title",
-		LayoutOrder = 1,
-		Size = UDim2.new(1, 0, 0, LAYOUT.TabTitle),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.33, 0.28707),
+		Size = UDim2.fromScale(0.54018, 0.38364),
 		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamBold,
+		BorderSizePixel = 0,
+		ZIndex = 2,
+		RichText = true,
+		FontFace = Font.new(SANS_FONT, Enum.FontWeight.Bold),
 		Text = info.title or ("TAB " .. index),
 		TextScaled = true,
 		TextWrapped = true,
-		TextColor3 = THEME.Text,
+		TextColor3 = Color3.fromRGB(255, 255, 255),
 		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Center,
-		Parent = textCol,
-	}, { clampText(28) })
+		Parent = card,
+	}, { new("UITextSizeConstraint", { MaxTextSize = 100, MinTextSize = 1 }) })
 
-	-- the description sits on its own rounded background pill
+	-- the reference card has no description pill. kept hidden so tab.Pill and
+	-- anything referencing it keeps working.
 	local pill = new("Frame", {
 		Name = "DescPill",
-		LayoutOrder = 2, -- rounded pill behind the description
-		Size = UDim2.new(1, 0, 0, LAYOUT.TabDescHeight),
-		BackgroundColor3 = THEME.DescPill,
-		BackgroundTransparency = 0.1,
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		ClipsDescendants = true,
-		Parent = textCol,
-	}, {
-		corner(12),
-		padding(4, 12, 4, 12),
+		Visible = false,
+		ZIndex = 0,
+		Parent = card,
 	})
 
 	local desc = new("TextLabel", {
 		Name = "Desc",
-		Size = UDim2.fromScale(1, 1),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.33, 0.64331),
+		Size = UDim2.fromScale(0.53074, 0.40174),
 		BackgroundTransparency = 1,
-		Font = Enum.Font.Gotham,
+		BorderSizePixel = 0,
+		ZIndex = 2,
+		RichText = true,
+		FontFace = Font.new(SANS_FONT, Enum.FontWeight.Regular),
 		Text = info.desc or "",
 		TextScaled = true,
-		TextColor3 = THEME.SubText,
 		TextWrapped = true,
+		TextColor3 = Color3.fromRGB(255, 255, 255),
 		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Center,
-		Parent = pill,
-	}, { clampText(14) })
+		Parent = card,
+	}, { new("UITextSizeConstraint", { MaxTextSize = 100, MinTextSize = 1 }) })
 
+	-- icon placed by scale on the right, exactly like the reference card
 	local slot = new("Frame", {
 		Name = "IconSlot",
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, 0, 0.5, 0),
-		Size = UDim2.fromOffset(LAYOUT.TabIcon, LAYOUT.TabIcon),
+		Position = UDim2.fromScale(0.61009, 0.148),
+		Size = UDim2.fromScale(0.31579, 0.69611),
 		BackgroundTransparency = 1,
-		ClipsDescendants = true,
+		ZIndex = 2,
 		Parent = card,
 	}, {
-		corner(12),
 		new("ImageLabel", {
 			Name = "Icon",
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
+			ZIndex = 2,
 			-- ICON: works exactly the same on a TAB and on a SECTION.
 			-- image / icon / imageId / iconId are all accepted.
 			Image = img(pickIcon(info, IMAGES.TabIcon)),
-			ScaleType = Enum.ScaleType.Crop,
-		}, { corner(12) }),
+			ScaleType = Enum.ScaleType.Fit,
+		}, {
+			new("UIGradient", {
+				Rotation = -144,
+				Color = ColorSequence.new({
+					ColorSequenceKeypoint.new(0.00000, Color3.fromRGB(157, 2, 31)),
+					ColorSequenceKeypoint.new(0.42487, Color3.fromRGB(163, 5, 33)),
+					ColorSequenceKeypoint.new(1.00000, Color3.fromRGB(255, 51, 51)),
+				}),
+			}),
+		}),
 	})
 
 	-- image = "" or image = false hides the icon completely
