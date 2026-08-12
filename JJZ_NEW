@@ -40,11 +40,11 @@ local HttpService = game:GetService("HttpService")
 --  1) IMAGE IDS - REPLACE THESE WITH YOUR OWN
 --=====================================================
 local IMAGES = {
-	Background  = "107056911907270", -- fills the entire panel behind everything
+	Background  = "2151741365", -- fills the entire panel behind everything
 	Logo        = "116677845668287", -- "NEXO" logo, top-left
 	Banner      = "132582095265277", -- big PREMIUM+ / V4.0 artwork on the Home page
-	Discord     = "10367063073",     -- social button 1 (Discord)
-	YouTube     = "4884068617",      -- social button 2 (YouTube)
+	Discord     = "16171891828",     -- social button 1 (Discord)
+	YouTube     = "16171897995",      -- social button 2 (YouTube)
 	Card1Icon   = "87628150067132", -- Home card 1
 	Card2Icon   = "87628150067132", -- Home card 2
 	Card3Icon   = "87628150067132", -- Home card 3
@@ -93,6 +93,27 @@ local SOCIAL_TINT_COLOR = {
 local SOCIAL_TINT_OVERLAY = {
 	Discord = 0,    -- 0 = no red layer on top
 	YouTube = 0,
+}
+
+-- CREDITS PAGE PROFILE
+local CREDITS = {
+	Avatar    = "127399664303671", -- the logo shown inside the circle
+	Name      = "HeKo",
+	NameFont  = Enum.Font.Michroma, -- stylish font. try SciFi, Bangers, LuckiestGuy, Orbitron
+	NameSize  = 40,
+	Role      = "OWNER  •  DEVELOPER  •  DESIGNER",
+	AvatarBox = 148,  -- size of the round profile picture
+	LaserSpeed = 2.2, -- seconds for one full spin. lower = faster laser
+	Lines = {
+		"Founder and lead developer of NEXO HUB.",
+		"Every line of this UI was written from scratch.",
+		"",
+		"Thanks to everyone testing, reporting bugs",
+		"and keeping this project alive every day.",
+		"",
+		"Join the Discord for updates, support",
+		"and early access to new features.",
+	},
 }
 
 -- 0 = background image fully visible, 1 = fully hidden.
@@ -4572,16 +4593,153 @@ function Library:_buildCreditsPage()
 	})
 	self.PageFrames[TEXT.Nav[3] or "Credits"] = page
 
+	-- everything is stacked in the middle of the page
+	local holder = new("Frame", {
+		Name = "CreditsHolder",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromScale(0.5, 0),
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundTransparency = 1,
+		Parent = page,
+	}, {
+		padding(28, 0, 0, 0),
+		vlist(10, Enum.HorizontalAlignment.Center),
+	})
+
+	--------------------------------------------------
+	-- 1) ROUND PROFILE PICTURE WITH A SPINNING LASER RING
+	--------------------------------------------------
+	local box = CREDITS.AvatarBox
+
+	local avatarWrap = new("Frame", {
+		Name = "Avatar",
+		LayoutOrder = 1,
+		Size = UDim2.fromOffset(box, box),
+		BackgroundTransparency = 1,
+		Parent = holder,
+	})
+
+	-- the laser colours that sweep around the circle
+	local laserColors = ColorSequence.new({
+		ColorSequenceKeypoint.new(0.00, THEME.Accent),
+		ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 255, 255)),
+		ColorSequenceKeypoint.new(0.50, THEME.Accent),
+		ColorSequenceKeypoint.new(0.75, Color3.fromRGB(120, 0, 0)),
+		ColorSequenceKeypoint.new(1.00, THEME.Accent),
+	})
+
+	-- makes one glowing ring and spins its gradient forever
+	local function laserRing(name, inset, thickness, speed, backwards)
+		local ringGradient = new("UIGradient", {
+			Color = laserColors,
+			Rotation = 0,
+		})
+
+		local ringStroke = new("UIStroke", {
+			Thickness = thickness,
+			Color = Color3.fromRGB(255, 255, 255),
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		}, { ringGradient })
+
+		local ring = new("Frame", {
+			Name = name,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.new(1, -inset, 1, -inset),
+			BackgroundTransparency = 1,
+			Parent = avatarWrap,
+		}, {
+			new("UICorner", { CornerRadius = UDim.new(1, 0) }),
+			ringStroke,
+		})
+
+		-- spin the laser
+		ringGradient.Rotation = backwards and 360 or 0
+		TweenService:Create(
+			ringGradient,
+			TweenInfo.new(speed, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
+			{ Rotation = backwards and 0 or 360 }
+		):Play()
+
+		return ring
+	end
+
+	laserRing("RingOuter", 0, 3, CREDITS.LaserSpeed, false)
+	laserRing("RingInner", 14, 2, CREDITS.LaserSpeed * 1.6, true)
+
+	-- the logo itself, clipped into a perfect circle
+	self.CreditsAvatar = new("ImageLabel", {
+		Name = "Photo",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.new(1, -26, 1, -26),
+		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+		BorderSizePixel = 0,
+		Image = img(CREDITS.Avatar),
+		ScaleType = Enum.ScaleType.Crop,
+		ClipsDescendants = true,
+		Parent = avatarWrap,
+	}, {
+		new("UICorner", { CornerRadius = UDim.new(1, 0) }),
+	})
+
+	--------------------------------------------------
+	-- 2) THE NAME, IN A STYLISH FONT WITH A RED GRADIENT
+	--------------------------------------------------
+	self.CreditsName = new("TextLabel", {
+		Name = "Name",
+		LayoutOrder = 2,
+		Size = UDim2.new(1, 0, 0, CREDITS.NameSize + 14),
+		BackgroundTransparency = 1,
+		Font = CREDITS.NameFont,
+		Text = CREDITS.Name,
+		TextSize = CREDITS.NameSize,
+		TextColor3 = Color3.fromRGB(255, 255, 255),
+		Parent = holder,
+	}, {
+		new("UIGradient", {
+			Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+				ColorSequenceKeypoint.new(1, THEME.Accent),
+			}),
+			Rotation = 90,
+		}),
+		new("UIStroke", {
+			Color = THEME.Accent,
+			Thickness = 1.4,
+			Transparency = 0.35,
+		}),
+	})
+
+	-- small line under the name
+	self.CreditsRole = new("TextLabel", {
+		Name = "Role",
+		LayoutOrder = 3,
+		Size = UDim2.new(1, 0, 0, 20),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamBold,
+		Text = CREDITS.Role,
+		TextSize = 13,
+		TextColor3 = THEME.Accent,
+		Parent = holder,
+	})
+
+	--------------------------------------------------
+	-- 3) THE DESCRIPTION UNDER THE NAME
+	--------------------------------------------------
 	self.CreditsLabel = new("TextLabel", {
 		Name = "Credits",
-		Size = UDim2.fromScale(1, 1),
+		LayoutOrder = 4,
+		Size = UDim2.new(0.86, 0, 0, 150),
 		BackgroundTransparency = 1,
 		Font = Enum.Font.GothamMedium,
-		Text = TEXT.Credits,
-		TextSize = 20,
+		Text = table.concat(CREDITS.Lines, "\n"),
+		TextSize = 15,
 		TextColor3 = THEME.Text,
 		TextWrapped = true,
-		Parent = page,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		LineHeight = 1.25,
+		Parent = holder,
 	})
 end
 
