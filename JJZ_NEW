@@ -40,7 +40,8 @@ local HttpService = game:GetService("HttpService")
 --  1) IMAGE IDS - REPLACE THESE WITH YOUR OWN
 --=====================================================
 local IMAGES = {
-	Background  = "2151741365", -- fills the entire panel behind everything
+	Background  = "107056911907270", -- fills the entire panel behind everything
+	Pattern     = "2151741365",     -- tiled dot pattern on the GRADIENT layer
 	Logo        = "116677845668287", -- "NEXO" logo, top-left
 	Banner      = "132582095265277", -- big PREMIUM+ / V4.0 artwork on the Home page
 	Discord     = "16171891828",     -- social button 1 (Discord)
@@ -756,7 +757,7 @@ function Library.new()
 		Size = UDim2.fromScale(1, 1),
 		Position = UDim2.fromScale(0, 0),
 		AnchorPoint = Vector2.new(0, 0),
-		Image = "rbxassetid://107056911907270",
+		Image = img(IMAGES.Background),
 		ImageColor3 = Color3.fromRGB(255, 255, 255),
 		ImageTransparency = 0.15,
 		ScaleType = Enum.ScaleType.Crop,
@@ -782,11 +783,11 @@ function Library.new()
 				ColorSequenceKeypoint.new(0.47, Color3.fromRGB(50, 31, 34)),
 				ColorSequenceKeypoint.new(1.00, Color3.fromRGB(36, 36, 38)),
 			}),
-			-- only a touch more visible at the bottom than stock 0.85
+			-- soft red, only a hint of it along the bottom
 			Transparency = NumberSequence.new({
-				NumberSequenceKeypoint.new(0.00, 0.80),
-				NumberSequenceKeypoint.new(0.45, 0.84),
-				NumberSequenceKeypoint.new(1.00, 0.86),
+				NumberSequenceKeypoint.new(0.00, 0.88),
+				NumberSequenceKeypoint.new(0.45, 0.91),
+				NumberSequenceKeypoint.new(1.00, 0.92),
 			}),
 		}),
 		new("ImageLabel", {
@@ -794,7 +795,7 @@ function Library.new()
 			BackgroundTransparency = 1,
 			Size = UDim2.fromScale(1, 1),
 			Position = UDim2.fromScale(0, 0.001),
-			Image = "rbxassetid://2151741365",
+			Image = img(IMAGES.Pattern),
 			ImageColor3 = Color3.fromRGB(255, 255, 255),
 			ImageTransparency = 0.6,
 			ScaleType = Enum.ScaleType.Tile,
