@@ -260,6 +260,12 @@ local HOHO = {
 	BarThick   = 2.5,
 	BarOffset  = Vector2.new(0, 0.1),
 	ScrollBar  = 0,
+
+	-- RED EFFECT SWITCHES
+	-- false = no red gradient painted on top of the tab / section cards
+	TabGradient = false,
+	-- false = the icon images keep their own raw colours, no red tint
+	IconTint    = false,
 }
 
 local function hohoSeq(list)
@@ -784,10 +790,15 @@ local function hohoSkin(inst)
 			inst.BackgroundColor3 = HOHO.CardBg
 			inst.BackgroundTransparency = HOHO.CardTrans
 			local g = inst:FindFirstChildOfClass("UIGradient")
-			if not g then g = Instance.new("UIGradient") g.Parent = inst end
-			g.Color = bar and HOHO_BAR_FILL or HOHO_CARD_FILL
-			g.Rotation = bar and HOHO.BarRot or HOHO.CardRot
-			g.Offset = bar and HOHO.BarOffset or Vector2.new(0, 0)
+			if bar or HOHO.TabGradient then
+				if not g then g = Instance.new("UIGradient") g.Parent = inst end
+				g.Color = bar and HOHO_BAR_FILL or HOHO_CARD_FILL
+				g.Rotation = bar and HOHO.BarRot or HOHO.CardRot
+				g.Offset = bar and HOHO.BarOffset or Vector2.new(0, 0)
+			elseif g then
+				-- no red layer on top of a tab / section card
+				g:Destroy()
+			end
 		end
 
 		-- switch tick / slider bar stay solid HOHO red
@@ -795,14 +806,23 @@ local function hohoSkin(inst)
 			inst.BackgroundColor3 = THEME.Accent
 		end
 
-		-- the search / back icons get the HOHO red icon gradient
-		if inst:IsA("ImageLabel") and inst.Name == "Icon"
-			and inst.Parent and SKIN_BAR[inst.Parent.Name]
-			and not inst:FindFirstChildOfClass("UIGradient") then
-			local g = Instance.new("UIGradient")
-			g.Color = HOHO_ICON
-			g.Rotation = HOHO.IconRot
-			g.Parent = inst
+		-- ICONS / IMAGE IDS
+		if inst:IsA("ImageLabel") or inst:IsA("ImageButton") then
+			if HOHO.IconTint then
+				if inst.Name == "Icon" and inst.Parent and SKIN_BAR[inst.Parent.Name]
+					and not inst:FindFirstChildOfClass("UIGradient") then
+					local g = Instance.new("UIGradient")
+					g.Color = HOHO_ICON
+					g.Rotation = HOHO.IconRot
+					g.Parent = inst
+				end
+			else
+				-- every image id shows its own raw colours: strip the red tint
+				for _, g in ipairs(inst:GetChildren()) do
+					if g:IsA("UIGradient") then g:Destroy() end
+				end
+				inst.ImageColor3 = Color3.fromRGB(255, 255, 255)
+			end
 		end
 
 		-- TEXT: SourceSansPro, HOHO weights, pure white, dim grey placeholders
