@@ -1425,7 +1425,7 @@ function Library:_buildHeader()
 			LayoutOrder = i,
 			Size = UDim2.fromOffset(LAYOUT.ArrowSize, LAYOUT.ArrowSize),
 			BackgroundTransparency = 1,
-			Font = Enum.Font.GothamBold,
+			Font = Enum.Font.SourceSans,
 			Text = TEXT.Arrow,
 			TextSize = LAYOUT.ArrowText,
 			TextColor3 = (i % 2 == 0) and Color3.fromRGB(248, 4, 46) or Color3.fromRGB(255, 255, 255),
@@ -1437,23 +1437,23 @@ function Library:_buildHeader()
 		Name = "Nav",
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, 0, 0.5, 0),
-		Size = UDim2.new(0.38, 0, 0, 68),
+		Size = UDim2.new(0.38, 0, 0, 44),
 		BackgroundTransparency = 1,
 		ClipsDescendants = true,
 		Parent = self.Header,
-	}, { hlist(8, Enum.HorizontalAlignment.Right) })
+	}, { hlist(18, Enum.HorizontalAlignment.Right) })
 
 	for i, label in ipairs(TEXT.Nav) do
 		local btn = new("TextButton", {
 			Name = label,
 			LayoutOrder = i,
 			AutomaticSize = Enum.AutomaticSize.X,
-			Size = UDim2.fromOffset(0, 68),
+			Size = UDim2.fromOffset(0, 44),
 			BackgroundTransparency = 1,
 			AutoButtonColor = false,
 			Font = Enum.Font.GothamMedium,
 			Text = label,
-			TextSize = 41,
+			TextSize = 26,
 			TextColor3 = Color3.fromRGB(255, 255, 255),
 			TextTransparency = 0.5,
 			Parent = nav,
