@@ -368,6 +368,8 @@ end
 --=====================================================
 --  HELPERS
 --=====================================================
+local SANS_FONT = "rbxasset://fonts/families/SourceSansPro.json"
+
 local function new(class, props, children)
 	local inst = Instance.new(class)
 	for k, v in pairs(props or {}) do
@@ -1426,49 +1428,15 @@ function Library:_buildHeader()
 		local holder = new("TextButton", {
 			Name = "TOP_" .. string.upper(tostring(label)),
 			Text = "",
-			BackgroundColor3 = Color3.fromRGB(20, 20, 20),
-			BackgroundTransparency = 0.5,
-			BorderSizePixel = 0,
+			BackgroundTransparency = 1,
 			AutoButtonColor = false,
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(TAB_X[i] or (0.557 + 0.155 * (i - 1)), 0.5),
 			Size = UDim2.fromScale(0.147, 0.598),
 			ZIndex = 2,
 			Parent = self.Header,
-		}, { corner(10) })
+		})
 
-		-- same gradient + gradient outline the 3 home cards use
-		local tabGrad = new("Frame", {
-			Name = "Gradient",
-			Size = UDim2.fromScale(1, 1),
-			BackgroundTransparency = 1,
-			ZIndex = 1,
-			Parent = holder,
-		}, { corner(10) })
-		new("UIGradient", {
-			Rotation = 45,
-			Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0.00, Color3.fromRGB(157, 2, 31)),
-				ColorSequenceKeypoint.new(0.64, Color3.fromRGB(76, 22, 32)),
-				ColorSequenceKeypoint.new(1.00, Color3.fromRGB(36, 29, 30)),
-			}),
-			Parent = tabGrad,
-		})
-		local tabStroke = new("UIStroke", {
-			Color = Color3.fromRGB(255, 255, 255),
-			Thickness = 2.5,
-			Transparency = 0,
-			Parent = tabGrad,
-		})
-		new("UIGradient", {
-			Rotation = 45,
-			Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0.00, Color3.fromRGB(157, 2, 31)),
-				ColorSequenceKeypoint.new(0.29, Color3.fromRGB(76, 22, 32)),
-				ColorSequenceKeypoint.new(1.00, Color3.fromRGB(24, 24, 24)),
-			}),
-			Parent = tabStroke,
-		})
 		local title = new("TextLabel", {
 			Name = "Title",
 			BackgroundTransparency = 1,
@@ -1484,13 +1452,11 @@ function Library:_buildHeader()
 			Parent = holder,
 		})
 		holder.MouseEnter:Connect(function()
-			TweenService:Create(holder, TweenInfo.new(0.2), { BackgroundTransparency = 0.25 }):Play()
 			if self.CurrentPage ~= label then
 				TweenService:Create(title, TweenInfo.new(0.18), { TextTransparency = 0.15 }):Play()
 			end
 		end)
 		holder.MouseLeave:Connect(function()
-			TweenService:Create(holder, TweenInfo.new(0.2), { BackgroundTransparency = 0.5 }):Play()
 			if self.CurrentPage ~= label then
 				TweenService:Create(title, TweenInfo.new(0.18), { TextTransparency = 0.5 }):Play()
 			end
@@ -1710,24 +1676,51 @@ function Library:AddHomeTab(info)
 	end
 
 	local index = #self.HomeTabs + 1
-	local pad = LAYOUT.CardPad
+	local pad = 0 -- reference card has no inner padding, everything is scale based
 
 	local card = new("Frame", {
 		Name = "HomeTab" .. index,
 		LayoutOrder = index,
 		Size = UDim2.new(1, 0, 1, 0), -- corrected by _resizeHomeTabs
-		BackgroundColor3 = THEME.Card,
-		BackgroundTransparency = 0.15,
+		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
+		BackgroundTransparency = 0.5,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		Parent = self.CardRow,
-	}, {
-		corner(16),
-		stroke(THEME.Accent, 1.4, 0.45),
-		padding(pad, pad, pad, pad),
-	})
+	}, { corner(10) })
 
-	gradient(THEME.AccentDark, THEME.Card, 205).Parent = card
+	-- gradient + gradient outline, exactly like the reference card
+	local cardGrad = new("Frame", {
+		Name = "Gradient",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		ZIndex = 0,
+		Parent = card,
+	}, { corner(10) })
+	new("UIGradient", {
+		Rotation = 45,
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0.00, Color3.fromRGB(157, 2, 31)),
+			ColorSequenceKeypoint.new(0.64, Color3.fromRGB(76, 22, 32)),
+			ColorSequenceKeypoint.new(1.00, Color3.fromRGB(36, 29, 30)),
+		}),
+		Parent = cardGrad,
+	})
+	local cardStroke = new("UIStroke", {
+		Color = Color3.fromRGB(255, 255, 255),
+		Thickness = 2.5,
+		Transparency = 0,
+		Parent = cardGrad,
+	})
+	new("UIGradient", {
+		Rotation = 45,
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0.00, Color3.fromRGB(157, 2, 31)),
+			ColorSequenceKeypoint.new(0.29, Color3.fromRGB(76, 22, 32)),
+			ColorSequenceKeypoint.new(1.00, Color3.fromRGB(24, 24, 24)),
+		}),
+		Parent = cardStroke,
+	})
 
 	-- hover + click highlight, behind the text and the image
 	local glow = new("Frame", {
@@ -1768,11 +1761,11 @@ function Library:AddHomeTab(info)
 		})
 
 		hit.MouseEnter:Connect(function()
-			TweenService:Create(glow, fade, { BackgroundTransparency = HOVER_STRENGTH }):Play()
+			TweenService:Create(card, TweenInfo.new(0.2), { BackgroundTransparency = 0.25 }):Play()
 		end)
 
 		hit.MouseLeave:Connect(function()
-			TweenService:Create(glow, fade, { BackgroundTransparency = 1 }):Play()
+			TweenService:Create(card, TweenInfo.new(0.2), { BackgroundTransparency = 0.5 }):Play()
 		end)
 
 		hit.MouseButton1Down:Connect(function()
@@ -1802,65 +1795,67 @@ function Library:AddHomeTab(info)
 		end
 	end
 
-	-- RULE 1: the text column reserves the icon width plus a GAP
-	local textCol = new("Frame", {
-		Name = "Text",
-		Size = UDim2.new(1, -(LAYOUT.CardIcon + LAYOUT.GAP), 1, 0),
-		BackgroundTransparency = 1,
-		ClipsDescendants = true,
-		Parent = card,
-	}, { vlist(6) })
-	table.insert(self.TextCols, textCol)
-
+	-- title + description, exact reference geometry
 	local title = new("TextLabel", {
 		Name = "Title",
-		LayoutOrder = 1,
-		Size = UDim2.new(1, 0, 0, 32),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.33, 0.2871),
+		Size = UDim2.fromScale(0.5402, 0.3836),
 		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamBold,
+		ZIndex = 2,
+		RichText = true,
 		Text = info.title or ("Tab " .. index),
+		TextColor3 = Color3.fromRGB(255, 255, 255),
 		TextScaled = true,
-		TextColor3 = THEME.Text,
+		FontFace = Font.new(SANS_FONT, Enum.FontWeight.Bold),
 		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Center,
-		Parent = textCol,
-	}, { clampText(26) })
+		Parent = card,
+	}, { new("UITextSizeConstraint", { MaxTextSize = 100, MinTextSize = 1 }) })
 
 	local desc = new("TextLabel", {
 		Name = "Desc",
-		LayoutOrder = 2,
-		Size = UDim2.new(1, 0, 1, -38),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.33, 0.6433),
+		Size = UDim2.fromScale(0.5307, 0.4017),
 		BackgroundTransparency = 1,
-		Font = Enum.Font.Gotham,
+		ZIndex = 2,
+		RichText = true,
 		Text = info.desc or "",
+		TextColor3 = Color3.fromRGB(255, 255, 255),
 		TextScaled = true,
-		TextColor3 = THEME.SubText,
 		TextWrapped = true,
+		FontFace = Font.new(SANS_FONT, Enum.FontWeight.Regular),
 		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Top,
-		Parent = textCol,
-	}, { clampText(14) })
+		Parent = card,
+	}, { new("UITextSizeConstraint", { MaxTextSize = 100, MinTextSize = 1 }) })
 
+	-- card icon, exact reference geometry + red logo gradient
 	local slot = new("Frame", {
 		Name = "IconSlot",
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, 0, 0.5, 0),
-		Size = UDim2.fromOffset(LAYOUT.CardIcon, LAYOUT.CardIcon),
+		Position = UDim2.fromScale(0.635, 0.148),
+		Size = UDim2.fromScale(0.3158, 0.6961),
 		BackgroundTransparency = 1,
-		ClipsDescendants = true,
+		ZIndex = 2,
 		Parent = card,
 	}, {
-		corner(12),
 		new("ImageLabel", {
 			Name = "Icon",
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
+			ZIndex = 2,
 			Image = img(pickIcon(info, IMAGES["Card" .. math.min(index, 3) .. "Icon"] or IMAGES.Card1Icon)),
-			ScaleType = Enum.ScaleType.Crop,
-		}, { corner(12) }),
+			ScaleType = Enum.ScaleType.Fit,
+		}, {
+			new("UIGradient", {
+				Rotation = -144,
+				Color = ColorSequence.new({
+					ColorSequenceKeypoint.new(0.00, Color3.fromRGB(157, 2, 31)),
+					ColorSequenceKeypoint.new(0.42, Color3.fromRGB(163, 5, 33)),
+					ColorSequenceKeypoint.new(1.00, Color3.fromRGB(255, 51, 51)),
+				}),
+			}),
+		}),
 	})
-	table.insert(self.IconSlots, slot)
-
 	slot.Visible = (slot.Icon.Image ~= "")
 
 	local tab = {
@@ -2257,11 +2252,11 @@ function Library:_addCard(ctx, info, isSection)
 		})
 
 		hit.MouseEnter:Connect(function()
-			TweenService:Create(glow, fade, { BackgroundTransparency = HOVER_STRENGTH }):Play()
+			TweenService:Create(card, TweenInfo.new(0.2), { BackgroundTransparency = 0.25 }):Play()
 		end)
 
 		hit.MouseLeave:Connect(function()
-			TweenService:Create(glow, fade, { BackgroundTransparency = 1 }):Play()
+			TweenService:Create(card, TweenInfo.new(0.2), { BackgroundTransparency = 0.5 }):Play()
 		end)
 
 		hit.MouseButton1Down:Connect(function()
@@ -2998,11 +2993,11 @@ function Library:_comboButton(parent, opt)
 		local fade = TweenInfo.new(HOVER_SPEED, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
 		hit.MouseEnter:Connect(function()
-			TweenService:Create(glow, fade, { BackgroundTransparency = HOVER_STRENGTH }):Play()
+			TweenService:Create(card, TweenInfo.new(0.2), { BackgroundTransparency = 0.25 }):Play()
 		end)
 
 		hit.MouseLeave:Connect(function()
-			TweenService:Create(glow, fade, { BackgroundTransparency = 1 }):Play()
+			TweenService:Create(card, TweenInfo.new(0.2), { BackgroundTransparency = 0.5 }):Play()
 		end)
 
 		hit.MouseButton1Down:Connect(function()
@@ -3203,11 +3198,11 @@ function Library:_addButton(card, info)
 		local fade = TweenInfo.new(HOVER_SPEED, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
 		hit.MouseEnter:Connect(function()
-			TweenService:Create(glow, fade, { BackgroundTransparency = HOVER_STRENGTH }):Play()
+			TweenService:Create(card, TweenInfo.new(0.2), { BackgroundTransparency = 0.25 }):Play()
 		end)
 
 		hit.MouseLeave:Connect(function()
-			TweenService:Create(glow, fade, { BackgroundTransparency = 1 }):Play()
+			TweenService:Create(card, TweenInfo.new(0.2), { BackgroundTransparency = 0.5 }):Play()
 		end)
 
 		hit.MouseButton1Down:Connect(function()
