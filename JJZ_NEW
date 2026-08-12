@@ -805,6 +805,7 @@ function Library.new()
 		Image = img(IMAGES.Background),
 		ImageTransparency = BACKGROUND_TRANSPARENCY,
 		ScaleType = Enum.ScaleType.Crop,
+		Visible = false,
 		Parent = self.Main,
 	}, { corner(26) })
 
