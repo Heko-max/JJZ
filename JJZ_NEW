@@ -1426,13 +1426,48 @@ function Library:_buildHeader()
 		local holder = new("TextButton", {
 			Name = "TOP_" .. string.upper(tostring(label)),
 			Text = "",
-			BackgroundTransparency = 1,
+			BackgroundColor3 = Color3.fromRGB(20, 20, 20),
+			BackgroundTransparency = 0.5,
+			BorderSizePixel = 0,
 			AutoButtonColor = false,
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(TAB_X[i] or (0.557 + 0.155 * (i - 1)), 0.5),
 			Size = UDim2.fromScale(0.147, 0.598),
 			ZIndex = 2,
 			Parent = self.Header,
+		}, { corner(10) })
+
+		-- same gradient + gradient outline the 3 home cards use
+		local tabGrad = new("Frame", {
+			Name = "Gradient",
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			ZIndex = 1,
+			Parent = holder,
+		}, { corner(10) })
+		new("UIGradient", {
+			Rotation = 45,
+			Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0.00, Color3.fromRGB(157, 2, 31)),
+				ColorSequenceKeypoint.new(0.64, Color3.fromRGB(76, 22, 32)),
+				ColorSequenceKeypoint.new(1.00, Color3.fromRGB(36, 29, 30)),
+			}),
+			Parent = tabGrad,
+		})
+		local tabStroke = new("UIStroke", {
+			Color = Color3.fromRGB(255, 255, 255),
+			Thickness = 2.5,
+			Transparency = 0,
+			Parent = tabGrad,
+		})
+		new("UIGradient", {
+			Rotation = 45,
+			Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0.00, Color3.fromRGB(157, 2, 31)),
+				ColorSequenceKeypoint.new(0.29, Color3.fromRGB(76, 22, 32)),
+				ColorSequenceKeypoint.new(1.00, Color3.fromRGB(24, 24, 24)),
+			}),
+			Parent = tabStroke,
 		})
 		local title = new("TextLabel", {
 			Name = "Title",
@@ -1449,11 +1484,13 @@ function Library:_buildHeader()
 			Parent = holder,
 		})
 		holder.MouseEnter:Connect(function()
+			TweenService:Create(holder, TweenInfo.new(0.2), { BackgroundTransparency = 0.25 }):Play()
 			if self.CurrentPage ~= label then
 				TweenService:Create(title, TweenInfo.new(0.18), { TextTransparency = 0.15 }):Play()
 			end
 		end)
 		holder.MouseLeave:Connect(function()
+			TweenService:Create(holder, TweenInfo.new(0.2), { BackgroundTransparency = 0.5 }):Play()
 			if self.CurrentPage ~= label then
 				TweenService:Create(title, TweenInfo.new(0.18), { TextTransparency = 0.5 }):Play()
 			end
@@ -1571,210 +1608,49 @@ function Library:_buildHomePage()
 		hlist(LAYOUT.SocialGap),
 	})
 
-	-- YOUTUBE LOGO DRAWN BY CODE (no image id needed, nothing to upload,
-	-- nothing that can get moderated). It is a red rounded box with a white
-	-- play triangle built out of small frames.
-	local function drawYouTubeLogo(parent)
-		-- fills the WHOLE square, exactly like an image icon does, so the drawn
-		-- youtube logo ends up the exact same size as the discord image
-		local body = new("Frame", {
-			Name = "YTBody",
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.fromScale(1, 1),
-			BackgroundColor3 = YOUTUBE_COLOR,
-			BorderSizePixel = 0,
-			Parent = parent,
-		}, {
-			new("UICorner", { CornerRadius = UDim.new(0.24, 0) }),
-		})
-
-		-- the white play triangle, drawn row by row
-		local holder = new("Frame", {
-			Name = "YTPlay",
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.55, 0.5),
-			Size = UDim2.fromScale(0.26, 0.40),
-			BackgroundTransparency = 1,
-			Parent = body,
-		})
-
-		local ROWS = 28
-		for r = 1, ROWS do
-			local t = (r - 0.5) / ROWS                 -- 0 at the top, 1 at the bottom
-			local w = 1 - math.abs(t - 0.5) * 2        -- widest in the middle
-			new("Frame", {
-				Name = "Row" .. r,
-				Position = UDim2.fromScale(0, (r - 1) / ROWS),
-				Size = UDim2.new(w, 0, 1 / ROWS, 1),   -- +1px so there are no gaps
-				BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-				BorderSizePixel = 0,
-				Parent = holder,
-			})
-		end
-
-		return body
-	end
-
-	-- DISCORD LOGO DRAWN BY CODE (no image id needed either).
-	-- Real clyde shape: wide rounded head on top, a flared skirt under it, two
-	-- pointed horns at the bottom corners, and two white oval eyes.
-	local function drawDiscordLogo(parent)
-		-- everything is built inside this box so the whole logo scales together
-		local body = new("Frame", {
-			Name = "DCBody",
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.fromScale(1, 0.80),
-			BackgroundTransparency = 1,
-			Parent = parent,
-		})
-
-		local function shape(name, x, y, w, h, radius, rot, z)
-			return new("Frame", {
-				Name = name,
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.fromScale(x, y),
-				Size = UDim2.fromScale(w, h),
-				Rotation = rot or 0,
-				BackgroundColor3 = DISCORD_COLOR,
-				BorderSizePixel = 0,
-				ZIndex = z or 2,
-				Parent = body,
-			}, {
-				new("UICorner", { CornerRadius = UDim.new(radius, 0) }),
-			})
-		end
-
-		-- 1) the two pointed horns at the bottom left and bottom right
-		shape("HornLeft",  0.135, 0.760, 0.30, 0.42, 0.34, -28, 2)
-		shape("HornRight", 0.865, 0.760, 0.30, 0.42, 0.34,  28, 2)
-
-		-- 2) the flared skirt that joins the horns to the head
-		shape("Skirt", 0.5, 0.660, 0.80, 0.40, 0.30, 0, 3)
-
-		-- 3) the wide rounded head on top
-		shape("Head", 0.5, 0.420, 0.90, 0.66, 0.50, 0, 4)
-
-		-- 4) fills the small dip between the head and the skirt
-		shape("Neck", 0.5, 0.560, 0.86, 0.30, 0.18, 0, 5)
-
-		-- 5) the two white oval eyes, always on top
-		for _, side in ipairs({ -1, 1 }) do
-			new("Frame", {
-				Name = side < 0 and "EyeLeft" or "EyeRight",
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.fromScale(0.5 + side * 0.175, 0.470),
-				Size = UDim2.fromScale(0.145, 0.235),
-				BackgroundColor3 = DISCORD_FACE,
-				BorderSizePixel = 0,
-				ZIndex = 9,
-				Parent = body,
-			}, {
-				new("UICorner", { CornerRadius = UDim.new(1, 0) }),
-			})
-		end
-
-		return body
-	end
-
-	-- ONLY 2 SOCIAL BUTTONS NOW: DISCORD AND YOUTUBE.
-	-- click = the link is copied to your clipboard AND opened for you.
-	-- draw = built with code instead of an image id.
+	-- DISCORD + YOUTUBE : exact same design as the reference hub.
+	-- plain image button, tinted accent red, soft round glow on hover.
+	-- the image ids are untouched (IMAGES.Discord / IMAGES.YouTube).
 	local socialItems = {
-		{ name = "Discord", id = IMAGES.Discord, link = SOCIAL_LINKS.Discord,
-		  draw = DISCORD_DRAWN and drawDiscordLogo or nil },
-		{ name = "YouTube", id = IMAGES.YouTube, link = SOCIAL_LINKS.YouTube,
-		  draw = YOUTUBE_DRAWN and drawYouTubeLogo or nil },
+		{ name = "Discord", id = IMAGES.Discord, link = SOCIAL_LINKS.Discord },
+		{ name = "YouTube", id = IMAGES.YouTube, link = SOCIAL_LINKS.YouTube },
 	}
 
 	for i, data in ipairs(socialItems) do
-		-- SOCIAL_PLAIN = true -> just the icon, no box behind it (like the image)
-		local box = new("TextButton", {
+		local box = new("ImageButton", {
 			Name = data.name,
 			LayoutOrder = i,
-			Text = "",
-			AutoButtonColor = false,
 			Size = UDim2.fromOffset(LAYOUT.SocialBox, LAYOUT.SocialBox),
-			BackgroundColor3 = THEME.SocialBox,
-			BackgroundTransparency = SOCIAL_PLAIN and 1 or 0,
+			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
-			ClipsDescendants = not SOCIAL_PLAIN,
+			AutoButtonColor = false,
+			Image = img(data.id),
+			ImageColor3 = Color3.fromRGB(255, 51, 51),
+			ScaleType = Enum.ScaleType.Fit,
+			ZIndex = 2,
 			Parent = self.Socials,
-		}, {
-			corner(12),
-			new("UIScale", { Name = "Pop", Scale = 1 }),
-			new("ImageLabel", {
-				Name = "Icon",
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.fromScale(0.5, 0.5),
-				-- EXACT SAME SIZE FOR EVERY SOCIAL ICON. the square below never
-				-- changes, so the resolution of the uploaded image does nothing.
-				Size = UDim2.fromScale(
-					SOCIAL_ICON_SCALE * (SOCIAL_ICON_TWEAK[data.name] or 1),
-					SOCIAL_ICON_SCALE * (SOCIAL_ICON_TWEAK[data.name] or 1)
-				),
-				BackgroundTransparency = 1,
-				Image = img(data.id),
-				ImageColor3 = SOCIAL_TINT_COLOR[data.name]
-					or (SOCIAL_TINT and THEME.Accent)
-					or Color3.fromRGB(255, 255, 255),
-				ScaleType = (SOCIAL_ICON_MODE == "fit" and Enum.ScaleType.Fit)
-					or (SOCIAL_ICON_MODE == "crop" and Enum.ScaleType.Crop)
-					or Enum.ScaleType.Stretch,
-			}, { corner(12), new("UIAspectRatioConstraint", { AspectRatio = 1 }) }),
 		})
 
-		-- if this social is drawn by code, blank the image and build the shapes
-		if data.draw then
-			local slot = box:FindFirstChild("Icon")
-			if slot then
-				slot.Image = ""
-				data.draw(slot)
-			end
-		else
-			-- RED EFFECT: a second copy of the same image, painted red, laid on
-			-- top of the first one. Exact same size, so nothing shifts.
-			local strength = SOCIAL_TINT_OVERLAY[data.name] or 0
-			local slot = box:FindFirstChild("Icon")
-			if slot and strength > 0 then
-				new("ImageLabel", {
-					Name = "RedGlow",
-					AnchorPoint = Vector2.new(0.5, 0.5),
-					Position = UDim2.fromScale(0.5, 0.5),
-					Size = UDim2.fromScale(1, 1),
-					BackgroundTransparency = 1,
-					Image = slot.Image,
-					ImageColor3 = Color3.fromRGB(255, 0, 0),
-					ImageTransparency = 1 - strength,
-					ScaleType = slot.ScaleType,
-					ZIndex = (slot.ZIndex or 1) + 1,
-					Parent = slot,
-				})
-			end
-		end
+		local hover = new("ImageLabel", {
+			Name = "Hover",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromScale(2.5, 2.5),
+			BackgroundTransparency = 1,
+			Image = "rbxassetid://16171994145",
+			ImageColor3 = Color3.fromRGB(255, 51, 51),
+			ImageTransparency = 1,
+			ZIndex = 1,
+			Parent = box,
+		})
 
-		if not SOCIAL_PLAIN then
-			stroke(THEME.Stroke, 1, 0.3).Parent = box
-		end
-
-		-- HOVER POP:  small dot  ->  big dot
-		local pop = box:FindFirstChild("Pop")
-		local function popTo(target, time)
-			if not pop then return end
-			TweenService:Create(pop, TweenInfo.new(time, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-				Scale = target,
-			}):Play()
-		end
-
-		box.MouseEnter:Connect(function() popTo(SOCIAL_HOVER_SCALE, SOCIAL_HOVER_TIME) end)
-		box.MouseLeave:Connect(function() popTo(1, SOCIAL_HOVER_TIME) end)
-
+		box.MouseEnter:Connect(function()
+			TweenService:Create(hover, TweenInfo.new(0.25), { ImageTransparency = 0.35 }):Play()
+		end)
+		box.MouseLeave:Connect(function()
+			TweenService:Create(hover, TweenInfo.new(0.25), { ImageTransparency = 1 }):Play()
+		end)
 		box.MouseButton1Click:Connect(function()
-			-- a tiny squeeze so you can feel the click
-			popTo(SOCIAL_HOVER_SCALE * 0.82, 0.08)
-			task.delay(0.08, function() popTo(SOCIAL_HOVER_SCALE, SOCIAL_HOVER_TIME) end)
-
 			self:OpenLink(data.link, data.name)
 		end)
 
