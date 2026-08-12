@@ -184,7 +184,7 @@ local BACK_FALLBACK_TEXT = "<"
 --=====================================================
 --  DEVICE SCALING (PC / phone / iPad / Android)
 --=====================================================
-local UI_SIZE     = 0.72 -- overall size. 1 = original, lower = smaller everywhere
+local UI_SIZE     = 0.704 -- overall size. 1 = original, lower = smaller everywhere
 local SCREEN_FILL = 0.80 -- most of the screen the panel may take up
 local MIN_SCALE   = 0.40
 local MAX_SCALE   = 1.00
@@ -745,7 +745,6 @@ function Library.new()
 		Parent = self.Gui,
 	}, {
 		corner(26),
-		stroke(THEME.Accent, 2.5, 0.1),
 		new("UIScale", { Name = "Scale" }),
 	})
 
@@ -757,7 +756,7 @@ function Library.new()
 		AnchorPoint = Vector2.new(0, 0),
 		Image = "rbxassetid://107056911907270",
 		ImageColor3 = Color3.fromRGB(255, 255, 255),
-		ImageTransparency = 0,
+		ImageTransparency = 0.15,
 		ScaleType = Enum.ScaleType.Crop,
 		ZIndex = 0,
 		Parent = self.Main,
@@ -781,7 +780,7 @@ function Library.new()
 				ColorSequenceKeypoint.new(0.47, Color3.fromRGB(47, 29, 32)),
 				ColorSequenceKeypoint.new(1.00, Color3.fromRGB(24, 24, 24)),
 			}),
-			Transparency = NumberSequence.new(0.9),
+			Transparency = NumberSequence.new(0.85),
 		}),
 		new("ImageLabel", {
 			Name = "BACKGROUND_PATTERN",
