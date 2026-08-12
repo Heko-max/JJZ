@@ -744,7 +744,7 @@ function Library.new()
 		Active = true,
 		Parent = self.Gui,
 	}, {
-		corner(26),
+		corner(50),
 		new("UIScale", { Name = "Scale" }),
 	})
 
@@ -760,7 +760,7 @@ function Library.new()
 		ScaleType = Enum.ScaleType.Crop,
 		ZIndex = 0,
 		Parent = self.Main,
-	}, { corner(26) })
+	}, { corner(50) })
 
 	self.Gradient = new("Frame", {
 		Name = "GRADIENT",
@@ -794,7 +794,7 @@ function Library.new()
 			TileSize = UDim2.fromOffset(60, 60),
 			ZIndex = 0,
 		}),
-		corner(26),
+		corner(50),
 	})
 
 	self.Background = new("ImageLabel", {
