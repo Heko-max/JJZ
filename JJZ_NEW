@@ -261,6 +261,14 @@ local HOHO = {
 	BarOffset  = Vector2.new(0, 0.1),
 	ScrollBar  = 0,
 
+	-- the BIG BOX that holds the tab cards (HOHO "Sections" frame)
+	BoxCorner  = 0.075,
+	BoxThick   = 2.5,
+	BoxRot     = 90,
+	BoxTrans   = 0.75,
+	BoxPadX    = 20,
+	BoxPadY    = 22,
+
 	-- RED EFFECT SWITCHES
 	-- false = no red gradient painted on top of the tab / section cards
 	TabGradient = false,
@@ -308,6 +316,22 @@ local HOHO_BAR_STROKE = hohoSeq({
 })
 
 -- red icon / logo tint gradient
+-- the OUTLINE of the big tab box (HOHO Sections/UIStroke, rotation 90)
+local HOHO_BOX_STROKE = hohoSeq({
+	{ 0.00000,  26, 25, 25 },
+	{ 0.14681,  34, 23, 25 },
+	{ 0.56304, 156,  3, 31 },
+	{ 0.91883,  33, 23, 25 },
+	{ 1.00000,  37, 22, 25 },
+})
+
+-- the FILL of the HOHO return button
+local HOHO_RETURN_FILL = hohoSeq({
+	{ 0.00000, 89,  1, 20 },
+	{ 0.48359, 40, 19, 24 },
+	{ 1.00000, 27,  5,  5 },
+})
+
 local HOHO_ICON = hohoSeq({
 	{ 0.00000, 157, 2, 31 },
 	{ 0.42487, 163, 5, 33 },
@@ -455,6 +479,28 @@ end
 
 local function corner(r)
 	return new("UICorner", { CornerRadius = UDim.new(0, r) })
+end
+
+-- corner radius given in SCALE, exactly the way HOHO writes it
+local function cornerScale(s)
+	return new("UICorner", { CornerRadius = UDim.new(s, 0) })
+end
+
+-- the outline of the BIG BOX that holds the tab cards (HOHO Sections)
+local function boxStroke()
+	local s = new("UIStroke", {
+		Color = Color3.fromRGB(255, 255, 255),
+		Thickness = HOHO.BoxThick,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+	})
+
+	new("UIGradient", {
+		Color = HOHO_BOX_STROKE,
+		Rotation = HOHO.BoxRot,
+		Parent = s,
+	})
+
+	return s
 end
 
 local function stroke(color, thickness, transparency)
@@ -737,6 +783,8 @@ local SKIN_SKIP_FILL = {
 	Fill = true, Switch = true, Swatch = true, Notifications = true,
 }
 local SKIN_ACCENT_FILL = { Fill = true, Switch = true }
+-- the big tab box keeps its OWN look, the card skin must not repaint it
+local SKIN_BOX = { GridArea = true }
 local SKIN_BAR = { SearchBar = true, BackButton = true }
 
 local function hohoFontOf(inst)
@@ -770,14 +818,16 @@ local function hohoSkin(inst)
 
 		-- OUTLINES: white stroke painted by the HOHO red gradient
 		if inst:IsA("UIStroke") and inst.Thickness > 0 then
-			local bar = inst.Parent and SKIN_BAR[inst.Parent.Name] or false
+			local pname = inst.Parent and inst.Parent.Name or ""
+			local bar = SKIN_BAR[pname] or false
+			local box = SKIN_BOX[pname] or false
 			inst.Color = Color3.fromRGB(255, 255, 255)
-			inst.Thickness = bar and HOHO.BarThick or HOHO.CardThick
+			inst.Thickness = (box and HOHO.BoxThick) or (bar and HOHO.BarThick) or HOHO.CardThick
 			inst.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 			local g = inst:FindFirstChildOfClass("UIGradient")
 			if not g then g = Instance.new("UIGradient") g.Parent = inst end
-			g.Color = bar and HOHO_BAR_STROKE or HOHO_CARD_STROKE
-			g.Rotation = bar and HOHO.BarRot or HOHO.CardRot
+			g.Color = (box and HOHO_BOX_STROKE) or (bar and HOHO_BAR_STROKE) or HOHO_CARD_STROKE
+			g.Rotation = (box and HOHO.BoxRot) or (bar and HOHO.BarRot) or HOHO.CardRot
 			g.Transparency = NumberSequence.new(0)
 		end
 
@@ -785,7 +835,7 @@ local function hohoSkin(inst)
 		if (inst:IsA("Frame") or inst:IsA("TextButton") or inst:IsA("ImageButton"))
 			and inst.BackgroundTransparency < 1
 			and inst:FindFirstChildOfClass("UICorner")
-			and not SKIN_SKIP_FILL[inst.Name] then
+			and not SKIN_SKIP_FILL[inst.Name] and not SKIN_BOX[inst.Name] then
 			local bar = SKIN_BAR[inst.Name] or false
 			inst.BackgroundColor3 = HOHO.CardBg
 			inst.BackgroundTransparency = HOHO.CardTrans
@@ -2122,40 +2172,32 @@ function Library:_buildTabsPage()
 	self.SearchBar = new("Frame", {
 		Name = "SearchBar",
 		-- inset by 3px so the outline is never clipped by the panel edge
-		Position = UDim2.fromOffset(3, 3),
-		Size = UDim2.new(1, -(LAYOUT.TabScrollPad + 6 + LAYOUT.BackButton + LAYOUT.BackGap), 0, LAYOUT.SearchHeight),
+		Position = UDim2.fromOffset(0, 3),
+		Size = UDim2.new(1, -(LAYOUT.BackButton + LAYOUT.BackGap), 0, LAYOUT.SearchHeight),
 		BackgroundColor3 = THEME.SearchBar,
-		BackgroundTransparency = 0.15,
+		BackgroundTransparency = HOHO.CardTrans,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		Parent = page,
 	}, {
-		corner(16),
-		stroke(THEME.Accent, 2, 0.15),
-		padding(0, 18, 0, 18),
-		new("ImageLabel", {
-			Name = "Icon",
-			AnchorPoint = Vector2.new(0, 0.5),
-			Position = UDim2.new(0, 0, 0.5, 0),
-			Size = UDim2.fromOffset(LAYOUT.SearchIcon, LAYOUT.SearchIcon),
-			BackgroundTransparency = 1,
-			Image = img(IMAGES.SearchIcon),
-			ScaleType = Enum.ScaleType.Fit,
-		}),
+		-- HOHO SearchBox: corner 0.3 scale, 2.5px outline, NO magnifier icon
+		cornerScale(0.3),
+		stroke(THEME.Accent, HOHO.BarThick, 0),
 		new("TextBox", {
 			Name = "Field",
-			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, 0, 0.5, 0),
-			Size = UDim2.new(1, -(LAYOUT.SearchIcon + 12), 1, 0),
+			AnchorPoint = Vector2.new(0, 0.5),
+			Position = UDim2.new(0, 0, 0.5, 0),
+			Size = UDim2.fromScale(0.72, 0.57889),
 			BackgroundTransparency = 1,
 			ClipsDescendants = true,
-			Font = Enum.Font.GothamMedium,
+			FontFace = Font.new(SANS_FONT, Enum.FontWeight.SemiBold, Enum.FontStyle.Italic),
 			PlaceholderText = TEXT.SearchPlaceholder or "SEARCH ...",
 			PlaceholderColor3 = THEME.SubText,
 			Text = "",
-			TextSize = 20,
+			TextScaled = true,
+			TextWrapped = true,
+			RichText = true,
 			TextColor3 = THEME.Text,
-			TextXAlignment = Enum.TextXAlignment.Left,
 			ClearTextOnFocus = false,
 		}),
 	})
@@ -2165,10 +2207,10 @@ function Library:_buildTabsPage()
 	self.BackButton = new("ImageButton", {
 		Name = "BackButton",
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -(LAYOUT.TabScrollPad + 3), 0, 3),
+		Position = UDim2.new(1, 0, 0, 3),
 		Size = UDim2.fromOffset(LAYOUT.BackButton, LAYOUT.SearchHeight),
 		BackgroundColor3 = THEME.SearchBar,
-		BackgroundTransparency = 0.15,
+		BackgroundTransparency = HOHO.CardTrans,
 		BorderSizePixel = 0,
 		Image = "",
 		AutoButtonColor = false,
@@ -2176,30 +2218,37 @@ function Library:_buildTabsPage()
 		ZIndex = 3,
 		Parent = page,
 	}, {
-		corner(16),
-		stroke(THEME.Accent, 2, 0.15),
-		gradient(THEME.AccentDark, THEME.SearchBar, 205),
+		-- HOHO RETURN_BUTTON: corner 0.3 scale, 2.5px outline, dark red fill
+		cornerScale(0.3),
+		stroke(THEME.Accent, HOHO.BarThick, 0),
+		new("UIGradient", {
+			Color = HOHO_RETURN_FILL,
+			Rotation = HOHO.BarRot,
+		}),
 		-- the arrow you see until you put your own image id in IMAGES.BackIcon
 		new("TextLabel", {
 			Name = "Fallback",
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
-			Font = Enum.Font.GothamBold,
+			FontFace = Font.new(SANS_FONT, Enum.FontWeight.Bold),
 			Text = BACK_FALLBACK_TEXT,
 			TextSize = 26,
 			TextColor3 = THEME.Text,
-			Visible = img(IMAGES.BackIcon) == "",
+			Visible = false,
 			ZIndex = 4,
 		}),
+		-- the EXACT HOHO return arrow (sprite sheet 3926305904, rect 884,364)
 		new("ImageLabel", {
 			Name = "Icon",
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.new(1, -18, 1, -18),
+			Size = UDim2.fromScale(0.77283, 0.77283),
 			BackgroundTransparency = 1,
-			Image = img(IMAGES.BackIcon),
+			Image = (img(IMAGES.BackIcon) ~= "" and img(IMAGES.BackIcon)) or "rbxassetid://3926305904",
+			ImageRectOffset = (img(IMAGES.BackIcon) == "" and Vector2.new(884, 364)) or Vector2.new(0, 0),
+			ImageRectSize = (img(IMAGES.BackIcon) == "" and Vector2.new(36, 36)) or Vector2.new(0, 0),
 			ScaleType = Enum.ScaleType.Fit,
-			Visible = img(IMAGES.BackIcon) ~= "",
+			Visible = true,
 			ZIndex = 4,
 		}),
 	})
@@ -2232,13 +2281,19 @@ function Library:_buildTabsPage()
 	-- RULE 2: the tab list starts below the search bar, never on top of it
 	local gridTop = LAYOUT.SearchHeight + LAYOUT.GAP + LAYOUT.SearchGap
 
+	-- THE BIG BOX (HOHO "Sections"): every tab card lives inside it
 	local area = new("Frame", {
 		Name = "GridArea",
 		Position = UDim2.fromOffset(0, gridTop),
 		Size = UDim2.new(1, 0, 1, -gridTop),
-		BackgroundTransparency = 1,
+		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+		BackgroundTransparency = HOHO.BoxTrans,
+		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		Parent = page,
+	}, {
+		cornerScale(HOHO.BoxCorner),
+		boxStroke(),
 	})
 	self.TabArea = area
 
@@ -2261,7 +2316,7 @@ function Library:_buildTabsPage()
 		Parent = area,
 	}, {
 		-- a few pixels on every side so no card outline gets clipped
-		padding(3, LAYOUT.TabScrollPad, LAYOUT.TabGap, 3),
+		padding(HOHO.BoxPadY, HOHO.BoxPadX, HOHO.BoxPadY, HOHO.BoxPadX),
 		vlist(LAYOUT.TabGap),
 	})
 
@@ -2706,7 +2761,7 @@ function Library:_sectionList(tab)
 		ZIndex = 2,
 		Parent = self.TabArea,
 	}, {
-		padding(3, LAYOUT.TabScrollPad, LAYOUT.TabGap, 3),
+		padding(HOHO.BoxPadY, HOHO.BoxPadX, HOHO.BoxPadY, HOHO.BoxPadX),
 		vlist(LAYOUT.TabGap),
 	})
 
