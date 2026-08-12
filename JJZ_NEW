@@ -749,6 +749,54 @@ function Library.new()
 		new("UIScale", { Name = "Scale" }),
 	})
 
+	self.BackgroundImage = new("ImageLabel", {
+		Name = "BACKGROUND_IMAGE",
+		BackgroundTransparency = 1,
+		Size = UDim2.fromScale(1, 1),
+		Position = UDim2.fromScale(0, 0),
+		AnchorPoint = Vector2.new(0, 0),
+		Image = "rbxassetid://107056911907270",
+		ImageColor3 = Color3.fromRGB(255, 255, 255),
+		ImageTransparency = 0,
+		ScaleType = Enum.ScaleType.Crop,
+		ZIndex = 0,
+		Parent = self.Main,
+	})
+
+	self.Gradient = new("Frame", {
+		Name = "GRADIENT",
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		BackgroundTransparency = 0,
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(1, 1),
+		Position = UDim2.fromScale(0, 0),
+		ZIndex = 0,
+		Parent = self.Main,
+	}, {
+		new("UIGradient", {
+			Rotation = -90,
+			Offset = Vector2.new(0, 0),
+			Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0.00, Color3.fromRGB(157, 2, 31)),
+				ColorSequenceKeypoint.new(0.47, Color3.fromRGB(47, 29, 32)),
+				ColorSequenceKeypoint.new(1.00, Color3.fromRGB(24, 24, 24)),
+			}),
+			Transparency = NumberSequence.new(0.9),
+		}),
+		new("ImageLabel", {
+			Name = "BACKGROUND_PATTERN",
+			BackgroundTransparency = 1,
+			Size = UDim2.fromScale(1, 1),
+			Position = UDim2.fromScale(0, 0.001),
+			Image = "rbxassetid://2151741365",
+			ImageColor3 = Color3.fromRGB(255, 255, 255),
+			ImageTransparency = 0.6,
+			ScaleType = Enum.ScaleType.Tile,
+			TileSize = UDim2.fromOffset(60, 60),
+			ZIndex = 0,
+		}),
+	})
+
 	self.Background = new("ImageLabel", {
 		Name = "Background",
 		Size = UDim2.fromScale(1, 1),
