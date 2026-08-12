@@ -254,8 +254,8 @@ local LAYOUT = {
 	PanelPaddingX  = 38,
 
 	HeaderHeight   = 62,
-	LogoWidth      = 210,
-	LogoHeight     = 86,
+	LogoWidth      = 132,
+	LogoHeight     = 69,
 
 	ArrowSize      = 36,  -- size of one >> arrow box
 	ArrowText      = 26,  -- font size of the >> arrows
@@ -270,8 +270,8 @@ local LAYOUT = {
 
 	-- SOCIAL ICON SIZE: this is the ONE number to change.
 	-- 34 = tiny, 42 = small, 56 = medium, 68 = big, 80 = very big
-	SocialBox      = 62,
-	SocialGap      = 28,  -- space between the two icons
+	SocialBox      = 42,
+	SocialGap      = 20,  -- space between the two icons
 	SocialOffsetY  = 56,  -- push the 3 social icons down
 
 	CardsHeight    = 134,
