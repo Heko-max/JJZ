@@ -710,7 +710,7 @@ end
 -- DRAGGING WITH A SMOOTH DELAY.
 -- your finger sets a target, and the panel glides towards it every frame
 -- instead of snapping, so the movement feels soft and expensive.
-local function makeDraggable(frame, handle)
+local function makeDraggable(frame, handle, onSettled)
 	local dragging, dragStart, startPos
 	local target = frame.Position
 	local loop = nil
@@ -751,13 +751,19 @@ local function makeDraggable(frame, handle)
 			local nextPos = lerpUDim2(pos, target, alpha)
 
 			-- once it has caught up and the finger is gone, stop the loop so
-			-- nothing keeps writing an identical position every frame
+			-- nothing keeps writing an identical position every frame.
+			-- Scale is compared too: comparing only Offset meant a target that
+			-- differed purely in Scale (like the centered 0.5, 0.5) counted as
+			-- "settled" and snapped instead of easing.
 			if not dragging then
 				local dx = math.abs(nextPos.X.Offset - target.X.Offset)
 				local dy = math.abs(nextPos.Y.Offset - target.Y.Offset)
-				if dx < 0.5 and dy < 0.5 then
+				local sx = math.abs(nextPos.X.Scale - target.X.Scale)
+				local sy = math.abs(nextPos.Y.Scale - target.Y.Scale)
+				if dx < 0.5 and dy < 0.5 and sx < 0.001 and sy < 0.001 then
 					frame.Position = target
 					stopLoop()
+					if onSettled then onSettled(target) end
 					return
 				end
 			end
@@ -814,6 +820,28 @@ local function makeDraggable(frame, handle)
 	conns[#conns + 1] = frame.AncestryChanged:Connect(function(_, parent)
 		if not parent then cleanup() end
 	end)
+
+	-- Exposed so the window can move itself authoritatively. setPosition
+	-- updates the smoothing target TOO and kills the loop, so the panel
+	-- lands exactly where it is put instead of sliding in from its old
+	-- position on the next frame.
+	local control = {}
+
+	function control.setPosition(pos)
+		if not pos then return end
+		target = pos
+		dragging = false
+		stopLoop()
+		if frame.Parent then frame.Position = pos end
+	end
+
+	function control.getPosition()
+		return target
+	end
+
+	control.cleanup = cleanup
+
+	return control
 end
 
 --=====================================================
@@ -908,7 +936,11 @@ function Library.new()
 	self:_buildCreditsPage()
 	self:_applyLayout()
 	self:SelectPage(TEXT.Nav[TEXT.ActiveNav] or "Home")
-	makeDraggable(self.Main)
+	-- the settle callback records the new resting spot the moment a drag
+	-- finishes, so hide + show always reopens where the panel was left
+	self.MainDrag = makeDraggable(self.Main, nil, function(pos)
+		self.PanelPos = pos
+	end)
 
 	local camera = workspace.CurrentCamera
 	if camera then
@@ -1099,6 +1131,25 @@ end
 
 -- hide / show the whole panel WITH the pop animation.
 -- pass true as the second argument if you ever want it to snap instantly.
+-- Remembers where the panel actually sits, so hiding and re-opening puts it
+-- back exactly where you dragged it.
+function Library:_rememberPanelPos()
+	if not self.Main then return end
+	if not self.Main.Visible then return end
+	self.PanelPos = self.Main.Position
+end
+
+-- Applied BEFORE the panel is made visible, so it never renders a single
+-- frame at the wrong place. Also re-points the drag smoothing target, or the
+-- loop would animate the panel from the middle over to the corner.
+function Library:_restorePanelPos()
+	if not self.Main then return end
+	local pos = self.PanelPos
+	if not pos then return end
+	self.Main.Position = pos
+	if self.MainDrag then self.MainDrag.setPosition(pos) end
+end
+
 function Library:SetVisible(state, instant)
 	if not self.Main then return end
 	state = state and true or false
@@ -1115,9 +1166,13 @@ function Library:SetVisible(state, instant)
 		return
 	end
 
+	-- capture the resting spot while the panel is still on screen
+	if not state then self:_rememberPanelPos() end
+
 	self.Shown = state
 
 	if (not scaleObj) or instant then
+		if state then self:_restorePanelPos() end
 		self.Main.Visible = state
 		if scaleObj then scaleObj.Scale = base end
 		self.Animating = false
@@ -1149,6 +1204,10 @@ function Library:SetVisible(state, instant)
 		-- The scale is written BEFORE the frame is shown, so the panel is
 		-- never rendered at full size for one frame first (that single frame
 		-- was the "pop" / flash you saw at the start of the open).
+		-- restore the dragged position and the start scale BEFORE showing,
+		-- so the panel never appears in the middle for a frame and then
+		-- travels to the corner
+		self:_restorePanelPos()
 		scaleObj.Scale = base * OPEN_START
 		self.Main.Visible = true
 		tween = TweenService:Create(scaleObj, OPEN_TWEEN, { Scale = base })
@@ -5113,7 +5172,39 @@ function Library:_fitToScreen()
 	end
 
 	self.Main.AnchorPoint = Vector2.new(0.5, 0.5)
-	self.Main.Position = UDim2.fromScale(0.5, 0.5)
+
+	-- Center ONCE, on the very first layout. After that the panel belongs to
+	-- wherever the user dragged it. Re-centering here on every layout pass is
+	-- what made a panel parked in a corner reappear in the middle and then
+	-- slide back across the screen.
+	if not self._centeredOnce then
+		self._centeredOnce = true
+		self.Main.Position = UDim2.fromScale(0.5, 0.5)
+		self.PanelPos = self.Main.Position
+		if self.MainDrag then self.MainDrag.setPosition(self.Main.Position) end
+		return
+	end
+
+	-- Keep the remembered spot, but make sure a resolution or scale change can
+	-- never leave the panel stranded half off screen.
+	local pos = self.PanelPos or self.Main.Position
+	local scale = self.BaseScale or 1
+	local halfW = (designW * scale) / 2
+	local halfH = (designH * scale) / 2
+
+	local x = pos.X.Scale * viewport.X + pos.X.Offset
+	local y = pos.Y.Scale * viewport.Y + pos.Y.Offset
+	x = math.clamp(x, halfW, math.max(halfW, viewport.X - halfW))
+	y = math.clamp(y, halfH, math.max(halfH, viewport.Y - halfH))
+
+	local fixed = UDim2.fromOffset(math.floor(x + 0.5), math.floor(y + 0.5))
+	self.PanelPos = fixed
+
+	-- never yank the panel mid open / close animation
+	if not self.Animating then
+		self.Main.Position = fixed
+		if self.MainDrag then self.MainDrag.setPosition(fixed) end
+	end
 end
 
 --=====================================================
