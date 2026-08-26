@@ -342,12 +342,302 @@ local LAYOUT = {
 	InfoClose      = 34,  -- size of the X close button
 }
 
+--=====================================================
+--  IMAGE SOURCES - ROBLOX IDS **AND** WEBSITE LINKS
+--=====================================================
+-- Everywhere this library takes an image you may now pass ANY of these:
+--
+--   "87628150067132"                      roblox asset id (works as before)
+--   87628150067132                        number id
+--   "rbxassetid://87628150067132"         full content string
+--   "rbxthumb://type=Asset&id=1&w=420&h=420"
+--   "https://www.roblox.com/library/123/X"  roblox link, id is extracted
+--   "https://example.com/logo.png"        <-- WEBSITE LINK (new)
+--   "file:image_cache/abc.png"            already downloaded file
+--
+-- Website links need an executor with writefile + getcustomasset. They are
+-- downloaded once, cached on disk, and every later run loads instantly.
+-- Roblox ids never need any of that and keep working on every executor.
+
+local IMG = {}
+
+IMG.CACHE_DIR   = "nexohub_images"
+IMG.MIN_BYTES   = 64
+IMG.MAX_RETRIES = 2
+IMG.VALID_EXT   = { png = true, jpg = true, jpeg = true, bmp = true, tga = true }
+IMG.memory      = {}   -- input string -> resolved content id
+IMG.pending     = {}   -- token number  -> input string
+IMG.pendingN    = 0
+
+-- executor shims -----------------------------------------------------------
+IMG.getasset =
+	getcustomasset
+	or getsynasset
+	or (syn and syn.getcustomasset)
+	or (fluxus and fluxus.get_custom_asset)
+
+IMG.writefile  = writefile
+IMG.isfile     = isfile
+IMG.isfolder   = isfolder
+IMG.makefolder = makefolder
+IMG.listfiles  = listfiles
+IMG.delfile    = delfile
+
+function IMG.httpGet(url)
+	if syn and syn.request then return syn.request({ Url = url, Method = "GET" }).Body end
+	if request then return request({ Url = url, Method = "GET" }).Body end
+	if http_request then return http_request({ Url = url, Method = "GET" }).Body end
+	if http and http.request then return http.request({ Url = url, Method = "GET" }).Body end
+	return game:HttpGet(url, true)
+end
+
+-- true when this executor can download website images
+IMG.canDownload = (IMG.writefile and IMG.isfile and IMG.getasset) and true or false
+
+local function ensureFolder()
+	if IMG.makefolder and not (IMG.isfolder and IMG.isfolder(IMG.CACHE_DIR)) then
+		pcall(IMG.makefolder, IMG.CACHE_DIR)
+	end
+end
+ensureFolder()
+
+function IMG.hash(s)
+	local h = 5381
+	for i = 1, #s do h = (h * 33 + s:byte(i)) % 4294967296 end
+	return tostring(h)
+end
+
+function IMG.extOf(url, fallback)
+	local e = url:match("%.(%w%w%w%w?)%f[%W]")
+	if e then e = e:lower() end
+	return (e and IMG.VALID_EXT[e]) and e or (fallback or "png")
+end
+
+-- read the real file type from the first bytes
+function IMG.sniff(body)
+	if #body < 12 then return nil end
+	if body:sub(1, 8) == "\137PNG\r\n\26\n" then return "png" end
+	if body:sub(1, 3) == "\255\216\255" then return "jpg" end
+	if body:sub(1, 2) == "BM" then return "bmp" end
+	if body:sub(1, 6) == "GIF89a" or body:sub(1, 6) == "GIF87a" then return "gif" end
+	if body:sub(1, 4) == "RIFF" and body:sub(9, 12) == "WEBP" then return "webp" end
+	return nil
+end
+
+-- classify(input) -> "id" | "http" | "file" | nil, value/reason
+function IMG.classify(input)
+	if input == nil or input == false or input == "" then return nil, "empty" end
+	if type(input) == "number" then
+		return "id", "rbxassetid://" .. tostring(math.floor(input))
+	end
+
+	local s = tostring(input):gsub("%s", "")
+	if s == "" then return nil, "empty" end
+
+	local filePath = s:match("^file:(.+)$")
+	if filePath then return "file", filePath end
+
+	if s:match("^%d+$") then return "id", "rbxassetid://" .. s end
+	if s:lower():match("^rbx") then return "id", s end
+
+	local host = s:match("^https?://([^/]+)")
+	if host and host:lower():find("roblox%.com") then
+		local id =
+			s:match("[/?&][iI][dD]=(%d+)")
+			or s:match("[/?&]assetId=(%d+)")
+			or s:match("[/?&]assetid=(%d+)")
+			or s:match("/library/(%d+)")
+			or s:match("/catalog/(%d+)")
+			or s:match("/asset[s]?/(%d+)")
+			or s:match("(%d%d%d%d%d+)")
+		if id then return "id", "rbxassetid://" .. id end
+		return nil, "roblox link has no asset id"
+	end
+
+	if s:match("^https?://") then return "http", s end
+	if s:match("^[%w%.%-]+%.%a%a+/") then return "http", "https://" .. s end
+
+	return "id", s
+end
+
+function IMG.isUrl(input)
+	local kind = IMG.classify(input)
+	return kind == "http" or kind == "file"
+end
+
+function IMG.fromFile(path)
+	if not IMG.getasset then return nil, "executor lacks getcustomasset" end
+	if IMG.isfile and not IMG.isfile(path) then return nil, "file not found" end
+	local ok, id = pcall(IMG.getasset, path)
+	if not ok or not id then return nil, "getcustomasset failed" end
+	return id
+end
+
+-- download once, cache on disk, return a usable content id
+function IMG.download(url)
+	if not IMG.canDownload then
+		return nil, "executor cannot download images (needs writefile + getcustomasset)"
+	end
+
+	ensureFolder()
+	local base = IMG.CACHE_DIR .. "/" .. IMG.hash(url)
+	local path = base .. "." .. IMG.extOf(url, "png")
+	if IMG.isfile(path) then return IMG.fromFile(path) end
+
+	local lastErr = "download failed"
+	for attempt = 1, IMG.MAX_RETRIES do
+		local ok, body = pcall(IMG.httpGet, url)
+		if ok and type(body) == "string" and #body >= IMG.MIN_BYTES then
+			local head = body:sub(1, 15):lower()
+			if head:find("<!doctype") or body:sub(1, 5):lower() == "<html" then
+				return nil, "got a web page, not an image (hotlink blocked)"
+			end
+
+			local kind = IMG.sniff(body)
+			if kind == "gif" or kind == "webp" then
+				return nil, "roblox cannot show " .. kind:upper() .. " images"
+			end
+			if kind then path = base .. "." .. kind end
+
+			if not pcall(IMG.writefile, path, body) then return nil, "writefile failed" end
+			return IMG.fromFile(path)
+		else
+			lastErr = ok and "response was not a file" or "http request failed"
+			if attempt < IMG.MAX_RETRIES then task.wait(0.35) end
+		end
+	end
+	return nil, lastErr
+end
+
+-- BLOCKING resolve of any input -> content id. call inside task.spawn.
+function IMG.get(input)
+	local key = tostring(input)
+	if IMG.memory[key] then return IMG.memory[key] end
+
+	local kind, value = IMG.classify(input)
+	if not kind then return nil, value end
+
+	local id, err
+	if kind == "id" then
+		id = value
+	elseif kind == "file" then
+		id, err = IMG.fromFile(value)
+	else
+		id, err = IMG.download(value)
+	end
+
+	if id then
+		IMG.memory[key] = id
+		return id
+	end
+	return nil, err or "unknown error"
+end
+
+-- after a link finishes loading, hide the "no image" placeholders that sit
+-- next to it (the round button letter, the red X on close, ...)
+function IMG.hideFallbacks(inst)
+	pcall(function()
+		for _, name in ipairs({ "Fallback", "X" }) do
+			local a = inst:FindFirstChild(name)
+			if a then a.Visible = false end
+			if inst.Parent then
+				local b = inst.Parent:FindFirstChild(name)
+				if b then b.Visible = false end
+			end
+		end
+	end)
+end
+
+-- IMG.set(instance, "Image", input, onDone)
+-- ids apply instantly, links apply as soon as the download finishes
+function IMG.set(inst, prop, input, onDone)
+	if not inst then return end
+	prop = prop or "Image"
+
+	local kind, value = IMG.classify(input)
+	if not kind then
+		pcall(function() inst[prop] = "" end)
+		if onDone then onDone(false, "empty") end
+		return
+	end
+
+	if kind == "id" then
+		pcall(function() inst[prop] = value end)
+		IMG.hideFallbacks(inst)
+		if onDone then onDone(true, value) end
+		return
+	end
+
+	local cached = IMG.memory[tostring(input)]
+	if cached then
+		pcall(function() inst[prop] = cached end)
+		IMG.hideFallbacks(inst)
+		if onDone then onDone(true, cached) end
+		return
+	end
+
+	pcall(function() inst[prop] = "" end)
+	task.spawn(function()
+		local id, err = IMG.get(input)
+		if id and inst and inst.Parent ~= nil then
+			pcall(function() inst[prop] = id end)
+			IMG.hideFallbacks(inst)
+		end
+		if onDone then onDone(id and true or false, id or err) end
+	end)
+end
+
+-- download a list of links up front so they pop in instantly later
+function IMG.preload(list, onDone)
+	task.spawn(function()
+		local done = 0
+		for _, item in ipairs(list or {}) do
+			if IMG.get(item) then done = done + 1 end
+		end
+		if onDone then onDone(done) end
+	end)
+end
+
+function IMG.clearCache()
+	IMG.memory = {}
+	if not (IMG.listfiles and IMG.delfile) then return 0 end
+	local removed = 0
+	local ok, files = pcall(IMG.listfiles, IMG.CACHE_DIR)
+	if ok and type(files) == "table" then
+		for _, f in ipairs(files) do
+			if pcall(IMG.delfile, f) then removed = removed + 1 end
+		end
+	end
+	return removed
+end
+
+-- img(id) keeps its old job: turn any input into something an ImageLabel
+-- accepts RIGHT NOW. website links cannot be resolved instantly, so they get
+-- a token that new() below turns into a real async load.
+local PENDING_PREFIX = "nexohub-pending://"
+
+function IMG.isPendingToken(v)
+	return type(v) == "string" and v:sub(1, #PENDING_PREFIX) == PENDING_PREFIX
+end
+
+function IMG.readPendingToken(v)
+	local n = tonumber(v:sub(#PENDING_PREFIX + 1))
+	return n and IMG.pending[n] or nil
+end
+
 local function img(id)
 	if id == nil or id == false or id == "" then return "" end
-	if type(id) == "number" then return "rbxassetid://" .. tostring(math.floor(id)) end
-	id = tostring(id)
-	if id:match("^%d+$") then return "rbxassetid://" .. id end
-	return id
+
+	local kind, value = IMG.classify(id)
+	if not kind then return "" end
+	if kind == "id" then return value end
+
+	local cached = IMG.memory[tostring(id)]
+	if cached then return cached end
+
+	IMG.pendingN = IMG.pendingN + 1
+	IMG.pending[IMG.pendingN] = id
+	return PENDING_PREFIX .. tostring(IMG.pendingN)
 end
 
 -- ICON PICKER: every card (tab, section, home card) accepts the icon under
@@ -370,13 +660,32 @@ end
 --=====================================================
 local function new(class, props, children)
 	local inst = Instance.new(class)
+	local deferred = nil
 	for k, v in pairs(props or {}) do
-		if k ~= "Parent" then inst[k] = v end
+		if k ~= "Parent" then
+			-- a website link cannot be applied instantly: leave the property
+			-- blank now and fill it in when the download finishes
+			if IMG.isPendingToken(v) then
+				local input = IMG.readPendingToken(v)
+				inst[k] = ""
+				if input then
+					deferred = deferred or {}
+					deferred[#deferred + 1] = { prop = k, input = input }
+				end
+			else
+				inst[k] = v
+			end
+		end
 	end
 	for _, child in ipairs(children or {}) do
 		child.Parent = inst
 	end
 	if props and props.Parent then inst.Parent = props.Parent end
+	if deferred then
+		for _, job in ipairs(deferred) do
+			IMG.set(inst, job.prop, job.input)
+		end
+	end
 	return inst
 end
 
@@ -1303,7 +1612,11 @@ end
 function Library:SetMiniIcon(id)
 	IMAGES.MiniIcon = id
 	if self.MiniImage then
-		self.MiniImage.Image = img(id)
+		IMG.set(self.MiniImage, "Image", id, function()
+			if self.MiniFallback then
+				self.MiniFallback.Visible = (self.MiniImage.Image == "")
+			end
+		end)
 		if self.MiniFallback then
 			self.MiniFallback.Visible = (self.MiniImage.Image == "")
 		end
@@ -2262,7 +2575,9 @@ function Library:AddHomeTab(info)
 	function tab:SetTitle(v) self.Title.Text = v end
 	function tab:SetDesc(v)  self.Desc.Text = v end
 	function tab:SetImage(v)
-		self.Icon.Image = img(v)
+		IMG.set(self.Icon, "Image", v, function()
+			if self.IconSlot then self.IconSlot.Visible = (self.Icon.Image ~= "") end
+		end)
 		if self.IconSlot then self.IconSlot.Visible = (self.Icon.Image ~= "") end
 		return self
 	end
@@ -2798,7 +3113,9 @@ function Library:_addCard(ctx, info, isSection)
 	--   mySection:SetIcon("rbxassetid://87628150067132")
 	--   mySection:SetIcon("")   -- hides the icon
 	function tab:SetImage(v)
-		self.Icon.Image = img(v)
+		IMG.set(self.Icon, "Image", v, function()
+			if self.IconSlot then self.IconSlot.Visible = (self.Icon.Image ~= "") end
+		end)
 		if self.IconSlot then self.IconSlot.Visible = (self.Icon.Image ~= "") end
 		return self
 	end
@@ -6034,11 +6351,14 @@ end
 
 function Library:SetImage(which, id)
 	if which == "Background" then
-		self.Background.Image = img(id)
+		IMAGES.Background = id
+		IMG.set(self.Background, "Image", id)
 	elseif which == "Logo" then
-		self.Logo.Image = img(id)
+		IMAGES.Logo = id
+		IMG.set(self.Logo, "Image", id)
 	elseif which == "Banner" then
-		self.Banner.Image = img(id)
+		IMAGES.Banner = id
+		IMG.set(self.Banner, "Image", id)
 	end
 end
 
@@ -6080,6 +6400,39 @@ end
 -- short alias: NexoHub.new({ ... })
 function NexoHub.new(opts)
 	return NexoHub:CreateWindow(opts)
+end
+
+--=====================================================
+--  IMAGE HELPERS (roblox ids + website links)
+--=====================================================
+-- the whole loader, if you want to use it yourself
+NexoHub.Images = IMG
+
+-- true when this executor can download website images.
+-- roblox ids always work, links only work when this is true.
+NexoHub.CanUseImageLinks = IMG.canDownload
+
+-- turn any input into a content id without touching the ui.
+-- ids return instantly, links download first, so call it in a task.spawn.
+function NexoHub:ResolveImage(input)
+	return IMG.get(input)
+end
+
+-- point any ImageLabel / ImageButton at an id OR a link
+function NexoHub:ApplyImage(instance, input, prop)
+	IMG.set(instance, prop or "Image", input)
+	return instance
+end
+
+-- download links ahead of time so they appear with no delay
+function NexoHub:PreloadImages(list, onDone)
+	IMG.preload(list, onDone)
+	return self
+end
+
+-- wipe the on disk image cache (forces links to download again)
+function NexoHub:ClearImageCache()
+	return IMG.clearCache()
 end
 
 return NexoHub
