@@ -40,10 +40,10 @@ local HttpService = game:GetService("HttpService")
 --  1) IMAGE IDS - REPLACE THESE WITH YOUR OWN
 --=====================================================
 local IMAGES = {
-	Background  = "https://w.wallhaven.cc/full/m9/wallhaven-m9klr9.jpg", -- fills the entire panel behind everything
+	Background  = "2151741365", -- fills the entire panel behind everything
 	Logo        = "116677845668287", -- "NEXO" logo, top-left
 	Banner      = "132582095265277", -- big PREMIUM+ / V4.0 artwork on the Home page
-	Discord     = "https://icon2.cleanpng.com/20240209/sxa/transparent-discord-icon-black-and-white-face-with-mismatched-1710882518503.webp",     -- social button 1 (Discord)
+	Discord     = "16171891828",     -- social button 1 (Discord)
 	YouTube     = "16171897995",      -- social button 2 (YouTube)
 	Card1Icon   = "87628150067132", -- Home card 1
 	Card2Icon   = "87628150067132", -- Home card 2
@@ -51,7 +51,7 @@ local IMAGES = {
 	TabIcon     = "87628150067132", -- default icon for a tab with no image set
 	SearchIcon  = "118685771787843", -- the magnifier icon inside the search bar
 	BackIcon    = "72257591594286",  -- the GO BACK button on the right of the search bar
-	MiniIcon    = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcREM5xgvAFSChM_PafOuqxM8_Hx_AZ6qgAiHxyEvilG4K05Lbhp9oRVMSI&s=10", -- the round HIDE / OPEN icon floating on the left of the screen
+	MiniIcon    = "134473690393403", -- the round HIDE / OPEN icon floating on the left of the screen
 	CloseIcon   = "",               -- X button of the info popup. leave empty to use a text X
 	NotifyIcon  = "",               -- leave empty -> every notification uses the LOGO above
 }
@@ -270,8 +270,13 @@ local LAYOUT = {
 
 	-- SOCIAL ICON SIZE: this is the ONE number to change.
 	-- 34 = tiny, 42 = small, 56 = medium, 68 = big, 80 = very big
+	-- SOCIAL BUTTONS (YouTube / Discord)
+	--   SocialBox   = HEIGHT of the button   (bigger = taller)
+	--   SocialWidth = WIDTH of the button    (smaller = slimmer)
+	-- 62 x 62 was the old square look. 34 x 62 is slim and tall.
 	SocialBox      = 62,
-	SocialGap      = 28,  -- space between the two icons
+	SocialWidth    = 34,
+	SocialGap      = 12,  -- space between the two icons
 	SocialOffsetY  = 56,  -- push the 3 social icons down
 
 	CardsHeight    = 134,
@@ -374,8 +379,8 @@ IMG.getasset =
 	getcustomasset
 	or getsynasset
 	or (syn and syn.getcustomasset)
-	or (syn and syn.get_custom_asset)
 	or (fluxus and fluxus.get_custom_asset)
+	or (syn and syn.get_custom_asset)
 	or (fluxus and fluxus.getcustomasset)
 	or getcustomassetfile
 	or (getgenv and getgenv().getcustomasset)
@@ -388,10 +393,12 @@ IMG.listfiles  = listfiles
 IMG.delfile    = delfile
 
 function IMG.httpGet(url)
-	-- try every request function this executor might have, then fall back to
-	-- the plain HttpGet calls. a bad/missing one never errors any more.
+	-- every download function this executor might have, tried one by one.
+	-- some of them throw instead of returning, so each one is wrapped.
 	local reqs = {}
-	local function add(f) if type(f) == "function" then reqs[#reqs + 1] = f end end
+	local function add(f)
+		if type(f) == "function" then reqs[#reqs + 1] = f end
+	end
 	add(syn and syn.request)
 	add(request)
 	add(http_request)
@@ -399,19 +406,19 @@ function IMG.httpGet(url)
 	add(fluxus and fluxus.request)
 	add(getgenv and getgenv().request)
 
-	for _, req in ipairs(reqs) do
-		local ok, res = pcall(req, { Url = url, Method = "GET" })
+	for _, fn in ipairs(reqs) do
+		local ok, res = pcall(fn, { Url = url, Method = "GET" })
 		if ok and type(res) == "table" then
 			local body = res.Body or res.body
 			if type(body) == "string" and #body > 0 then return body end
 		end
 	end
 
-	local ok2, body2 = pcall(function() return game:HttpGet(url, true) end)
-	if ok2 and type(body2) == "string" and #body2 > 0 then return body2 end
+	local ok, body = pcall(function() return game:HttpGet(url, true) end)
+	if ok and type(body) == "string" and #body > 0 then return body end
 
-	local ok3, body3 = pcall(function() return game:HttpGetAsync(url) end)
-	if ok3 and type(body3) == "string" and #body3 > 0 then return body3 end
+	ok, body = pcall(function() return game:HttpGetAsync(url) end)
+	if ok and type(body) == "string" and #body > 0 then return body end
 
 	return nil
 end
@@ -2282,7 +2289,7 @@ function Library:_buildHomePage()
 			LayoutOrder = i,
 			Text = "",
 			AutoButtonColor = false,
-			Size = UDim2.fromOffset(LAYOUT.SocialBox, LAYOUT.SocialBox),
+			Size = UDim2.fromOffset(LAYOUT.SocialWidth or LAYOUT.SocialBox, LAYOUT.SocialBox),
 			BackgroundColor3 = THEME.SocialBox,
 			BackgroundTransparency = SOCIAL_PLAIN and 1 or 0,
 			BorderSizePixel = 0,
@@ -2309,7 +2316,10 @@ function Library:_buildHomePage()
 				ScaleType = (SOCIAL_ICON_MODE == "fit" and Enum.ScaleType.Fit)
 					or (SOCIAL_ICON_MODE == "crop" and Enum.ScaleType.Crop)
 					or Enum.ScaleType.Stretch,
-			}, { corner(12), new("UIAspectRatioConstraint", { AspectRatio = 1 }) }),
+			}, { corner(12), new("UIAspectRatioConstraint", {
+				-- the icon follows the slim shape of the button
+				AspectRatio = (LAYOUT.SocialWidth or LAYOUT.SocialBox) / LAYOUT.SocialBox,
+			}) }),
 		})
 
 		-- if this social is drawn by code, blank the image and build the shapes
@@ -2590,15 +2600,15 @@ function Library:AddHomeTab(info)
 
 	slot.Visible = (slot.Icon.Image ~= "")
 
-	-- WEBSITE LINK: the image is still downloading at this point, so the label
-	-- is blank and the line above would hide the icon for ever. keep the slot
-	-- visible and let the download decide.
+	-- IMAGE LINK SUPPORT: a website link has to be downloaded first, so the
+	-- icon is still empty on this frame. Keep the slot visible and let the
+	-- download decide, instead of hiding it forever.
 	do
-		local cardIconInput = pickIcon(info, IMAGES["Card" .. math.min(index, 3) .. "Icon"] or IMAGES.Card1Icon)
-		if not slot.Visible and IMG.isUrl(cardIconInput) then
+		local want = pickIcon(info, IMAGES["Card" .. math.min(index, 3) .. "Icon"] or IMAGES.Card1Icon)
+		if type(want) == "string" and IMG.isUrl(want) then
 			slot.Visible = true
-			IMG.set(slot.Icon, "Image", cardIconInput, function(ok)
-				if slot and slot.Parent then slot.Visible = (ok and true or false) end
+			IMG.set(slot.Icon, "Image", want, function(ok)
+				slot.Visible = (ok and true or false)
 			end)
 		end
 	end
@@ -3133,14 +3143,14 @@ function Library:_addCard(ctx, info, isSection)
 	-- image = "" or image = false hides the icon completely
 	slot.Visible = (slot.Icon.Image ~= "")
 
-	-- WEBSITE LINK: blank for a moment while it downloads, so do not hide the
-	-- slot yet - show it and let the download decide.
+	-- IMAGE LINK SUPPORT: same as the home cards - a link is downloaded in the
+	-- background, so the visibility is decided when the download finishes.
 	do
-		local tabIconInput = pickIcon(info, IMAGES.TabIcon)
-		if not slot.Visible and IMG.isUrl(tabIconInput) then
+		local want = pickIcon(info, IMAGES.TabIcon)
+		if type(want) == "string" and IMG.isUrl(want) then
 			slot.Visible = true
-			IMG.set(slot.Icon, "Image", tabIconInput, function(ok)
-				if slot and slot.Parent then slot.Visible = (ok and true or false) end
+			IMG.set(slot.Icon, "Image", want, function(ok)
+				slot.Visible = (ok and true or false)
 			end)
 		end
 	end
@@ -5658,7 +5668,12 @@ function Library:_applyLayout()
 
 	self.Socials.Size = UDim2.new(1, 0, 0, LAYOUT.SocialBox + LAYOUT.SocialOffsetY)
 	for _, box in ipairs(self.SocialBoxes) do
-		box.Size = UDim2.fromOffset(LAYOUT.SocialBox, LAYOUT.SocialBox)
+		box.Size = UDim2.fromOffset(LAYOUT.SocialWidth or LAYOUT.SocialBox, LAYOUT.SocialBox)
+		local iconSlot = box:FindFirstChild("Icon")
+		local ratio = iconSlot and iconSlot:FindFirstChildOfClass("UIAspectRatioConstraint")
+		if ratio then
+			ratio.AspectRatio = (LAYOUT.SocialWidth or LAYOUT.SocialBox) / LAYOUT.SocialBox
+		end
 	end
 
 	self.CardRow.Size = UDim2.new(1, -6, 0, LAYOUT.CardsHeight)
@@ -6417,6 +6432,623 @@ end
 
 
 --=====================================================
+--  UI COLOUR ENGINE  +  THE BUILT IN "UI" TAB
+--=====================================================
+-- The whole hub is painted from the THEME table at the top of this file.
+-- This engine repaints it LIVE - either the whole UI at once, or only one
+-- part of it (buttons / outlines / sliders / text / ...). Nothing is
+-- rebuilt, so it never breaks a tab, a section or a control.
+--
+--   ui:SetPartColor("Sliders", Color3.fromRGB(0, 170, 255))
+--   ui:SetPartColor("All (whole UI)", Color3.fromRGB(0, 255, 120))
+--   ui:RefreshColors()          -- repaint everything that was changed
+--   ui:ResetColors()            -- back to the original red
+--   ui:GetColorParts()          -- list of every part name
+
+local DEFAULT_UI_TAB = true   -- false = do not add the built in "UI" tab
+
+local UICOLOR = {}
+
+-- the colours the library started with, so RESET always works
+UICOLOR.Base = {}
+for k, v in pairs(THEME) do UICOLOR.Base[k] = v end
+
+UICOLOR.Seen    = {}   -- theme key  -> every colour that key has ever worn
+UICOLOR.Applied = {}   -- part name  -> the colour the user picked
+UICOLOR.Order   = {}   -- the order the user applied them in
+
+-- WHAT CAN BE PAINTED
+-- keys    = which THEME entries this part uses
+-- match   = only instances sitting under a name containing one of these words
+-- classes = only these instance types
+-- props   = only these properties
+UICOLOR.Targets = {
+	{ name = "All (whole UI)",
+	  keys = { "Accent", "AccentDark", "Stroke", "ControlAccent", "ControlText", "LaserSoft", "LaserEdge", "LaserShine" } },
+
+	{ name = "Accent only",
+	  keys = { "Accent", "AccentDark" } },
+
+	{ name = "Outlines",
+	  keys = { "Stroke", "ControlAccent", "LaserSoft", "LaserEdge", "LaserShine" },
+	  classes = { "UIStroke", "UIGradient" } },
+
+	{ name = "Buttons",
+	  keys = { "ControlAccent", "ControlText", "LaserSoft", "LaserEdge" },
+	  match = { "Button" } },
+
+	{ name = "Toggles / Switches",
+	  keys = { "ControlAccent", "ControlText" },
+	  match = { "Toggle", "Switch" } },
+
+	{ name = "Sliders",
+	  keys = { "ControlAccent", "ControlText" },
+	  match = { "Slider" } },
+
+	{ name = "Dropdowns",
+	  keys = { "ControlAccent", "ControlText" },
+	  match = { "Dropdown", "Combo" } },
+
+	{ name = "Text boxes / Keybinds",
+	  keys = { "ControlAccent", "ControlText" },
+	  match = { "Input", "Textbox", "Keybind" } },
+
+	{ name = "Colour pickers",
+	  keys = { "ControlAccent", "ControlText" },
+	  match = { "ColorPicker" } },
+
+	{ name = "Tab & section cards",
+	  keys = { "Accent", "ControlAccent", "Stroke", "LaserSoft", "LaserEdge" },
+	  match = { "Card", "IconSlot", "Pill" } },
+
+	{ name = "Nav bar",
+	  keys = { "Accent", "NavIdle" },
+	  match = { "Nav" } },
+
+	{ name = "Search bar",
+	  keys = { "ControlAccent", "Stroke", "SearchBar" },
+	  match = { "Search" } },
+
+	{ name = "Text colour",
+	  keys = { "Text", "SubText", "ControlText" },
+	  props = { "TextColor3" } },
+
+	{ name = "Panel background",
+	  keys = { "Panel", "Card", "TabCard", "SocialBox", "TunerBg", "TunerField", "SearchBar", "DescPill" },
+	  props = { "BackgroundColor3" } },
+
+	{ name = "Mini icon ring",
+	  keys = { "Accent", "ControlAccent" },
+	  match = { "Mini" } },
+
+	{ name = "Notifications",
+	  keys = { "Accent", "ControlAccent", "ControlText" },
+	  match = { "Notif" } },
+
+	{ name = "Info popup",
+	  keys = { "Accent", "ControlAccent", "ControlText" },
+	  match = { "Info" } },
+
+	{ name = "Credits page",
+	  keys = { "Accent", "ControlAccent" },
+	  match = { "Credits", "Avatar" } },
+}
+
+function UICOLOR.names()
+	local out = {}
+	for i, t in ipairs(UICOLOR.Targets) do out[i] = t.name end
+	return out
+end
+
+function UICOLOR.find(name)
+	for _, t in ipairs(UICOLOR.Targets) do
+		if t.name == name then return t end
+	end
+	return UICOLOR.Targets[1]
+end
+
+function UICOLOR.near(a, b)
+	if typeof(a) ~= "Color3" or typeof(b) ~= "Color3" then return false end
+	return math.abs(a.R - b.R) < 0.006
+		and math.abs(a.G - b.G) < 0.006
+		and math.abs(a.B - b.B) < 0.006
+end
+
+function UICOLOR.remember(key, color)
+	if typeof(color) ~= "Color3" then return end
+	UICOLOR.Seen[key] = UICOLOR.Seen[key] or {}
+	for _, c in ipairs(UICOLOR.Seen[key]) do
+		if UICOLOR.near(c, color) then return end
+	end
+	table.insert(UICOLOR.Seen[key], color)
+end
+
+-- every colour these theme keys could be wearing in the ui right now
+function UICOLOR.candidates(keys)
+	local list = {}
+	local function add(c)
+		if typeof(c) ~= "Color3" then return end
+		for _, x in ipairs(list) do
+			if UICOLOR.near(x, c) then return end
+		end
+		list[#list + 1] = c
+	end
+	for _, key in ipairs(keys or {}) do
+		add(THEME[key])
+		add(UICOLOR.Base[key])
+		for _, c in ipairs(UICOLOR.Seen[key] or {}) do add(c) end
+	end
+	return list
+end
+
+-- only the colour properties this instance really has
+function UICOLOR.propsFor(inst)
+	if inst:IsA("UIStroke") or inst:IsA("UIGradient") then
+		return { "Color" }
+	elseif inst:IsA("TextBox") then
+		return { "BackgroundColor3", "TextColor3", "PlaceholderColor3", "TextStrokeColor3" }
+	elseif inst:IsA("TextLabel") or inst:IsA("TextButton") then
+		return { "BackgroundColor3", "TextColor3", "TextStrokeColor3" }
+	elseif inst:IsA("ImageLabel") or inst:IsA("ImageButton") then
+		return { "BackgroundColor3", "ImageColor3" }
+	elseif inst:IsA("ScrollingFrame") then
+		return { "BackgroundColor3", "ScrollBarImageColor3" }
+	elseif inst:IsA("GuiObject") then
+		return { "BackgroundColor3" }
+	end
+	return nil
+end
+
+function UICOLOR.matchesName(inst, words, root)
+	if not words then return true end
+	local node = inst
+	local hops = 0
+	while node and hops < 14 do
+		local n = tostring(node.Name):lower()
+		for _, w in ipairs(words) do
+			if n:find(tostring(w):lower(), 1, true) then return true end
+		end
+		if node == root then break end
+		node = node.Parent
+		hops = hops + 1
+	end
+	return false
+end
+
+function UICOLOR.matchesClass(inst, classes)
+	if not classes then return true end
+	for _, c in ipairs(classes) do
+		if inst:IsA(c) then return true end
+	end
+	return false
+end
+
+-- repaint ONE instance: any colour that matches the old theme colour becomes
+-- the new colour. gradients are rebuilt keypoint by keypoint.
+function UICOLOR.paintOne(inst, props, pool, color)
+	for _, prop in ipairs(props) do
+		local ok, value = pcall(function() return inst[prop] end)
+		if ok then
+			if typeof(value) == "Color3" then
+				for _, c in ipairs(pool) do
+					if UICOLOR.near(value, c) then
+						pcall(function() inst[prop] = color end)
+						break
+					end
+				end
+			elseif typeof(value) == "ColorSequence" then
+				local points = {}
+				local changed = false
+				for _, kp in ipairs(value.Keypoints) do
+					local newC = kp.Value
+					for _, c in ipairs(pool) do
+						if UICOLOR.near(kp.Value, c) then
+							newC = color
+							changed = true
+							break
+						end
+					end
+					points[#points + 1] = ColorSequenceKeypoint.new(kp.Time, newC)
+				end
+				if changed then
+					pcall(function() inst[prop] = ColorSequence.new(points) end)
+				end
+			end
+		end
+	end
+end
+
+-- paint one PART of the ui in one colour
+function UICOLOR.apply(lib, partName, color, remember)
+	if typeof(color) ~= "Color3" then return end
+	local target = UICOLOR.find(partName)
+	local pool = UICOLOR.candidates(target.keys)
+
+	-- a part with no filter at all is a GLOBAL part: the theme itself changes,
+	-- so every control built later is born with the new colour
+	local isGlobal = not (target.match or target.classes or target.props)
+	for _, key in ipairs(target.keys) do
+		UICOLOR.remember(key, THEME[key])
+		UICOLOR.remember(key, color)
+		if isGlobal then THEME[key] = color end
+	end
+
+	local root = lib and lib.Gui
+	if root then
+		for _, inst in ipairs(root:GetDescendants()) do
+			if UICOLOR.matchesClass(inst, target.classes)
+				and UICOLOR.matchesName(inst, target.match, root) then
+				local props = target.props or UICOLOR.propsFor(inst)
+				if props then
+					UICOLOR.paintOne(inst, props, pool, color)
+				end
+			end
+		end
+	end
+
+	-- the registered control outlines / control text keep their own list
+	if isGlobal then
+		pcall(function() refreshControlColors() end)
+	end
+
+	if remember ~= false then
+		if UICOLOR.Applied[target.name] == nil then
+			table.insert(UICOLOR.Order, target.name)
+		end
+		UICOLOR.Applied[target.name] = color
+	end
+end
+
+-- REFRESH: paint every choice again, so tabs / controls that were built
+-- after the colour was picked get it as well
+function UICOLOR.reapply(lib)
+	for _, name in ipairs(UICOLOR.Order) do
+		local c = UICOLOR.Applied[name]
+		if c then UICOLOR.apply(lib, name, c, false) end
+	end
+end
+
+-- back to the colours the library shipped with (the red theme)
+function UICOLOR.reset(lib)
+	local jobs = {}
+	for key, base in pairs(UICOLOR.Base) do
+		jobs[#jobs + 1] = { pool = UICOLOR.candidates({ key }), base = base }
+	end
+	for key, base in pairs(UICOLOR.Base) do
+		THEME[key] = base
+	end
+
+	local root = lib and lib.Gui
+	if root then
+		for _, inst in ipairs(root:GetDescendants()) do
+			local props = UICOLOR.propsFor(inst)
+			if props then
+				for _, job in ipairs(jobs) do
+					UICOLOR.paintOne(inst, props, job.pool, job.base)
+				end
+			end
+		end
+	end
+
+	UICOLOR.Applied = {}
+	UICOLOR.Order = {}
+	pcall(function() refreshControlColors() end)
+end
+
+-- anything added later is repainted automatically (debounced)
+function UICOLOR.watch(lib)
+	if not lib or not lib.Gui or lib._colorWatch then return end
+	lib._colorWatch = lib.Gui.DescendantAdded:Connect(function()
+		if lib._colorQueued then return end
+		lib._colorQueued = true
+		task.delay(0.3, function()
+			lib._colorQueued = false
+			if lib.Destroyed then return end
+			UICOLOR.reapply(lib)
+		end)
+	end)
+end
+
+--  PUBLIC COLOUR API  --------------------------------------------------
+function Library:SetPartColor(part, color)
+	UICOLOR.apply(self, part or "All (whole UI)", color)
+	UICOLOR.watch(self)
+	return self
+end
+
+function Library:RefreshColors()
+	UICOLOR.reapply(self)
+	return self
+end
+
+function Library:ResetColors()
+	UICOLOR.reset(self)
+	return self
+end
+
+function Library:GetColorParts()
+	return UICOLOR.names()
+end
+
+--=====================================================
+--  THE BUILT IN "UI" TAB  ->  section "UI Color"
+--  a normal tab, built with the very same AddTab / AddSection /
+--  control calls a hub script would use.
+--=====================================================
+local COLOR_PRESETS = {
+	{ name = "Red (default)", color = Color3.fromRGB(255, 0, 0) },
+	{ name = "Blue",          color = Color3.fromRGB(0, 132, 255) },
+	{ name = "Cyan",          color = Color3.fromRGB(0, 220, 230) },
+	{ name = "Green",         color = Color3.fromRGB(0, 220, 90) },
+	{ name = "Lime",          color = Color3.fromRGB(150, 255, 0) },
+	{ name = "Yellow",        color = Color3.fromRGB(255, 220, 0) },
+	{ name = "Orange",        color = Color3.fromRGB(255, 130, 0) },
+	{ name = "Pink",          color = Color3.fromRGB(255, 70, 190) },
+	{ name = "Purple",        color = Color3.fromRGB(160, 60, 255) },
+	{ name = "White",         color = Color3.fromRGB(255, 255, 255) },
+	{ name = "Grey",          color = Color3.fromRGB(140, 140, 150) },
+}
+
+local function presetNames()
+	local out = {}
+	for i, p in ipairs(COLOR_PRESETS) do out[i] = p.name end
+	return out
+end
+
+local function presetColor(name)
+	for _, p in ipairs(COLOR_PRESETS) do
+		if p.name == name then return p.color end
+	end
+	return nil
+end
+
+local function hexOf(c)
+	return string.format("#%02X%02X%02X",
+		math.floor(c.R * 255 + 0.5),
+		math.floor(c.G * 255 + 0.5),
+		math.floor(c.B * 255 + 0.5))
+end
+
+-- "#ff0000" / "ff0000" / "f00" / "255,0,0"  ->  Color3
+local function parseColorText(txt)
+	if type(txt) ~= "string" then return nil end
+	local s = txt:gsub("%s", "")
+	if s == "" then return nil end
+
+	local r, g, b = s:match("^(%d+),(%d+),(%d+)$")
+	if r then
+		return Color3.fromRGB(
+			math.clamp(tonumber(r) or 0, 0, 255),
+			math.clamp(tonumber(g) or 0, 0, 255),
+			math.clamp(tonumber(b) or 0, 0, 255))
+	end
+
+	s = s:gsub("^#", ""):gsub("^0x", "")
+	if #s == 3 then
+		s = s:sub(1, 1):rep(2) .. s:sub(2, 2):rep(2) .. s:sub(3, 3):rep(2)
+	end
+	if #s ~= 6 or s:match("%X") then return nil end
+	return Color3.fromRGB(
+		tonumber(s:sub(1, 2), 16),
+		tonumber(s:sub(3, 4), 16),
+		tonumber(s:sub(5, 6), 16))
+end
+
+function Library:_buildUiTab()
+	if self.UiTab then return self.UiTab end
+	local lib = self
+
+	local tab = self:AddTab({
+		title = "UI",
+		desc  = "Recolour the hub - pick a part, pick any colour",
+		image = IMAGES.TabIcon,
+	})
+	self.UiTab = tab
+
+	local sec = tab:AddSection({
+		title = "UI Color",
+		desc  = "Picker, gradient, hex, RGB / HSV sliders and a part selector",
+	})
+	self.UiColorSection = sec
+
+	local start = THEME.Accent
+	local sh, ss, sv = Color3.toHSV(start)
+
+	local state = {
+		part  = UICOLOR.Targets[1].name,
+		color = start,
+		r = math.floor(start.R * 255 + 0.5),
+		g = math.floor(start.G * 255 + 0.5),
+		b = math.floor(start.B * 255 + 0.5),
+		h = math.floor(sh * 360 + 0.5),
+		s = math.floor(ss * 100 + 0.5),
+		v = math.floor(sv * 100 + 0.5),
+		lock = false,
+	}
+
+	local handles = {}
+
+	local function setHandle(name, value)
+		local h = handles[name]
+		if h and h.Set then pcall(function() h:Set(value) end) end
+	end
+
+	local function statusText()
+		return "NOW: " .. hexOf(state.color) .. "   PART: " .. state.part
+	end
+
+	-- push the chosen colour into every other control so they all agree
+	local function sync(from)
+		state.lock = true
+		local c = state.color
+		state.r = math.floor(c.R * 255 + 0.5)
+		state.g = math.floor(c.G * 255 + 0.5)
+		state.b = math.floor(c.B * 255 + 0.5)
+		local h, s, v = Color3.toHSV(c)
+		state.h = math.floor(h * 360 + 0.5)
+		state.s = math.floor(s * 100 + 0.5)
+		state.v = math.floor(v * 100 + 0.5)
+
+		if from ~= "rgb" then
+			setHandle("r", state.r)
+			setHandle("g", state.g)
+			setHandle("b", state.b)
+		end
+		if from ~= "hsv" then
+			setHandle("h", state.h)
+			setHandle("s", state.s)
+			setHandle("v", state.v)
+		end
+		if from ~= "hex" then setHandle("hex", hexOf(c)) end
+		if from ~= "picker" then setHandle("picker", c) end
+
+		local st = handles.status
+		if st and st.SetText then pcall(function() st:SetText(statusText()) end) end
+		state.lock = false
+	end
+
+	local function applyNow()
+		UICOLOR.apply(lib, state.part, state.color)
+		UICOLOR.watch(lib)
+		local st = handles.status
+		if st and st.SetText then pcall(function() st:SetText(statusText()) end) end
+	end
+
+	local function setColor(c, from, apply)
+		if typeof(c) ~= "Color3" then return end
+		state.color = c
+		sync(from)
+		if apply ~= false then applyNow() end
+	end
+
+	--------------------------------------------------------------
+	-- 1) what am I painting, and what does it look like right now
+	--------------------------------------------------------------
+	handles.status = sec:AddLabel({ text = statusText() })
+
+	sec:AddDropdown({
+		text = "WHICH PART TO PAINT",
+		options = UICOLOR.names(),
+		default = state.part,
+		callback = function(v)
+			state.part = tostring(v)
+			sync("part")
+		end,
+	})
+
+	sec:AddDropdown({
+		text = "QUICK COLOUR",
+		options = presetNames(),
+		default = COLOR_PRESETS[1].name,
+		callback = function(v)
+			local c = presetColor(tostring(v))
+			if c then setColor(c, "preset") end
+		end,
+	})
+
+	--------------------------------------------------------------
+	-- 2) the picker itself (gradient) + hex box
+	--------------------------------------------------------------
+	handles.picker = sec:AddColorPicker({
+		text = "COLOUR PICKER",
+		default = state.color,
+		callback = function(c)
+			if state.lock then return end
+			setColor(c, "picker")
+		end,
+	})
+
+	handles.hex = sec:AddTextbox({
+		text = "HEX  /  R,G,B",
+		placeholder = "#FF0000  or  255,0,0",
+		default = hexOf(state.color),
+		callback = function(txt)
+			if state.lock then return end
+			local c = parseColorText(txt)
+			if c then
+				setColor(c, "hex")
+			else
+				lib:Notify({ text = "That colour text is not valid. Use #FF0000 or 255,0,0", time = 4 })
+				sync("none")
+			end
+		end,
+	})
+
+	--------------------------------------------------------------
+	-- 3) advanced: RGB sliders and HSV sliders
+	--------------------------------------------------------------
+	local function rgbChanged()
+		if state.lock then return end
+		setColor(Color3.fromRGB(state.r, state.g, state.b), "rgb")
+	end
+
+	local function hsvChanged()
+		if state.lock then return end
+		setColor(Color3.fromHSV(
+			math.clamp(state.h / 360, 0, 1),
+			math.clamp(state.s / 100, 0, 1),
+			math.clamp(state.v / 100, 0, 1)), "hsv")
+	end
+
+	handles.r = sec:AddSlider({ text = "RED", min = 0, max = 255, default = state.r, step = 1,
+		callback = function(v) state.r = math.floor(tonumber(v) or 0) rgbChanged() end })
+	handles.g = sec:AddSlider({ text = "GREEN", min = 0, max = 255, default = state.g, step = 1,
+		callback = function(v) state.g = math.floor(tonumber(v) or 0) rgbChanged() end })
+	handles.b = sec:AddSlider({ text = "BLUE", min = 0, max = 255, default = state.b, step = 1,
+		callback = function(v) state.b = math.floor(tonumber(v) or 0) rgbChanged() end })
+
+	handles.h = sec:AddSlider({ text = "HUE", min = 0, max = 360, default = state.h, step = 1, suffix = "\194\176",
+		callback = function(v) state.h = math.floor(tonumber(v) or 0) hsvChanged() end })
+	handles.s = sec:AddSlider({ text = "SATURATION", min = 0, max = 100, default = state.s, step = 1, suffix = "%",
+		callback = function(v) state.s = math.floor(tonumber(v) or 0) hsvChanged() end })
+	handles.v = sec:AddSlider({ text = "BRIGHTNESS", min = 0, max = 100, default = state.v, step = 1, suffix = "%",
+		callback = function(v) state.v = math.floor(tonumber(v) or 0) hsvChanged() end })
+
+	--------------------------------------------------------------
+	-- 4) apply / refresh / reset
+	--------------------------------------------------------------
+	sec:AddButton({
+		text = "APPLY COLOUR",
+		callback = function() applyNow() end,
+	})
+
+	sec:AddButton({
+		text = "REFRESH COLOURS",
+		callback = function()
+			UICOLOR.reapply(lib)
+			UICOLOR.watch(lib)
+			sync("refresh")
+		end,
+	})
+
+	sec:AddButton({
+		text = "RESET TO DEFAULT RED",
+		callback = function()
+			UICOLOR.reset(lib)
+			state.color = THEME.Accent
+			sync("reset")
+		end,
+	})
+
+	sec:AddInfoButton({
+		text = "HOW TO USE",
+		title = "UI COLOR",
+		info = table.concat({
+			"1) pick WHICH PART TO PAINT. **All (whole UI)** paints everything,",
+		"   or choose only Buttons, Outlines, Sliders, Text, Nav bar ...",
+			"2) pick the colour with the PICKER, a QUICK COLOUR, the HEX box",
+			"   or the RGB / HSV sliders. it is applied straight away.",
+			"3) REFRESH COLOURS repaints tabs and controls that were built",
+			"   after you picked the colour.",
+			"4) RESET TO DEFAULT RED puts the original theme back.",
+		}, "\n"),
+	})
+
+	sync("init")
+	return tab
+end
+
+--=====================================================
 --  PUBLIC ENTRY POINT (this is what loadstring returns)
 --=====================================================
 local NexoHub = {}
@@ -6428,6 +7060,13 @@ NexoHub.Version = "1.0"
 function NexoHub:CreateWindow(opts)
 	opts = opts or {}
 	local ui = Library.new()
+
+	-- DEFAULT "UI" TAB: the built in colour tab. It is a completely normal
+	-- tab (AddTab / AddSection / controls), added before the hub's own tabs.
+	-- Turn it off with DEFAULT_UI_TAB = false, or CreateWindow({ uiTab = false }).
+	if DEFAULT_UI_TAB and opts.uiTab ~= false then
+		pcall(function() ui:_buildUiTab() end)
+	end
 
 	if opts.welcome  then pcall(function() ui:SetText("Welcome", opts.welcome) end) end
 	if opts.subtitle then pcall(function() ui:SetText("Subtitle", opts.subtitle) end) end
