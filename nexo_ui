@@ -51,7 +51,7 @@ local IMAGES = {
 	TabIcon     = "87628150067132", -- default icon for a tab with no image set
 	SearchIcon  = "118685771787843", -- the magnifier icon inside the search bar
 	BackIcon    = "72257591594286",  -- the GO BACK button on the right of the search bar
-	MiniIcon    = "https://i.pinimg.com/736x/7b/49/c0/7b49c07889032b398b70d6ee0fb1a64b.jpg", -- the round HIDE / OPEN icon floating on the left of the screen
+	MiniIcon    = "134473690393403", -- the round HIDE / OPEN icon floating on the left of the screen
 	CloseIcon   = "",               -- X button of the info popup. leave empty to use a text X
 	NotifyIcon  = "",               -- leave empty -> every notification uses the LOGO above
 }
@@ -374,7 +374,11 @@ IMG.getasset =
 	getcustomasset
 	or getsynasset
 	or (syn and syn.getcustomasset)
+	or (syn and syn.get_custom_asset)
 	or (fluxus and fluxus.get_custom_asset)
+	or (fluxus and fluxus.getcustomasset)
+	or getcustomassetfile
+	or (getgenv and getgenv().getcustomasset)
 
 IMG.writefile  = writefile
 IMG.isfile     = isfile
@@ -384,15 +388,36 @@ IMG.listfiles  = listfiles
 IMG.delfile    = delfile
 
 function IMG.httpGet(url)
-	if syn and syn.request then return syn.request({ Url = url, Method = "GET" }).Body end
-	if request then return request({ Url = url, Method = "GET" }).Body end
-	if http_request then return http_request({ Url = url, Method = "GET" }).Body end
-	if http and http.request then return http.request({ Url = url, Method = "GET" }).Body end
-	return game:HttpGet(url, true)
+	-- try every request function this executor might have, then fall back to
+	-- the plain HttpGet calls. a bad/missing one never errors any more.
+	local reqs = {}
+	local function add(f) if type(f) == "function" then reqs[#reqs + 1] = f end end
+	add(syn and syn.request)
+	add(request)
+	add(http_request)
+	add(http and http.request)
+	add(fluxus and fluxus.request)
+	add(getgenv and getgenv().request)
+
+	for _, req in ipairs(reqs) do
+		local ok, res = pcall(req, { Url = url, Method = "GET" })
+		if ok and type(res) == "table" then
+			local body = res.Body or res.body
+			if type(body) == "string" and #body > 0 then return body end
+		end
+	end
+
+	local ok2, body2 = pcall(function() return game:HttpGet(url, true) end)
+	if ok2 and type(body2) == "string" and #body2 > 0 then return body2 end
+
+	local ok3, body3 = pcall(function() return game:HttpGetAsync(url) end)
+	if ok3 and type(body3) == "string" and #body3 > 0 then return body3 end
+
+	return nil
 end
 
 -- true when this executor can download website images
-IMG.canDownload = (IMG.writefile and IMG.isfile and IMG.getasset) and true or false
+IMG.canDownload = (IMG.writefile and IMG.getasset) and true or false
 
 local function ensureFolder()
 	if IMG.makefolder and not (IMG.isfolder and IMG.isfolder(IMG.CACHE_DIR)) then
@@ -482,7 +507,10 @@ function IMG.download(url)
 	ensureFolder()
 	local base = IMG.CACHE_DIR .. "/" .. IMG.hash(url)
 	local path = base .. "." .. IMG.extOf(url, "png")
-	if IMG.isfile(path) then return IMG.fromFile(path) end
+	if IMG.isfile and IMG.isfile(path) then
+		local cachedId = IMG.fromFile(path)
+		if cachedId then return cachedId end
+	end
 
 	local lastErr = "download failed"
 	for attempt = 1, IMG.MAX_RETRIES do
@@ -2303,7 +2331,7 @@ function Library:_buildHomePage()
 					Position = UDim2.fromScale(0.5, 0.5),
 					Size = UDim2.fromScale(1, 1),
 					BackgroundTransparency = 1,
-					Image = slot.Image,
+					Image = img(data.id),
 					ImageColor3 = Color3.fromRGB(255, 0, 0),
 					ImageTransparency = 1 - strength,
 					ScaleType = slot.ScaleType,
@@ -2561,6 +2589,19 @@ function Library:AddHomeTab(info)
 	table.insert(self.IconSlots, slot)
 
 	slot.Visible = (slot.Icon.Image ~= "")
+
+	-- WEBSITE LINK: the image is still downloading at this point, so the label
+	-- is blank and the line above would hide the icon for ever. keep the slot
+	-- visible and let the download decide.
+	do
+		local cardIconInput = pickIcon(info, IMAGES["Card" .. math.min(index, 3) .. "Icon"] or IMAGES.Card1Icon)
+		if not slot.Visible and IMG.isUrl(cardIconInput) then
+			slot.Visible = true
+			IMG.set(slot.Icon, "Image", cardIconInput, function(ok)
+				if slot and slot.Parent then slot.Visible = (ok and true or false) end
+			end)
+		end
+	end
 
 	local tab = {
 		Frame = card,
@@ -3091,6 +3132,18 @@ function Library:_addCard(ctx, info, isSection)
 
 	-- image = "" or image = false hides the icon completely
 	slot.Visible = (slot.Icon.Image ~= "")
+
+	-- WEBSITE LINK: blank for a moment while it downloads, so do not hide the
+	-- slot yet - show it and let the download decide.
+	do
+		local tabIconInput = pickIcon(info, IMAGES.TabIcon)
+		if not slot.Visible and IMG.isUrl(tabIconInput) then
+			slot.Visible = true
+			IMG.set(slot.Icon, "Image", tabIconInput, function(ok)
+				if slot and slot.Parent then slot.Visible = (ok and true or false) end
+			end)
+		end
+	end
 
 	local tab = {
 		Frame     = card,
