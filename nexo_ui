@@ -51,7 +51,7 @@ local IMAGES = {
 	TabIcon     = "87628150067132", -- default icon for a tab with no image set
 	SearchIcon  = "118685771787843", -- the magnifier icon inside the search bar
 	BackIcon    = "72257591594286",  -- the GO BACK button on the right of the search bar
-	MiniIcon    = "134473690393403", -- the round HIDE / OPEN icon floating on the left of the screen
+	MiniIcon    = "https://i.pinimg.com/736x/7b/49/c0/7b49c07889032b398b70d6ee0fb1a64b.jpg", -- the round HIDE / OPEN icon floating on the left of the screen
 	CloseIcon   = "",               -- X button of the info popup. leave empty to use a text X
 	NotifyIcon  = "",               -- leave empty -> every notification uses the LOGO above
 }
