@@ -7013,20 +7013,29 @@ function Library:_buildUiTab()
 	})
 
 	sec:AddButton({
-		text = "REFRESH COLOURS",
+		text = "REFRESH COLOR",
+		-- REFRESH COLOR: one click puts EVERY colour of the whole ui back to
+		-- the default theme the script ships with (the original red), no
+		-- matter how many parts were repainted.
 		callback = function()
-			UICOLOR.reapply(lib)
-			UICOLOR.watch(lib)
-			sync("refresh")
+			UICOLOR.reset(lib)
+			state.part = UICOLOR.Targets[1].name
+			state.color = THEME.Accent
+			sync("reset")
+			pcall(function()
+				lib:Notify({ text = "All colours refreshed back to default", time = 3 })
+			end)
 		end,
 	})
 
 	sec:AddButton({
-		text = "RESET TO DEFAULT RED",
+		text = "RE-APPLY MY COLOURS",
+		-- paint the colours you picked over anything that was built after
+		-- you picked them (new tabs, new sections, new controls).
 		callback = function()
-			UICOLOR.reset(lib)
-			state.color = THEME.Accent
-			sync("reset")
+			UICOLOR.reapply(lib)
+			UICOLOR.watch(lib)
+			sync("refresh")
 		end,
 	})
 
@@ -7038,9 +7047,10 @@ function Library:_buildUiTab()
 		"   or choose only Buttons, Outlines, Sliders, Text, Nav bar ...",
 			"2) pick the colour with the PICKER, a QUICK COLOUR, the HEX box",
 			"   or the RGB / HSV sliders. it is applied straight away.",
-			"3) REFRESH COLOURS repaints tabs and controls that were built",
-			"   after you picked the colour.",
-			"4) RESET TO DEFAULT RED puts the original theme back.",
+			"3) REFRESH COLOR puts EVERY colour back to the script default",
+			"   theme (the original red) in one click.",
+			"4) RE-APPLY MY COLOURS paints your own colours over tabs and",
+			"   controls that were built after you picked them.",
 		}, "\n"),
 	})
 
