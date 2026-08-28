@@ -280,7 +280,10 @@ local LAYOUT = {
 	--   NavOffsetX    = pull Home / Pages / Credits to the LEFT,
 	--                  away from the right edge. bigger = further left.
 	HeaderOffsetY  = 14,
-	NavOffsetX     = 22,
+	NavOffsetX     = 44,
+	--   HeaderOffsetX = push the logo and the >> arrows to the RIGHT.
+	--                  bigger = further right. 0 = hard against the edge.
+	HeaderOffsetX  = 20,
 
 	HeroHeight     = 330,
 	HeroLeftWidth  = 0.40,
@@ -2671,7 +2674,9 @@ function Library:_buildHeader()
 
 	self.LeftGroup = new("Frame", {
 		Name = "LeftGroup",
-		Size = UDim2.new(0.60, 0, 1, 0),
+		-- holds the logo AND the >> arrows, so this moves both together
+		Position = UDim2.fromOffset(LAYOUT.HeaderOffsetX, 0),
+		Size = UDim2.new(0.60, -LAYOUT.HeaderOffsetX, 1, 0),
 		BackgroundTransparency = 1,
 		ClipsDescendants = true,
 		Parent = self.Header,
@@ -2738,7 +2743,7 @@ function Library:_buildHeader()
 			AutoButtonColor = false,
 			Font = Enum.Font.GothamMedium,
 			Text = label,
-			TextSize = 18, -- Home / Pages / Credits font size
+			TextSize = 20, -- Home / Pages / Credits font size
 			TextColor3 = THEME.NavIdle,
 			Parent = nav,
 		})
