@@ -367,6 +367,14 @@ local LAYOUT = {
 -- scale positions. The pixel layout pass below must not fight it.
 local HOME_CLONE = true
 
+-- UI_CLONE = the WINDOW itself is the exact HOHO HUB gen4 shell.
+-- Same scale size, same width driven 1.50464 aspect, same rounded
+-- corner, and NO outline. Set it to false to get the old pixel panel.
+local UI_CLONE     = true
+local CLONE_SIZE   = UDim2.new(0.4678, 15, 0.6485, 15)
+local CLONE_ASPECT = 1.50464
+local CLONE_CORNER = UDim.new(0.075, 0)
+
 local function socialW()
 	return math.max(1, math.floor((LAYOUT.SocialWidth or LAYOUT.SocialBox) * SOCIAL_ICON_SCALE_X))
 end
@@ -1791,17 +1799,26 @@ function Library.new()
 		Visible = false,
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(LAYOUT.PanelWidth, 575),
+		Size = UI_CLONE and CLONE_SIZE or UDim2.fromOffset(LAYOUT.PanelWidth, 575),
 		BackgroundColor3 = THEME.Panel,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		Active = true,
 		Parent = self.Gui,
 	}, {
-		corner(26),
-		stroke(THEME.Accent, 2.5, 0.1),
+		-- clone shell: 0.075 scale corner and NO UIStroke, so the panel has
+		-- no outline around it at all.
+		new("UICorner", { CornerRadius = UI_CLONE and CLONE_CORNER or UDim.new(0, 26) }),
 		new("UIScale", { Name = "Scale" }),
 	})
+
+	if UI_CLONE then
+		new("UIAspectRatioConstraint", {
+			AspectRatio = CLONE_ASPECT,
+			DominantAxis = Enum.DominantAxis.Width,
+			Parent = self.Main,
+		})
+	end
 
 	self.Background = new("ImageLabel", {
 		Name = "Background",
@@ -1811,7 +1828,7 @@ function Library.new()
 		ImageTransparency = BACKGROUND_TRANSPARENCY,
 		ScaleType = Enum.ScaleType.Crop,
 		Parent = self.Main,
-	}, { corner(26) })
+	}, { new("UICorner", { CornerRadius = UI_CLONE and CLONE_CORNER or UDim.new(0, 26) }) })
 
 	self.Body = new("Frame", {
 		Name = "Body",
@@ -6330,7 +6347,13 @@ function Library:_fitToScreen()
 
 	-- BaseScale is the real resting size. the open / hide animation borrows
 	-- this same UIScale, so we never overwrite it mid animation.
-	self.BaseScale = math.clamp(fit, MIN_SCALE, MAX_SCALE) * UI_SIZE
+	-- the clone shell already sizes itself from the viewport, so its
+	-- UIScale must rest at 1 or the panel would get shrunk twice.
+	if UI_CLONE then
+		self.BaseScale = UI_SIZE
+	else
+		self.BaseScale = math.clamp(fit, MIN_SCALE, MAX_SCALE) * UI_SIZE
+	end
 	-- Writing the scale during the build, or on top of a running tween, is
 	-- what made the panel jump. Only a settled, visible panel gets it.
 	if not self.Animating and self._introDone ~= false then
@@ -6390,7 +6413,11 @@ function Library:_applyLayout()
 		+ (LAYOUT.PanelExtraHeight or 0) -- makes the panel taller, so the control box has room to grow down
 
 	self.PanelHeight = panelH
-	self.Main.Size = UDim2.fromOffset(LAYOUT.PanelWidth, panelH)
+	if UI_CLONE then
+		self.Main.Size = CLONE_SIZE
+	else
+		self.Main.Size = UDim2.fromOffset(LAYOUT.PanelWidth, panelH)
+	end
 	self:_fitToScreen()
 
 	self.Header.Size = UDim2.new(1, 0, 0, headerH)
