@@ -322,12 +322,12 @@ local LAYOUT = {
 
 	-- Pages page (the tab list)
 	TabColumns     = 2,   -- tabs per row  ->  Tab | Tab
-	TabHeight      = 108, -- height of one tab card
+	TabHeight      = 124, -- height of one tab card
 	TabGap         = 16,  -- space between tab cards
 	TabPad         = 16,  -- inner padding of a tab card
-	TabIcon        = 80,  -- tab image size
-	TabTitle       = 33,  -- height of the big tab title
-	TabDescHeight  = 36,  -- height of the description background pill
+	TabIcon        = 92,  -- tab image size
+	TabTitle       = 37,  -- height of the big tab title
+	TabDescHeight  = 41,  -- height of the description background pill
 	TabDivider     = 0,   -- line between the columns. 0 = no line, 2 = thin line
 	TabScrollPad   = 2,   -- space kept on the right for the scrollbar
 	                      -- (the bar is hidden now, so this can stay tiny)
@@ -342,7 +342,7 @@ local LAYOUT = {
 	--   TabBoxStroke     = thickness of the red outline around the box
 	--   TabBoxStrokeFade = 0 = bright solid line, 1 = invisible line
 	TabBoxStroke   = 2,
-	TabBoxStrokeFade = 0.45,
+	TabBoxStrokeFade = 0.70,
 	--   TabBoxInset       = margin between the box and the panel edge.
 	--                      The box used to fill the area EXACTLY, so its
 	--                      round corners and outline were clipped off and
@@ -353,8 +353,11 @@ local LAYOUT = {
 	--   TabWidthScale = how WIDE one tab card is inside its column slot.
 	--                  1 = fills the slot, 0.8 = four fifths as wide.
 	--                  The card stays centred whatever you set.
-	TabWidthScale  = 0.84,
+	TabWidthScale  = 0.94,
 	TabBoxHeightScale = 0.92,
+	--   TabBoxWidthScale = how WIDE the box is. 1 = full width,
+	--                     0.9 = nine tenths. The box stays centred.
+	TabBoxWidthScale  = 0.90,
 
 	SearchHeight   = 52,  -- height of the search bar
 	SearchIcon     = 28,  -- size of the search icon
@@ -3322,10 +3325,12 @@ function Library:_makeListBox(parent, name)
 	-- HeightScale then makes it shorter than the space it sits in.
 	local inset = LAYOUT.TabBoxInset or 10
 	local hs    = LAYOUT.TabBoxHeightScale or 1
+	local ws    = LAYOUT.TabBoxWidthScale or 1
 	return new("Frame", {
 		Name = name or "ListBox",
-		Position = UDim2.fromOffset(inset, inset),
-		Size = UDim2.new(1, -(inset * 2), hs, -(inset * 2)),
+		-- the (1 - ws) / 2 on the X scale keeps the narrower box centred
+		Position = UDim2.new((1 - ws) / 2, inset, 0, inset),
+		Size = UDim2.new(ws, -(inset * 2), hs, -(inset * 2)),
 		-- NOT THEME.Card: that is pure black, the same colour as the panel,
 		-- which is why the box could not be seen at all.
 		BackgroundColor3 = THEME.TabBox,
