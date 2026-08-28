@@ -335,10 +335,9 @@ local LAYOUT = {
 	-- 0.90 = current, 0.85 = clearly slim.
 	-- The SEARCH BAR uses the same number for its left / right edges.
 	TabWidthScale  = 0.90,
-	-- HORIZONTAL WIDTH OF THE TABS *INSIDE* THE BOX ONLY.
-	-- 1 = the tabs fill the whole box, 0.9 = slimmer inside it.
-	-- This never touches the box itself or the search bar, those two keep
-	-- using TabWidthScale above.
+	-- WIDTH OF THE TABS *INSIDE* THE BOX ONLY. The box itself never moves,
+	-- it keeps using TabWidthScale above.
+	-- 1 = the tabs fill the whole box, 0.95 = slightly slimmer inside it.
 	TabRowWidthScale = 1,
 	TabPad         = 16,  -- inner padding of a tab card
 	TabIcon        = 108,  -- tab image size
@@ -347,6 +346,7 @@ local LAYOUT = {
 	TabDivider     = 0,   -- line between the columns. 0 = no line, 2 = thin line
 	TabScrollPad   = 10,   -- space kept on the right for the scrollbar
 	                      -- (the bar is hidden now, so this can stay tiny)
+	PagesBottomSpace = 26, -- EMPTY SPACE kept UNDER the box, like the reference
 
 
 	SearchHeight   = 46,  -- height of the search bar (was 52, now a bit smaller)
@@ -1520,8 +1520,8 @@ end
 -- based UIPadding, so both tabs get slimmer together while the gap
 -- between them stays exactly TabGap. Defined here because it needs `new`.
 local function rowSidePadding()
-	-- uses its OWN knob, so making the tabs wider inside the box leaves the
-	-- box and the search bar exactly where they were
+	-- own knob: widening the tabs inside the box leaves the box and the
+	-- search bar exactly where they are
 	local sc = math.clamp(LAYOUT.TabRowWidthScale or LAYOUT.TabWidthScale or 1, 0.4, 1)
 	local inset = (1 - sc) / 2
 	return new("UIPadding", {
@@ -2878,6 +2878,8 @@ local BOTTOM_EDGE_FADE  = 0.1
 
 local G_PANEL      = { {0, 157, 2, 31}, {0.53, 76, 22, 32}, {0.82, 40, 19, 23}, {1, 24, 18, 19} }
 local G_PANEL_STRK = { {0, 157, 2, 31}, {0.75, 76, 22, 32}, {1, 20, 19, 19} }
+-- THE BOX OUTLINE, straight from the reference `Sections` frame
+local G_SECTION    = { {0, 26, 25, 25}, {0.15, 34, 23, 25}, {0.56, 156, 3, 31}, {0.92, 33, 23, 25}, {1, 37, 22, 25} }
 -- SEARCH BAR PALETTE, straight from the reference hub search box
 local G_BAR        = { {0, 157, 2, 31}, {0.07, 76, 22, 32}, {0.81, 28, 24, 25}, {1, 24, 24, 24} }
 local G_BAR_STRK   = { {0, 157, 2, 31}, {0.29, 76, 22, 32}, {0.66, 28, 24, 25}, {1, 24, 24, 24} }
@@ -3527,14 +3529,24 @@ function Library:_buildTabsPage()
 	-- RULE 2: the tab list starts below the search bar, never on top of it
 	local gridTop = LAYOUT.SearchHeight + LAYOUT.GAP + LAYOUT.SearchGap
 
+	-- THE BOX, exactly like the reference `Sections` frame: pure black at 0.75
+	-- transparency, 0.075 scale rounding, and a 2.5 thick G_SECTION gradient
+	-- outline at 90 degrees. Every tab now lives INSIDE this box, and
+	-- LAYOUT.PagesBottomSpace keeps empty space UNDER it.
 	local area = new("Frame", {
-		Name = "GridArea",
-		Position = UDim2.fromOffset(0, gridTop),
-		Size = UDim2.new(1, 0, 1, -gridTop),
-		BackgroundTransparency = 1,
+		Name = "Sections",
+		Position = UDim2.new(tabRowInset(), 0, 0, gridTop),
+		Size = UDim2.new(1 - tabRowInset() * 2, 0, 1, -(gridTop + LAYOUT.PagesBottomSpace)),
+		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+		BackgroundTransparency = 0.75,
+		BorderSizePixel = 0,
 		ClipsDescendants = true,
+		ZIndex = 3,
 		Parent = page,
+	}, {
+		new("UICorner", { CornerRadius = UDim.new(0.075, 0) }),
 	})
+	hohoStroke(area, 2.5, G_SECTION, 90)
 	self.TabArea = area
 
 	-- The tab list is built ROW BY ROW so every card lines up perfectly
@@ -3543,7 +3555,11 @@ function Library:_buildTabsPage()
 
 	self.TabList = new("ScrollingFrame", {
 		Name = "TabList",
-		Size = UDim2.fromScale(1, 1),
+		-- inset inside the box, the exact reference scroll frame slice
+		-- slimmer left / right inset so the TABS get wider inside the box.
+		-- the box frame itself is untouched, only this inner slice changed.
+		Position = UDim2.fromScale(0.0115, 0.0537),
+		Size = UDim2.fromScale(0.977, 0.9463),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		CanvasSize = UDim2.new(),
@@ -3811,10 +3827,8 @@ function Library:_addCard(ctx, info, isSection)
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Center,
 		Parent = textCol,
-	-- EXACT REFERENCE TEXT SIZING: the reference title uses TextScaled with
-	-- UITextSizeConstraint { MaxTextSize = 100, MinTextSize = 1 }, so the text
-	-- fills its own slot instead of being capped at a fixed pixel size.
-	}, { new("UITextSizeConstraint", { MaxTextSize = 100, MinTextSize = 1 }) })
+	-- MAIN FONT: the tab title cap, raised from 28 so the text reads bigger
+	}, { clampText(34) })
 	-- SAME TITLE FONT AS THE HOME PAGE CARDS
 	hohoFont(title, "Bold")
 
@@ -3848,8 +3862,8 @@ function Library:_addCard(ctx, info, isSection)
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Center,
 		Parent = pill,
-	-- same exact constraint as the reference description label
-	}, { new("UITextSizeConstraint", { MaxTextSize = 100, MinTextSize = 1 }) })
+	-- the description cap, raised from 14 to match the bigger title
+	}, { clampText(17) })
 	-- SAME DESCRIPTION FONT AS THE HOME PAGE CARDS
 	hohoFont(desc, "Regular")
 
@@ -4025,7 +4039,11 @@ function Library:_sectionList(tab)
 
 	local list = new("ScrollingFrame", {
 		Name = "SectionList",
-		Size = UDim2.fromScale(1, 1),
+		-- same inset as the root list, so a section sits in the box too
+		-- slimmer left / right inset so the TABS get wider inside the box.
+		-- the box frame itself is untouched, only this inner slice changed.
+		Position = UDim2.fromScale(0.0115, 0.0537),
+		Size = UDim2.fromScale(0.977, 0.9463),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		CanvasSize = UDim2.new(),
