@@ -322,11 +322,13 @@ local LAYOUT = {
 	TabColumns     = 2,   -- tabs per row  ->  Tab | Tab
 	TabHeight      = 144, -- height of one tab card
 	TabGap         = 16,  -- space between tab cards
-	-- HORIZONTAL THICKNESS of one tab card in the Pages page.
-	-- 1 = full width (old look), 0.94 = a little bit slimmer,
-	-- 0.88 = current, 0.82 = very slim. Cards stay centered in their
-	-- column. The SEARCH BAR and the BACK ICON follow this same number.
-	TabWidthScale  = 0.80,
+	-- HORIZONTAL THICKNESS of the whole tab row in the Pages page.
+	-- It pulls in the OUTER left and right edges only, so the gap
+	-- between two tabs always stays exactly TabGap.
+	-- 1 = full width (old look), 0.95 = barely slimmer,
+	-- 0.90 = current, 0.85 = clearly slim.
+	-- The SEARCH BAR uses the same number for its left / right edges.
+	TabWidthScale  = 0.90,
 	TabPad         = 16,  -- inner padding of a tab card
 	TabIcon        = 108,  -- tab image size
 	TabTitle       = 38,  -- height of the big tab title
@@ -336,10 +338,12 @@ local LAYOUT = {
 	                      -- (the bar is hidden now, so this can stay tiny)
 
 
-	SearchHeight   = 52,  -- height of the search bar
+	SearchHeight   = 46,  -- height of the search bar (was 52, now a bit smaller)
 	SearchIcon     = 28,  -- size of the search icon
 	SearchGap      = 14,  -- extra space between the search bar and the first tab row
 	BackButton     = 58,  -- width of the go back button, right of the search bar
+	BackHeight     = 52,  -- height of the go back button. kept at the ORIGINAL
+	                      -- size so shrinking SearchHeight never shrinks it
 	BackGap        = 12,  -- space between the search bar and the go back button
 
 	-- SWITCHES / BUTTONS / SLIDERS (they live in a rounded box)
@@ -423,34 +427,32 @@ local function socialH()
 end
 
 -- TAB CARD GEOMETRY (Pages page)
--- The row is split into equal column slots. TabWidthScale shrinks the card
--- INSIDE its own slot and re-centers it, so the tabs get horizontally
--- slimmer without ever overlapping and without touching their height.
+-- The tabs keep the original "columns + gaps fill the row exactly" math.
+-- Slimming is done on the ROW, not on each card, so the middle gap can
+-- never grow. Heights are never touched.
 
--- how far each side of the tab row is pulled in by TabWidthScale.
--- the search bar and the back icon reuse it so their edges line up
--- exactly with the slimmer tab cards.
+-- how far EACH OUTER SIDE of the tab row is pulled in by TabWidthScale.
+-- the row keeps its normal inner math, so the middle gap between two
+-- tabs stays exactly TabGap and never opens up.
 local function tabRowInset()
-	local cols = math.max(1, LAYOUT.TabColumns)
-	local sc   = math.clamp(LAYOUT.TabWidthScale or 1, 0.4, 1)
-	return (1 - sc) / (2 * cols)
-end
-
--- the back icon gets the same horizontal slimming as a tab card
-local function backButtonW()
 	local sc = math.clamp(LAYOUT.TabWidthScale or 1, 0.4, 1)
-	return math.max(1, math.floor(LAYOUT.BackButton * sc + 0.5))
+	return (1 - sc) / 2
 end
 
+-- the row is squeezed from its outer edges with a scale based UIPadding,
+-- so the cards inside simply get slimmer together.
+local function rowSidePadding()
+	local inset = tabRowInset()
+	return new("UIPadding", {
+		PaddingLeft  = UDim.new(inset, 0),
+		PaddingRight = UDim.new(inset, 0),
+	})
+end
+
+-- ORIGINAL column math: columns + gaps fill the row content exactly.
 local function tabCardGeom(cols, col)
-	local sc       = math.clamp(LAYOUT.TabWidthScale or 1, 0.4, 1)
-	local slotSc   = 1 / cols
-	local slotOff  = -LAYOUT.TabGap * (cols - 1) / cols
-	local sizeSc   = slotSc * sc
-	local sizeOff  = slotOff * sc
-	local posSc    = (col - 1) / cols + (slotSc - sizeSc) / 2
-	local posOff   = (col - 1) * LAYOUT.TabGap / cols + (slotOff - sizeOff) / 2
-	return UDim2.new(posSc, posOff, 0, 0), UDim2.new(sizeSc, sizeOff, 1, 0)
+	return UDim2.new((col - 1) / cols, (col - 1) * LAYOUT.TabGap / cols, 0, 0),
+		UDim2.new(1 / cols, -LAYOUT.TabGap * (cols - 1) / cols, 1, 0)
 end
 
 
@@ -3339,7 +3341,7 @@ function Library:_buildTabsPage()
 		Name = "SearchBar",
 		-- inset by 3px so the outline is never clipped by the panel edge
 		Position = UDim2.new(tabRowInset(), 3, 0, 3),
-		Size = UDim2.new(1 - tabRowInset() * 2, -(LAYOUT.TabScrollPad + 6 + backButtonW() + LAYOUT.BackGap), 0, LAYOUT.SearchHeight),
+		Size = UDim2.new(1 - tabRowInset() * 2, -(LAYOUT.TabScrollPad + 6 + LAYOUT.BackButton + LAYOUT.BackGap), 0, LAYOUT.SearchHeight),
 		BackgroundColor3 = THEME.SearchBar,
 		BackgroundTransparency = 0.15,
 		BorderSizePixel = 0,
@@ -3382,7 +3384,7 @@ function Library:_buildTabsPage()
 		Name = "BackButton",
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1 - tabRowInset(), -(LAYOUT.TabScrollPad + 3), 0, 3),
-		Size = UDim2.fromOffset(backButtonW(), LAYOUT.SearchHeight),
+		Size = UDim2.fromOffset(LAYOUT.BackButton, LAYOUT.BackHeight or LAYOUT.SearchHeight),
 		BackgroundColor3 = THEME.SearchBar,
 		BackgroundTransparency = 0.15,
 		BorderSizePixel = 0,
@@ -3528,6 +3530,10 @@ function Library:_rowIn(ctx, rowIndex)
 		Size = UDim2.new(1, 0, 0, LAYOUT.TabHeight),
 		BackgroundTransparency = 1,
 		Parent = ctx.List,
+	}, {
+		-- squeezes the row from its OUTER edges only, so the two tabs get
+		-- slimmer while the gap between them stays exactly TabGap
+		rowSidePadding(),
 	})
 
 	-- optional divider line, only drawn when LAYOUT.TabDivider is above 0
