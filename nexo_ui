@@ -322,6 +322,10 @@ local LAYOUT = {
 	TabColumns     = 2,   -- tabs per row  ->  Tab | Tab
 	TabHeight      = 144, -- height of one tab card
 	TabGap         = 16,  -- space between tab cards
+	-- HORIZONTAL THICKNESS of one tab card in the Pages page.
+	-- 1 = full width (old look), 0.94 = a little bit slimmer,
+	-- 0.85 = clearly slimmer. Cards stay centered in their column.
+	TabWidthScale  = 0.94,
 	TabPad         = 16,  -- inner padding of a tab card
 	TabIcon        = 108,  -- tab image size
 	TabTitle       = 38,  -- height of the big tab title
@@ -415,6 +419,21 @@ local function socialW()
 end
 local function socialH()
 	return math.max(1, math.floor(LAYOUT.SocialBox * SOCIAL_ICON_SCALE_Y))
+end
+
+-- TAB CARD GEOMETRY (Pages page)
+-- The row is split into equal column slots. TabWidthScale shrinks the card
+-- INSIDE its own slot and re-centers it, so the tabs get horizontally
+-- slimmer without ever overlapping and without touching their height.
+local function tabCardGeom(cols, col)
+	local sc       = math.clamp(LAYOUT.TabWidthScale or 1, 0.4, 1)
+	local slotSc   = 1 / cols
+	local slotOff  = -LAYOUT.TabGap * (cols - 1) / cols
+	local sizeSc   = slotSc * sc
+	local sizeOff  = slotOff * sc
+	local posSc    = (col - 1) / cols + (slotSc - sizeSc) / 2
+	local posOff   = (col - 1) * LAYOUT.TabGap / cols + (slotOff - sizeOff) / 2
+	return UDim2.new(posSc, posOff, 0, 0), UDim2.new(sizeSc, sizeOff, 1, 0)
 end
 
 
@@ -3544,8 +3563,8 @@ function Library:_addCard(ctx, info, isSection)
 	-- width and they can never overlap
 	local card = new("Frame", {
 		Name = (isSection and "Section" or "Tab") .. index,
-		Position = UDim2.new((col - 1) / cols, (col - 1) * LAYOUT.TabGap / cols, 0, 0),
-		Size = UDim2.new(1 / cols, -LAYOUT.TabGap * (cols - 1) / cols, 1, 0),
+		Position = (select(1, tabCardGeom(cols, col))),
+		Size = (select(2, tabCardGeom(cols, col))),
 		BackgroundColor3 = THEME.TabCard,
 		BackgroundTransparency = 0.1,
 		BorderSizePixel = 0,
@@ -3925,7 +3944,9 @@ function Library:_repackLevel(ctx)
 			local row = ctx.Rows[rowIndex]
 			if row then
 				card.Parent = row
-				card.Position = UDim2.new((col - 1) / cols, (col - 1) * LAYOUT.TabGap / cols, 0, 0)
+				local cPos, cSize = tabCardGeom(cols, col)
+				card.Position = cPos
+				card.Size = cSize
 			end
 		end
 	end
