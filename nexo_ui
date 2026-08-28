@@ -3666,7 +3666,11 @@ function Library:_addCard(ctx, info, isSection)
 
 	-- SAME OUTLINE AS THE HOME PAGE CARDS: a 2.5 thick gradient stroke that
 	-- runs G_HOME_STRK at 45 degrees, instead of the old flat accent line.
-	hohoStroke(card, 2, G_TAB_STRK_RED, -57)
+	-- EXACT REFERENCE OUTLINE, nothing else touched:
+	--   stroke(g, 2, G_PANEL_STRK, -57)  <- the reference MAIN_ page cards
+	-- thickness 2, white base color, Transparency 0, the untouched
+	-- G_PANEL_STRK blend, rotated -57 degrees.
+	hohoStroke(card, 2, G_PANEL_STRK, -57)
 
 	-- HOVER + CLICK HIGHLIGHT
 	-- both layers sit BEHIND the text and the image, and inside the card, so the
