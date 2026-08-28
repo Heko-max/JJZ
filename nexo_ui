@@ -1423,10 +1423,10 @@ local SLIDE_PUSH = 0.30 -- how far it starts off screen. bigger = longer travel
 --  hide  = shrink ->  vanish
 --=====================================================
 --  >>> THE 4 NUMBERS THAT CONTROL THE OPEN / HIDE FEEL <<<
-local OPEN_TIME  = 1.25 -- how LONG the grow / shrink takes (seconds). 1.0 - 1.5 is the slow, silky range
-local OPEN_DELAY = 0.50 -- SMOOTHING DELAY: dead-still pause before the motion starts. 0 = instant reaction
-local OPEN_START = 0.72 -- opens from this size and grows to full. closer to 1 = shorter, smoother travel
-local HIDE_END   = 0.72 -- shrinks back down to that same size before it goes
+local OPEN_TIME  = 0.42 -- how LONG the grow / shrink takes (seconds)
+local OPEN_DELAY = 0.00 -- pause before the motion starts. 0 = reacts the instant you click
+local OPEN_START = 0.02 -- A DOT. opens from a tiny 2% dot and grows out to the full panel
+local HIDE_END   = 0.02 -- shrinks all the way back down to that dot before it vanishes
 -- OPEN_START / HIDE_END used to be 0.02 (a dot). The whole window scales as
 -- one piece now, so a gentler distance keeps the motion smooth instead of
 -- squeezing every tab and button through a pinhole.
@@ -1515,13 +1515,11 @@ end
 
 -- pre-built infos for the animations that run the most often
 local SLIDE_TWEEN  = tweenInfo(SLIDE_TIME, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
--- Sine InOut on BOTH sides. Over a long 1.25s move this is the smoothest
--- curve there is: it eases out of rest and eases back into rest with no
--- sudden burst of speed anywhere, so nothing ever looks like it stutters.
--- OPEN_DELAY is baked into both tweens as the tween's own delay, so the
--- pause costs nothing and cannot desync from the motion.
-local OPEN_TWEEN   = tweenInfo(OPEN_TIME, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, 0, OPEN_DELAY)
-local HIDE_TWEEN   = tweenInfo(OPEN_TIME, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, 0, OPEN_DELAY)
+-- Growing out of a 2% dot is a huge distance to cover, so the curve is
+-- what sells it. Quint Out leaves the dot fast and glides into full size,
+-- Quint In does the mirror on the way down. Fast to react, soft to land.
+local OPEN_TWEEN   = tweenInfo(OPEN_TIME, Enum.EasingStyle.Quint, Enum.EasingDirection.Out, 0, OPEN_DELAY)
+local HIDE_TWEEN   = tweenInfo(OPEN_TIME, Enum.EasingStyle.Quint, Enum.EasingDirection.In, 0, OPEN_DELAY)
 local HOVER_FADE   = tweenInfo(HOVER_SPEED, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local CLICK_TWEEN  = tweenInfo(CLICK_SPEED, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 local TOGGLE_TWEEN = tweenInfo(TOGGLE_SMOOTH, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
@@ -1951,6 +1949,9 @@ function Library:_buildMiniIcon()
 		Parent = shell,
 	})
 
+	-- SPAM AWAY. Every single click flips the panel, even while a grow or
+	-- shrink is still running: the running tween is cancelled and a new one
+	-- picks up from the current size. No debounce, no swallowed clicks.
 	hit.MouseButton1Click:Connect(function()
 		self:Toggle()
 	end)
@@ -2158,7 +2159,13 @@ function Library:SetVisible(state, instant)
 		self:_restorePanelPos()
 		self:_lockPanelPos()
 		if self.Body then self.Body.Visible = true end
-		scaleObj.Scale = base * OPEN_START
+		-- SPAM PROOF: if the panel is still on screen because a shrink never
+		-- finished, grow out from wherever it is RIGHT NOW instead of
+		-- snapping back down to the dot first. Snapping was the jump that
+		-- made a mid animation click look like it did nothing.
+		if not self.Main.Visible then
+			scaleObj.Scale = base * OPEN_START
+		end
 		self.Main.Visible = true
 		tween = TweenService:Create(scaleObj, OPEN_TWEEN, { Scale = base })
 	else
@@ -2208,6 +2215,9 @@ function Library:Hide() self:SetVisible(false) end
 
 function Library:Toggle()
 	if not self.Main then return end
+	-- self.Shown is flipped the moment an animation STARTS, not when it
+	-- ends, so spamming this always reverses the motion you can see on
+	-- screen rather than fighting a state that is half a second stale.
 	if self.Shown == nil then self.Shown = self.Main.Visible end
 	self:SetVisible(not self.Shown)
 end
