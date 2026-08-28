@@ -2856,7 +2856,7 @@ local G_HOME_STRK = { {0, 157, 2, 31}, {0.29, 76, 22, 32}, {1, 24, 24, 24} }
 --   BOTTOM_EDGE_H     : line thickness in pixels
 --   BOTTOM_EDGE_INSET : how far it is pulled in on the left and the right
 --   BOTTOM_EDGE_FADE  : 0 = solid black, 1 = invisible
-local BOTTOM_EDGE_H     = 10
+local BOTTOM_EDGE_H     = 16
 local BOTTOM_EDGE_INSET = 5
 local BOTTOM_EDGE_FADE  = 0.1
 
@@ -2865,6 +2865,12 @@ local G_PANEL_STRK = { {0, 157, 2, 31}, {0.75, 76, 22, 32}, {1, 20, 19, 19} }
 -- SEARCH BAR PALETTE, straight from the reference hub search box
 local G_BAR        = { {0, 157, 2, 31}, {0.07, 76, 22, 32}, {0.81, 28, 24, 25}, {1, 24, 24, 24} }
 local G_BAR_STRK   = { {0, 157, 2, 31}, {0.29, 76, 22, 32}, {0.66, 28, 24, 25}, {1, 24, 24, 24} }
+-- NO BLACK IN THE OUTLINE: the two palettes above both END on a near black
+-- color ({1, 20, 19, 19} and {1, 24, 24, 24}), which drew a black line along
+-- one side of every tab card and along the search bar. These replacements
+-- stay in the red family from end to end, so no black edge is ever drawn.
+local G_TAB_STRK_RED = { {0, 157, 2, 31}, {0.55, 120, 14, 30}, {1, 76, 22, 32} }
+local G_BAR_STRK_RED = { {0, 157, 2, 31}, {0.55, 120, 14, 30}, {1, 76, 22, 32} }
 local G_LOGO      = { {0, 157, 2, 31}, {0.42, 163, 5, 33}, {1, 255, 51, 51} }
 
 -- one card slice, same proportions as the reference
@@ -3361,10 +3367,9 @@ function Library:_buildTabsPage()
 		-- inset by 3px so the outline is never clipped by the panel edge
 		Position = UDim2.new(tabRowInset(), 3, 0, 3),
 		Size = UDim2.new(1 - tabRowInset() * 2, -(LAYOUT.TabScrollPad + 6 + LAYOUT.BackButton + LAYOUT.BackGap), 0, LAYOUT.SearchHeight),
-		-- NO BLACK BAR: the dark fill is gone here too, so the search bar is
-		-- just its gradient outline. 0.5 brings the fill back.
+		-- THE SEARCH BAR FILL STAYS: same dark slab as the tab cards.
 		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
-		BackgroundTransparency = 1,
+		BackgroundTransparency = 0.5,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		Parent = page,
@@ -3413,7 +3418,7 @@ function Library:_buildTabsPage()
 
 	-- REFERENCE UI OUTLINE: the search box gradient stroke, running G_BAR_STRK
 	-- vertically at -90, exactly like the reference hub search box.
-	hohoStroke(self.SearchBar, 2.5, G_BAR_STRK, -90)
+	hohoStroke(self.SearchBar, 2.5, G_BAR_STRK_RED, -90)
 
 	-- GO BACK BUTTON, on the right of the search bar.
 	-- put your own image id in IMAGES.BackIcon.
@@ -3626,11 +3631,9 @@ function Library:_addCard(ctx, info, isSection)
 		Name = (isSection and "Section" or "Tab") .. index,
 		Position = cardPos,
 		Size = cardSize,
-		-- NO BLACK CARD: the dark slab is gone, so only the gradient outline,
-		-- the text and the icon show. Set BackgroundTransparency back to 0.5
-		-- if you ever want the filled card again.
+		-- THE CARD FILL STAYS: same dark slab as the front page cards.
 		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
-		BackgroundTransparency = 1,
+		BackgroundTransparency = 0.5,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		ZIndex = 2,
@@ -3645,7 +3648,7 @@ function Library:_addCard(ctx, info, isSection)
 
 	-- SAME OUTLINE AS THE HOME PAGE CARDS: a 2.5 thick gradient stroke that
 	-- runs G_HOME_STRK at 45 degrees, instead of the old flat accent line.
-	hohoStroke(card, 2, G_PANEL_STRK, -57)
+	hohoStroke(card, 2, G_TAB_STRK_RED, -57)
 
 	-- HOVER + CLICK HIGHLIGHT
 	-- both layers sit BEHIND the text and the image, and inside the card, so the
