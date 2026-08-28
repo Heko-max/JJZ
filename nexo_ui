@@ -65,7 +65,7 @@ local SOCIAL_ICON_SCALE = 1      -- 1 = fills the whole square, lower = padding
 --   X = width   (lower than 1 = the logo gets THINNER, height stays)
 --   Y = height  (lower than 1 = the logo gets SHORTER, width stays)
 -- BOTH 1 = the logo is a true square, identical across and down.
-local SOCIAL_ICON_SCALE_X = 5      -- width  : full
+local SOCIAL_ICON_SCALE_X = 1      -- width  : full
 local SOCIAL_ICON_SCALE_Y = 1      -- height : full, matches the width exactly
 
 -- how the artwork is placed inside that square:
@@ -363,6 +363,10 @@ local LAYOUT = {
 -- overflowed under the neighbouring icon instead of making the logo wider.
 -- They now resize the BUTTON, so the list reserves the real space and X
 -- widens the logo for real. 2 = double width, 0.5 = half width.
+-- HOME_CLONE = the front page is the exact HOHO HUB gen4 clone, built with
+-- scale positions. The pixel layout pass below must not fight it.
+local HOME_CLONE = true
+
 local function socialW()
 	return math.max(1, math.floor((LAYOUT.SocialWidth or LAYOUT.SocialBox) * SOCIAL_ICON_SCALE_X))
 end
@@ -2700,317 +2704,452 @@ function Library:_buildHomePage()
 	})
 	self.PageFrames[TEXT.Nav[1] or "Home"] = page
 
-	self.Hero = new("Frame", {
-		Name = "Hero",
-		Size = UDim2.new(1, 0, 0, LAYOUT.HeroHeight),
+	--=====================================================
+	--  HOME PAGE - HOHO HUB gen4 CLONE
+	--  Every colour, position, size, gradient, font and asset id below is
+	--  the exact value from the reference script.
+	--  ONE conversion is applied: the reference measures Y from the top of
+	--  the whole window, where its TOP_BAR owns the first 17%. This page is
+	--  parented to Content, which already starts BELOW the header, so every
+	--  reference Y is remapped with  y = (y_ref - 0.17) / 0.83.
+	--=====================================================
+	local WHITE  = Color3.fromRGB(255, 255, 255)
+	local ACCENT = Color3.fromRGB(255, 51, 51)
+	local PANEL  = Color3.fromRGB(20, 20, 20)
+
+	-- exact gradient palettes from the reference
+	local G_HOME      = { {0, 157, 2, 31}, {0.64, 76, 22, 32}, {1, 36, 29, 30} }
+	local G_HOME_STRK = { {0, 157, 2, 31}, {0.29, 76, 22, 32}, {1, 24, 24, 24} }
+	local G_LOGO      = { {0, 157, 2, 31}, {0.42, 163, 5, 33}, {1, 255, 51, 51} }
+
+	local SANS = "rbxasset://fonts/families/SourceSansPro.json"
+
+	-- FontFace needs a modern client. If Font.new is missing we quietly drop
+	-- back to the closest Enum.Font so the page still renders everywhere.
+	local FALLBACK = {
+		Regular  = Enum.Font.SourceSans,
+		SemiBold = Enum.Font.SourceSansSemibold,
+		Bold     = Enum.Font.SourceSansBold,
+		Heavy    = Enum.Font.SourceSansBold,
+	}
+	local function setFont(inst, weight)
+		weight = weight or "Regular"
+		local ok = pcall(function()
+			inst.FontFace = Font.new(SANS, Enum.FontWeight[weight])
+		end)
+		if not ok then
+			pcall(function() inst.Font = FALLBACK[weight] or Enum.Font.SourceSans end)
+		end
+	end
+
+	-- multi stop gradient, same helper the reference uses
+	local function stops(parent, cols, rot, transparency)
+		local ks = {}
+		for _, c in ipairs(cols) do
+			ks[#ks + 1] = ColorSequenceKeypoint.new(c[1], Color3.fromRGB(c[2], c[3], c[4]))
+		end
+		local g = Instance.new("UIGradient")
+		g.Color = ColorSequence.new(ks)
+		g.Rotation = rot or 0
+		if transparency then
+			g.Transparency = NumberSequence.new(transparency)
+		end
+		g.Parent = parent
+		return g
+	end
+
+	local function gradStroke(parent, thickness, cols, rot)
+		local s = Instance.new("UIStroke")
+		s.Color = WHITE
+		s.Thickness = thickness
+		s.Transparency = 0
+		s.Parent = parent
+		if cols then stops(s, cols, rot) end
+		return s
+	end
+
+	-- the reference Y remap
+	local function Y(y) return (y - 0.17) / 0.83 end
+	local function H(h) return h / 0.83 end
+
+	local Upper = new("Frame", {
+		Name = "Upper",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
 		Parent = page,
 	})
 
-	-- RULE 1: the -GAP keeps the text away from the banner
-	self.Left = new("Frame", {
-		Name = "Left",
-		Size = UDim2.new(LAYOUT.HeroLeftWidth, -LAYOUT.GAP, 1, 0),
-		BackgroundTransparency = 1,
-		ClipsDescendants = true,
-		Parent = self.Hero,
-	}, { vlist(16) })
+	-- the library's own layout passes expect these handles to exist
+	self.Hero = Upper
+	self.Left = Upper
 
-	new("TextLabel", {
-		Name = "Welcome",
-		LayoutOrder = 1,
-		Size = UDim2.new(1, 0, 0, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
+	local header = new("TextLabel", {
+		Name = "HEADER",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.2255, Y(0.2863)),
+		Size = UDim2.fromScale(0.3408, H(0.2333)),
 		BackgroundTransparency = 1,
 		RichText = true,
-		Font = Enum.Font.GothamBold,
-		Text = TEXT.Welcome,
-		TextSize = 30,
-		TextColor3 = THEME.Text,
-		TextWrapped = true,
+		Text = 'WELCOME TO\n<font color="#f8042e">BEST FREE</font>\nBLOX FRUIT HUB',
+		TextColor3 = WHITE,
+		TextScaled = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Top,
-		LineHeight = 1.15,
-		Parent = self.Left,
+		Parent = Upper,
 	})
+	setFont(header, "Heavy")
 
-	new("TextLabel", {
-		Name = "Subtitle",
-		LayoutOrder = 2,
-		Size = UDim2.new(1, 0, 0, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
+	local title1 = new("TextLabel", {
+		Name = "TITLE1",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.2478, Y(0.4853)),
+		Size = UDim2.fromScale(0.3855, H(0.1647)),
 		BackgroundTransparency = 1,
-		Font = Enum.Font.Gotham,
-		Text = TEXT.Subtitle,
-		TextSize = 16,
-		TextColor3 = THEME.SubText,
-		TextWrapped = true,
+		RichText = true,
+		Text = "Thanks for using our services. \nWe are commited to bring greatest \nexperience to users !",
+		TextColor3 = WHITE,
+		TextScaled = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Top,
-		LineHeight = 1.25,
-		Parent = self.Left,
+		Parent = Upper,
+	})
+	setFont(title1, "SemiBold")
+
+	-- UPDATE_BANNER1. Reference Y is 0.155, which sits slightly under its top
+	-- bar, so it clamps to the very top of this page.
+	self.Banner = new("ImageLabel", {
+		Name = "UPDATE_BANNER1",
+		Position = UDim2.fromScale(0.4676, math.max(0, Y(0.155))),
+		Size = UDim2.fromScale(0.4831, H(0.5338)),
+		BackgroundTransparency = 1,
+		Image = img(IMAGES.Banner or "16171568093"),
+		ScaleType = Enum.ScaleType.Fit,
+		Parent = Upper,
 	})
 
+	--------------------------------------------------------------
+	-- SOCIALS_BUTTONS : 3 tinted icons with the round hover glow
+	--------------------------------------------------------------
 	self.Socials = new("Frame", {
-		Name = "Socials",
-		LayoutOrder = 3,
-		Size = UDim2.new(1, 0, 0, socialH() + LAYOUT.SocialOffsetY),
+		Name = "SOCIALS_BUTTONS",
+		Position = UDim2.fromScale(0.0551, Y(0.5768)),
+		Size = UDim2.fromScale(0.3855, H(0.0786)),
 		BackgroundTransparency = 1,
-		Parent = self.Left,
+		Parent = Upper,
 	}, {
-		padding(LAYOUT.SocialOffsetY, 0, 0, 0),
-		hlist(LAYOUT.SocialGap),
+		new("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			Padding = UDim.new(0.05, 0),
+			SortOrder = Enum.SortOrder.Name,
+			HorizontalAlignment = Enum.HorizontalAlignment.Left,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+		}),
 	})
 
-	-- YOUTUBE LOGO DRAWN BY CODE (no image id needed, nothing to upload,
-	-- nothing that can get moderated). It is a red rounded box with a white
-	-- play triangle built out of small frames.
-	local function drawYouTubeLogo(parent)
-		-- fills the WHOLE square, exactly like an image icon does, so the drawn
-		-- youtube logo ends up the exact same size as the discord image
-		local body = new("Frame", {
-			Name = "YTBody",
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.fromScale(1, 1),
-			BackgroundColor3 = YOUTUBE_COLOR,
-			BorderSizePixel = 0,
-			Parent = parent,
-		}, {
-			new("UICorner", { CornerRadius = UDim.new(0.24, 0) }),
-		})
-
-		-- the white play triangle, drawn row by row
-		local holder = new("Frame", {
-			Name = "YTPlay",
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.55, 0.5),
-			Size = UDim2.fromScale(0.26, 0.40),
-			BackgroundTransparency = 1,
-			Parent = body,
-		})
-
-		local ROWS = 28
-		for r = 1, ROWS do
-			local t = (r - 0.5) / ROWS                 -- 0 at the top, 1 at the bottom
-			local w = 1 - math.abs(t - 0.5) * 2        -- widest in the middle
-			new("Frame", {
-				Name = "Row" .. r,
-				Position = UDim2.fromScale(0, (r - 1) / ROWS),
-				Size = UDim2.new(w, 0, 1 / ROWS, 1),   -- +1px so there are no gaps
-				BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-				BorderSizePixel = 0,
-				Parent = holder,
-			})
-		end
-
-		return body
-	end
-
-	-- DISCORD LOGO DRAWN BY CODE (no image id needed either).
-	-- Real clyde shape: wide rounded head on top, a flared skirt under it, two
-	-- pointed horns at the bottom corners, and two white oval eyes.
-	local function drawDiscordLogo(parent)
-		-- everything is built inside this box so the whole logo scales together
-		local body = new("Frame", {
-			Name = "DCBody",
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.fromScale(1, 0.80),
-			BackgroundTransparency = 1,
-			Parent = parent,
-		})
-
-		local function shape(name, x, y, w, h, radius, rot, z)
-			return new("Frame", {
-				Name = name,
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.fromScale(x, y),
-				Size = UDim2.fromScale(w, h),
-				Rotation = rot or 0,
-				BackgroundColor3 = DISCORD_COLOR,
-				BorderSizePixel = 0,
-				ZIndex = z or 2,
-				Parent = body,
-			}, {
-				new("UICorner", { CornerRadius = UDim.new(radius, 0) }),
-			})
-		end
-
-		-- 1) the two pointed horns at the bottom left and bottom right
-		shape("HornLeft",  0.135, 0.760, 0.30, 0.42, 0.34, -28, 2)
-		shape("HornRight", 0.865, 0.760, 0.30, 0.42, 0.34,  28, 2)
-
-		-- 2) the flared skirt that joins the horns to the head
-		shape("Skirt", 0.5, 0.660, 0.80, 0.40, 0.30, 0, 3)
-
-		-- 3) the wide rounded head on top
-		shape("Head", 0.5, 0.420, 0.90, 0.66, 0.50, 0, 4)
-
-		-- 4) fills the small dip between the head and the skirt
-		shape("Neck", 0.5, 0.560, 0.86, 0.30, 0.18, 0, 5)
-
-		-- 5) the two white oval eyes, always on top
-		for _, side in ipairs({ -1, 1 }) do
-			new("Frame", {
-				Name = side < 0 and "EyeLeft" or "EyeRight",
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.fromScale(0.5 + side * 0.175, 0.470),
-				Size = UDim2.fromScale(0.145, 0.235),
-				BackgroundColor3 = DISCORD_FACE,
-				BorderSizePixel = 0,
-				ZIndex = 9,
-				Parent = body,
-			}, {
-				new("UICorner", { CornerRadius = UDim.new(1, 0) }),
-			})
-		end
-
-		return body
-	end
-
-	-- ONLY 2 SOCIAL BUTTONS NOW: DISCORD AND YOUTUBE.
-	-- click = the link is copied to your clipboard AND opened for you.
-	-- draw = built with code instead of an image id.
-	local socialItems = {
-		{ name = "Discord", id = IMAGES.Discord, link = SOCIAL_LINKS.Discord,
-		  draw = DISCORD_DRAWN and drawDiscordLogo or nil },
-		{ name = "YouTube", id = IMAGES.YouTube, link = SOCIAL_LINKS.YouTube,
-		  draw = YOUTUBE_DRAWN and drawYouTubeLogo or nil },
+	local socialIds   = { "16171891828", "16171897995", "16171900314" }
+	local socialNames = { "Discord", "YouTube", "Discord" }
+	local socialLinks = {
+		SOCIAL_LINKS.Discord,
+		SOCIAL_LINKS.YouTube,
+		SOCIAL_LINKS.Discord,
 	}
 
-	for i, data in ipairs(socialItems) do
-		-- SOCIAL_PLAIN = true -> just the icon, no box behind it (like the image)
-		local box = new("TextButton", {
-			Name = data.name,
-			LayoutOrder = i,
-			Text = "",
-			AutoButtonColor = false,
-			Size = UDim2.fromOffset(socialW(), socialH()),
-			BackgroundColor3 = THEME.SocialBox,
-			BackgroundTransparency = SOCIAL_PLAIN and 1 or 0,
-			BorderSizePixel = 0,
-			ClipsDescendants = not SOCIAL_PLAIN,
+	for i, id in ipairs(socialIds) do
+		local b = new("ImageButton", {
+			Name = tostring(i),
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Size = UDim2.fromScale(0.139, 0.909),
+			BackgroundTransparency = 1,
+			Image = img(id),
+			ImageColor3 = ACCENT,
+			ScaleType = Enum.ScaleType.Fit,
 			Parent = self.Socials,
-		}, {
-			corner(12),
-			new("UIScale", { Name = "Pop", Scale = 1 }),
-			new("ImageLabel", {
-				Name = "Icon",
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.fromScale(0.5, 0.5),
-				-- EXACT SAME SIZE FOR EVERY SOCIAL ICON. the square below never
-				-- changes, so the resolution of the uploaded image does nothing.
-				-- X / Y live on the BUTTON above, so the icon just fills it
-				Size = UDim2.fromScale(
-					SOCIAL_ICON_SCALE * (SOCIAL_ICON_TWEAK[data.name] or 1),
-					SOCIAL_ICON_SCALE * (SOCIAL_ICON_TWEAK[data.name] or 1)
-				),
-				BackgroundTransparency = 1,
-				Image = img(data.id),
-				ImageColor3 = SOCIAL_TINT_COLOR[data.name]
-					or (SOCIAL_TINT and THEME.Accent)
-					or Color3.fromRGB(255, 255, 255),
-				ScaleType = (SOCIAL_ICON_MODE == "fit" and Enum.ScaleType.Fit)
-					or (SOCIAL_ICON_MODE == "crop" and Enum.ScaleType.Crop)
-					or Enum.ScaleType.Stretch,
-				-- NO UIAspectRatioConstraint here on purpose. A ratio lock forces
-				-- width and height to shrink together, so the logo could never be
-				-- made shorter without also getting thinner. Without it the two
-				-- scales above are free: X stays 1, Y squashes the logo.
-			}, { corner(12) }),
 		})
 
-		-- if this social is drawn by code, blank the image and build the shapes
-		if data.draw then
-			local slot = box:FindFirstChild("Icon")
-			if slot then
-				slot.Image = ""
-				data.draw(slot)
-			end
-		else
-			-- RED EFFECT: a second copy of the same image, painted red, laid on
-			-- top of the first one. Exact same size, so nothing shifts.
-			local strength = SOCIAL_TINT_OVERLAY[data.name] or 0
-			local slot = box:FindFirstChild("Icon")
-			if slot and strength > 0 then
-				new("ImageLabel", {
-					Name = "RedGlow",
-					AnchorPoint = Vector2.new(0.5, 0.5),
-					Position = UDim2.fromScale(0.5, 0.5),
-					Size = UDim2.fromScale(1, 1),
-					BackgroundTransparency = 1,
-					Image = img(data.id),
-					ImageColor3 = Color3.fromRGB(255, 0, 0),
-					ImageTransparency = 1 - strength,
-					ScaleType = slot.ScaleType,
-					ZIndex = (slot.ZIndex or 1) + 1,
-					Parent = slot,
-				})
-			end
-		end
+		local hover = new("ImageLabel", {
+			Name = "Hover",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromScale(2.5, 2.5),
+			BackgroundTransparency = 1,
+			Image = img("16171994145"),
+			ImageColor3 = ACCENT,
+			ImageTransparency = 1,
+			Parent = b,
+		})
 
-		if not SOCIAL_PLAIN then
-			stroke(THEME.Stroke, 1, 0.3).Parent = box
-		end
-
-		-- HOVER POP:  small dot  ->  big dot
-		local pop = box:FindFirstChild("Pop")
-		local function popTo(target, time)
-			if not pop then return end
-			-- one channel, so hover / leave / click-squeeze replace each other
-			-- instead of three tweens writing Scale at the same time
-			playTween(pop, tweenInfo(time, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-				Scale = target,
-			}, "pop")
-		end
-
-		box.MouseEnter:Connect(function() popTo(SOCIAL_HOVER_SCALE, SOCIAL_HOVER_TIME) end)
-		box.MouseLeave:Connect(function() popTo(1, SOCIAL_HOVER_TIME) end)
-
-		box.MouseButton1Click:Connect(function()
-			-- a tiny squeeze so you can feel the click
-			popTo(SOCIAL_HOVER_SCALE * 0.90, 0.08)
-			-- only spring back if the button still exists and is still hovered,
-			-- otherwise the icon used to stay stuck at the enlarged size
-			task.delay(0.08, function()
-				if not (pop and pop.Parent and box.Parent) then return end
-				popTo(SOCIAL_HOVER_SCALE, SOCIAL_HOVER_TIME)
-			end)
-
-			self:OpenLink(data.link, data.name)
+		local channel = "socialGlow" .. tostring(i)
+		b.MouseEnter:Connect(function()
+			playTween(hover, tweenInfo(0.25), { ImageTransparency = 0.35 }, channel)
 		end)
-
-		table.insert(self.SocialBoxes, box)
+		b.MouseLeave:Connect(function()
+			playTween(hover, tweenInfo(0.25), { ImageTransparency = 1 }, channel)
+		end)
+		b.MouseButton1Click:Connect(function()
+			local link = socialLinks[i]
+			if link then self:OpenLink(link, socialNames[i]) end
+		end)
 	end
 
-	self.Banner = new("ImageLabel", {
-		Name = "Banner",
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, 0, 0.5, LAYOUT.BannerOffsetY),
-		Size = UDim2.new(LAYOUT.BannerWidth, 0, 0, LAYOUT.BannerHeight),
-		BackgroundTransparency = 1,
-		Image = img(IMAGES.Banner),
-		ScaleType = Enum.ScaleType.Stretch,
-		Parent = self.Hero,
-	}, { corner(14) })
-
-	-- the three bottom cards
-	self.CardRow = new("Frame", {
-		Name = "Cards",
-		AnchorPoint = Vector2.new(0, 1),
-		-- inset by 3px on every side so the card outlines are never clipped
-		Position = UDim2.new(0, 3, 1, -3),
-		Size = UDim2.new(1, -6, 0, LAYOUT.CardsHeight),
+	--------------------------------------------------------------
+	-- Functions : the sliding 2 page pager that holds the cards
+	--------------------------------------------------------------
+	local Functions = new("Frame", {
+		Name = "Functions",
+		Position = UDim2.fromScale(0.001, Y(0.672)),
+		Size = UDim2.fromScale(1, H(0.2845)),
 		BackgroundTransparency = 1,
 		Parent = page,
-	}, { hlist(LAYOUT.CardGap, Enum.HorizontalAlignment.Center) })
+	})
 
-	-- the front page starts EMPTY. you fill it yourself with:
-	--   ui:AddHomeTab({ title = "...", desc = "...", image = "...", callback = fn })
+	local HOME_PAGER = new("Frame", {
+		Name = "HOME_PAGER",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		ClipsDescendants = true,
+		Parent = Functions,
+	})
+
+	local PAGES_HOLDER = new("Frame", {
+		Name = "PAGES_HOLDER",
+		Size = UDim2.fromScale(2, 1),
+		BackgroundTransparency = 1,
+		Parent = HOME_PAGER,
+	})
+
+	local PAGE_SHORTCUTS = new("Frame", {
+		Name = "PAGE_SHORTCUTS",
+		Size = UDim2.fromScale(0.5, 1),
+		BackgroundTransparency = 1,
+		Parent = PAGES_HOLDER,
+	}, {
+		new("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			Padding = UDim.new(0.02, 0),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+		}),
+	})
+
+	local PAGE_FAVORITES = new("Frame", {
+		Name = "PAGE_FAVORITES",
+		Position = UDim2.fromScale(0.5, 0),
+		Size = UDim2.fromScale(0.5, 1),
+		BackgroundTransparency = 1,
+		Parent = PAGES_HOLDER,
+	}, {
+		new("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			Padding = UDim.new(0.02, 0),
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+		}),
+	})
+
+	local favEmpty = new("TextLabel", {
+		Name = "FavEmpty",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(0.8, 0.12),
+		BackgroundTransparency = 1,
+		ZIndex = 2,
+		Text = "No favorites yet \226\128\148 tap \226\152\133 on any sub-page.",
+		TextColor3 = WHITE,
+		TextTransparency = 0.4,
+		TextScaled = true,
+		Parent = PAGE_FAVORITES,
+	})
+	setFont(favEmpty, "Regular")
+
+	--------------------------------------------------------------
+	-- DOTS : the two page indicators under the cards
+	--------------------------------------------------------------
+	local DOTS = new("Frame", {
+		Name = "DOTS",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.fromScale(0.5, 1),
+		Size = UDim2.fromScale(0.2, 0.08),
+		BackgroundTransparency = 1,
+		ZIndex = 50,
+		Parent = HOME_PAGER,
+	}, {
+		new("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			Padding = UDim.new(0.08, 0),
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			VerticalAlignment = Enum.VerticalAlignment.Center,
+		}),
+	})
+
+	local dots = {}
+	for i = 1, 2 do
+		local d = new("TextButton", {
+			Name = "DOT_" .. i,
+			Size = UDim2.fromScale(0.35, 0.7),
+			BackgroundColor3 = WHITE,
+			BackgroundTransparency = (i == 1) and 0.1 or 0.7,
+			BorderSizePixel = 0,
+			Text = "",
+			ZIndex = 51,
+			Parent = DOTS,
+		}, {
+			new("UIAspectRatioConstraint", { AspectRatio = 1 }),
+			new("UICorner", { CornerRadius = UDim.new(1, 0) }),
+		})
+		dots[i] = d
+	end
+
+	local function homePage(index)
+		playTween(
+			PAGES_HOLDER,
+			tweenInfo(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+			{ Position = UDim2.fromScale(index == 1 and 0 or -1, 0) },
+			"homePager"
+		)
+		dots[1].BackgroundTransparency = index == 1 and 0.1 or 0.7
+		dots[2].BackgroundTransparency = index == 2 and 0.1 or 0.7
+	end
+
+	dots[1].MouseButton1Click:Connect(function() homePage(1) end)
+	dots[2].MouseButton1Click:Connect(function() homePage(2) end)
+
+	--------------------------------------------------------------
+	-- the shared card builder, identical geometry to the reference
+	--------------------------------------------------------------
+	local function buildCard(parent, cfg)
+		local btn = new("TextButton", {
+			Name = cfg.name,
+			Position = UDim2.fromScale(0.3634, 0.1283),
+			Size = cfg.size,
+			BackgroundColor3 = PANEL,
+			BackgroundTransparency = 0.5,
+			BorderSizePixel = 0,
+			LayoutOrder = cfg.order or 0,
+			Text = "",
+			ZIndex = 1,
+			AutoButtonColor = false,
+			Parent = parent,
+		}, {
+			new("UICorner", { CornerRadius = cfg.radius }),
+		})
+
+		local g = new("Frame", {
+			Name = "Gradient",
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			ZIndex = 0,
+			Parent = btn,
+		}, {
+			new("UICorner", { CornerRadius = cfg.radius }),
+		})
+		stops(g, cfg.grad, cfg.gradRot)
+		gradStroke(g, cfg.strokeThickness, cfg.gradStroke, cfg.gradRot)
+
+		local logo = new("ImageLabel", {
+			Name = "Logo",
+			Position = UDim2.fromScale(cfg.logoX, 0.148),
+			Size = UDim2.fromScale(0.3158, 0.6961),
+			BackgroundTransparency = 1,
+			ZIndex = 2,
+			Image = "http://www.roblox.com/asset/?id=" .. cfg.icon,
+			ScaleType = Enum.ScaleType.Fit,
+			Parent = btn,
+		})
+		stops(logo, G_LOGO, -144)
+
+		local title = new("TextLabel", {
+			Name = "Title",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.33, 0.2871),
+			Size = UDim2.fromScale(0.5402, 0.3836),
+			BackgroundTransparency = 1,
+			ZIndex = 2,
+			RichText = true,
+			Text = cfg.title,
+			TextColor3 = WHITE,
+			TextScaled = true,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Parent = btn,
+		}, {
+			new("UITextSizeConstraint", { MaxTextSize = 100, MinTextSize = 1 }),
+		})
+		setFont(title, "Bold")
+
+		local desc = new("TextLabel", {
+			Name = "Desc",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.33, 0.6433),
+			Size = UDim2.fromScale(0.5307, 0.4017),
+			BackgroundTransparency = 1,
+			ZIndex = 2,
+			RichText = true,
+			Text = cfg.desc,
+			TextColor3 = WHITE,
+			TextScaled = true,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			Parent = btn,
+		}, {
+			new("UITextSizeConstraint", { MaxTextSize = 100, MinTextSize = 1 }),
+		})
+		setFont(desc, "Regular")
+
+		if cfg.aspect then
+			new("UIAspectRatioConstraint", {
+				AspectRatio = cfg.aspect,
+				AspectType = Enum.AspectType.ScaleWithParentSize,
+				DominantAxis = Enum.DominantAxis.Width,
+				Parent = btn,
+			})
+		end
+
+		btn.MouseEnter:Connect(function()
+			playTween(btn, tweenInfo(0.2), { BackgroundTransparency = 0.25 }, "cardFade")
+		end)
+		btn.MouseLeave:Connect(function()
+			playTween(btn, tweenInfo(0.2), { BackgroundTransparency = 0.5 }, "cardFade")
+		end)
+
+		return btn
+	end
+
+	--------------------------------------------------------------
+	-- the 3 shortcut cards : SETTING | MISC | CONFIG
+	--------------------------------------------------------------
+	local HOME_CARDS = {
+		{ title = "SETTING", desc = "Fully customize your favorite script hub", icon = "6031280882" },
+		{ title = "MISC",    desc = "Cool features like ESP or Teleport",       icon = "6022668909" },
+		{ title = "CONFIG",  desc = "Set up the script before the `handless` journey", icon = "6034418511" },
+	}
+
 	self.Cards = {}
-	self.HomeTabs = {}
+	for i, c in ipairs(HOME_CARDS) do
+		local card = buildCard(PAGE_SHORTCUTS, {
+			name = "HOMEPAGE_BUTTON",
+			order = i,
+			size = UDim2.fromScale(0.2906, 0.7433),
+			radius = UDim.new(0, 10),
+			grad = G_HOME,
+			gradStroke = G_HOME_STRK,
+			gradRot = 45,
+			strokeThickness = 2.5,
+			logoX = 0.635,
+			icon = c.icon,
+			title = c.title,
+			desc = c.desc,
+		})
+		card.MouseButton1Click:Connect(function()
+			pcall(function() self:SelectPage(TEXT.Nav[2] or "Pages") end)
+		end)
+		self.Cards[i] = card
+	end
+
+	-- handles the rest of the library still expects
+	self.CardRow   = PAGE_SHORTCUTS
+	self.HomeTabs  = {}
 	self.HomeLinks = {}
+	self.IconSlots = self.IconSlots or {}
+	self.TextCols  = self.TextCols or {}
 end
 
 --=====================================================
@@ -6260,32 +6399,36 @@ function Library:_applyLayout()
 	self.Content.Position = UDim2.fromOffset(0, headerH + LAYOUT.GAP)
 	self.Content.Size     = UDim2.new(1, 0, 1, -(headerH + LAYOUT.GAP))
 
-	self.Hero.Size = UDim2.new(1, 0, 0, heroH)
+	-- the clone front page sizes itself with scales, so these pixel writes
+	-- are skipped. Everything else in this pass still runs.
+	if not HOME_CLONE then
+		self.Hero.Size = UDim2.new(1, 0, 0, heroH)
 
-	-- RULE 1: the -GAP keeps the text away from the banner
-	self.Left.Size   = UDim2.new(LAYOUT.HeroLeftWidth, -LAYOUT.GAP, 1, 0)
-	self.Banner.Size = UDim2.new(LAYOUT.BannerWidth, 0, 0, LAYOUT.BannerHeight)
-	self.Banner.Position = UDim2.new(1, 0, 0.5, LAYOUT.BannerOffsetY)
+		-- RULE 1: the -GAP keeps the text away from the banner
+		self.Left.Size   = UDim2.new(LAYOUT.HeroLeftWidth, -LAYOUT.GAP, 1, 0)
+		self.Banner.Size = UDim2.new(LAYOUT.BannerWidth, 0, 0, LAYOUT.BannerHeight)
+		self.Banner.Position = UDim2.new(1, 0, 0.5, LAYOUT.BannerOffsetY)
 
-	self.Socials.Size = UDim2.new(1, 0, 0, socialH() + LAYOUT.SocialOffsetY)
-	for _, box in ipairs(self.SocialBoxes) do
-		-- SAME MATH AS THE BUILD. This pass runs on every resize and used to
-		-- write the raw numbers back, wiping out the X / Y stretch.
-		box.Size = UDim2.fromOffset(socialW(), socialH())
-		local iconSlot = box:FindFirstChild("Icon")
-		local ratio = iconSlot and iconSlot:FindFirstChildOfClass("UIAspectRatioConstraint")
-		if ratio then
-			ratio.AspectRatio = (LAYOUT.SocialWidth or LAYOUT.SocialBox) / LAYOUT.SocialBox
+		self.Socials.Size = UDim2.new(1, 0, 0, socialH() + LAYOUT.SocialOffsetY)
+		for _, box in ipairs(self.SocialBoxes) do
+			-- SAME MATH AS THE BUILD. This pass runs on every resize and used to
+			-- write the raw numbers back, wiping out the X / Y stretch.
+			box.Size = UDim2.fromOffset(socialW(), socialH())
+			local iconSlot = box:FindFirstChild("Icon")
+			local ratio = iconSlot and iconSlot:FindFirstChildOfClass("UIAspectRatioConstraint")
+			if ratio then
+				ratio.AspectRatio = (LAYOUT.SocialWidth or LAYOUT.SocialBox) / LAYOUT.SocialBox
+			end
 		end
-	end
 
-	self.CardRow.Size = UDim2.new(1, -6, 0, LAYOUT.CardsHeight)
-	self.CardRow.Position = UDim2.new(0, 3, 1, -3)
-	for _, slot in ipairs(self.IconSlots) do
-		slot.Size = UDim2.fromOffset(LAYOUT.CardIcon, LAYOUT.CardIcon)
-	end
-	for _, col in ipairs(self.TextCols) do
-		col.Size = UDim2.new(1, -(LAYOUT.CardIcon + LAYOUT.GAP), 1, 0)
+		self.CardRow.Size = UDim2.new(1, -6, 0, LAYOUT.CardsHeight)
+		self.CardRow.Position = UDim2.new(0, 3, 1, -3)
+		for _, slot in ipairs(self.IconSlots) do
+			slot.Size = UDim2.fromOffset(LAYOUT.CardIcon, LAYOUT.CardIcon)
+		end
+		for _, col in ipairs(self.TextCols) do
+			col.Size = UDim2.new(1, -(LAYOUT.CardIcon + LAYOUT.GAP), 1, 0)
+		end
 	end
 
 	if self.Warning then
