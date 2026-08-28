@@ -61,11 +61,12 @@ local IMAGES = {
 -- uploaded image (big, small, wide, tall) makes no difference at all.
 local SOCIAL_ICON_SCALE = 1      -- 1 = fills the whole square, lower = padding
 
--- SQUASH THE LOGOS ON ONE AXIS ONLY
---   X = width   (2 = keep the full width, do not make the logo thinner)
---   Y = height  (lower than 0.85 = the logo gets SHORTER, width stays the same)
-local SOCIAL_ICON_SCALE_X = 2      -- width  : untouched
-local SOCIAL_ICON_SCALE_Y = 0.85   -- height : smaller only vertically
+-- STRETCH THE LOGOS ON ONE AXIS ONLY
+--   X = width   (lower than 1 = the logo gets THINNER, height stays)
+--   Y = height  (lower than 1 = the logo gets SHORTER, width stays)
+-- BOTH 1 = the logo is a true square, identical across and down.
+local SOCIAL_ICON_SCALE_X = 1      -- width  : full
+local SOCIAL_ICON_SCALE_Y = 1      -- height : full, matches the width exactly
 
 -- how the artwork is placed inside that square:
 --   "fill" -> stretched to fill it. every icon ends up EXACTLY the same size
@@ -163,8 +164,9 @@ local SOCIAL_LINKS = {
 	YouTube = "https://www.youtube.com/@ne_xoonbuild",
 }
 
--- how big the icon pops when your mouse is over it, and how fast
-local SOCIAL_HOVER_SCALE = 1.45
+-- how big the icon pops when your mouse is over it, and how fast.
+-- 1.45 was a big jump. 1.15 is a subtle lift that still reads clearly.
+local SOCIAL_HOVER_SCALE = 1.15
 local SOCIAL_HOVER_TIME  = 0.22
 
 local SOCIAL_PLAIN = true
@@ -279,10 +281,12 @@ local LAYOUT = {
 	-- SOCIAL BUTTONS (YouTube / Discord)
 	--   SocialBox   = HEIGHT of the button   (bigger = taller)
 	--   SocialWidth = WIDTH of the button    (smaller = slimmer)
-	-- 62 x 62 was the old square look. 34 x 62 is slim and tall.
-	SocialBox      = 44,
-	SocialWidth    = 34,
-	SocialGap      = 12,  -- space between the two icons
+	-- SQUARE: keep these two numbers EQUAL and both logos stay a perfect
+	-- square, exactly as wide as they are tall. Change both together to
+	-- resize them: 34 = small, 40 = normal, 52 = big.
+	SocialBox      = 40,
+	SocialWidth    = 40,
+	SocialGap      = 22,  -- space between the two icons (higher = further apart)
 	SocialOffsetY  = 56,  -- push the 3 social icons down
 
 	CardsHeight    = 134,
@@ -2951,7 +2955,7 @@ function Library:_buildHomePage()
 
 		box.MouseButton1Click:Connect(function()
 			-- a tiny squeeze so you can feel the click
-			popTo(SOCIAL_HOVER_SCALE * 0.82, 0.08)
+			popTo(SOCIAL_HOVER_SCALE * 0.90, 0.08)
 			-- only spring back if the button still exists and is still hovered,
 			-- otherwise the icon used to stay stuck at the enlarged size
 			task.delay(0.08, function()
