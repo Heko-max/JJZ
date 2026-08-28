@@ -322,12 +322,12 @@ local LAYOUT = {
 
 	-- Pages page (the tab list)
 	TabColumns     = 2,   -- tabs per row  ->  Tab | Tab
-	TabHeight      = 124, -- height of one tab card
-	TabGap         = 16,  -- space between tab cards
+	TabHeight      = 148, -- height of one tab card
+	TabGap         = 13,  -- space between tab cards
 	TabPad         = 16,  -- inner padding of a tab card
-	TabIcon        = 92,  -- tab image size
-	TabTitle       = 37,  -- height of the big tab title
-	TabDescHeight  = 41,  -- height of the description background pill
+	TabIcon        = 82,  -- tab image size
+	TabTitle       = 38,  -- height of the big tab title
+	TabDescHeight  = 38,  -- height of the description background pill
 	TabDivider     = 0,   -- line between the columns. 0 = no line, 2 = thin line
 	TabScrollPad   = 2,   -- space kept on the right for the scrollbar
 	                      -- (the bar is hidden now, so this can stay tiny)
@@ -338,31 +338,31 @@ local LAYOUT = {
 	--   TabBoxPad    = space between the box edge and the cards inside
 	TabBoxRadius   = 18,
 	TabBoxFade     = 0,
-	TabBoxPad      = 10,
+	TabBoxPad      = 6,
 	--   TabBoxStroke     = thickness of the red outline around the box
 	--   TabBoxStrokeFade = 0 = bright solid line, 1 = invisible line
 	TabBoxStroke   = 2,
-	TabBoxStrokeFade = 0.70,
+	TabBoxStrokeFade = 1,
 	--   TabBoxInset       = margin between the box and the panel edge.
 	--                      The box used to fill the area EXACTLY, so its
 	--                      round corners and outline were clipped off and
 	--                      it looked like it hung out of the UI.
 	--   TabBoxHeightScale = how tall the box is. 1 = full height,
 	--                      0.8 = four fifths. LOWER THIS to shrink the box.
-	TabBoxInset    = 10,
+	TabBoxInset    = 2,
 	--   TabWidthScale = how WIDE one tab card is inside its column slot.
 	--                  1 = fills the slot, 0.8 = four fifths as wide.
 	--                  The card stays centred whatever you set.
-	TabWidthScale  = 0.94,
-	TabBoxHeightScale = 0.92,
+	TabWidthScale  = 1.00,
+	TabBoxHeightScale = 1.00,
 	--   TabBoxWidthScale = how WIDE the box is. 1 = full width,
 	--                     0.9 = nine tenths. The box stays centred.
-	TabBoxWidthScale  = 0.90,
+	TabBoxWidthScale  = 1.00,
 
-	SearchHeight   = 52,  -- height of the search bar
+	SearchHeight   = 60,  -- height of the search bar
 	SearchIcon     = 28,  -- size of the search icon
-	SearchGap      = 14,  -- extra space between the search bar and the first tab row
-	BackButton     = 58,  -- width of the go back button, right of the search bar
+	SearchGap      = 6,  -- extra space between the search bar and the first tab row
+	BackButton     = 60,  -- width of the go back button, right of the search bar
 	BackGap        = 12,  -- space between the search bar and the go back button
 
 	-- SWITCHES / BUTTONS / SLIDERS (they live in a rounded box)
