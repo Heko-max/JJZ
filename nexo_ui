@@ -2850,6 +2850,10 @@ end
 --=====================================================
 local G_HOME      = { {0, 157, 2, 31}, {0.64, 76, 22, 32}, {1, 36, 29, 30} }
 local G_HOME_STRK = { {0, 157, 2, 31}, {0.29, 76, 22, 32}, {1, 24, 24, 24} }
+-- PAGES CARD PALETTE: the exact gradients the reference hub uses on its
+-- FARM CONFIG / NORMAL FARM / RAID & EVENT / FIRST SEA page cards
+local G_PANEL      = { {0, 157, 2, 31}, {0.53, 76, 22, 32}, {0.82, 40, 19, 23}, {1, 24, 18, 19} }
+local G_PANEL_STRK = { {0, 157, 2, 31}, {0.75, 76, 22, 32}, {1, 20, 19, 19} }
 local G_LOGO      = { {0, 157, 2, 31}, {0.42, 163, 5, 33}, {1, 255, 51, 51} }
 
 -- one card slice, same proportions as the reference
@@ -3601,7 +3605,8 @@ function Library:_addCard(ctx, info, isSection)
 		ZIndex = 2,
 		Parent = row,
 	}, {
-		corner(18),
+		-- REFERENCE UI: scale based rounding, like the reference page cards
+		new("UICorner", { CornerRadius = UDim.new(0.1, 0) }),
 		-- the flat red outline is gone. the gradient outline is added right
 		-- below with hohoStroke, exactly like the front page cards.
 		padding(LAYOUT.TabPad, LAYOUT.TabPad, LAYOUT.TabPad, LAYOUT.TabPad),
@@ -3609,7 +3614,7 @@ function Library:_addCard(ctx, info, isSection)
 
 	-- SAME OUTLINE AS THE HOME PAGE CARDS: a 2.5 thick gradient stroke that
 	-- runs G_HOME_STRK at 45 degrees, instead of the old flat accent line.
-	hohoStroke(card, 2.5, G_HOME_STRK, 45)
+	hohoStroke(card, 2, G_PANEL_STRK, -57)
 
 	-- HOVER + CLICK HIGHLIGHT
 	-- both layers sit BEHIND the text and the image, and inside the card, so the
@@ -3625,7 +3630,7 @@ function Library:_addCard(ctx, info, isSection)
 		BorderSizePixel = 0,
 		ZIndex = 0,
 		Parent = card,
-	}, { corner(18) })
+	}, { new("UICorner", { CornerRadius = UDim.new(0.1, 0) }) })
 
 	local ripple = new("Frame", {
 		Name = "Ripple",
@@ -3734,7 +3739,9 @@ function Library:_addCard(ctx, info, isSection)
 		LayoutOrder = 2, -- rounded pill behind the description
 		Size = UDim2.new(1, 0, 0, LAYOUT.TabDescHeight),
 		BackgroundColor3 = THEME.DescPill,
-		BackgroundTransparency = 0.1,
+		-- REFERENCE UI: the description sits straight on the card, so the pill
+		-- background is fully invisible now
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		Parent = textCol,
@@ -3750,7 +3757,8 @@ function Library:_addCard(ctx, info, isSection)
 		Font = Enum.Font.Gotham, -- fallback only, hohoFont overrides it below
 		Text = info.desc or "",
 		TextScaled = true,
-		TextColor3 = THEME.SubText,
+		-- REFERENCE UI: the description is white, like the reference cards
+		TextColor3 = Color3.fromRGB(255, 255, 255),
 		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Center,
@@ -3776,12 +3784,17 @@ function Library:_addCard(ctx, info, isSection)
 			-- ICON: works exactly the same on a TAB and on a SECTION.
 			-- image / icon / imageId / iconId are all accepted.
 			Image = img(pickIcon(info, IMAGES.TabIcon)),
-			ScaleType = Enum.ScaleType.Crop,
+			-- REFERENCE UI: the logo is fitted, never cropped
+			ScaleType = Enum.ScaleType.Fit,
 		}, { corner(12) }),
 	})
 
 	-- image = "" or image = false hides the icon completely
 	slot.Visible = (slot.Icon.Image ~= "")
+
+	-- REFERENCE UI: the icon is tinted with the red logo gradient at -144,
+	-- exactly like every card in the reference hub
+	hohoStops(slot.Icon, G_LOGO, -144)
 
 	-- IMAGE LINK SUPPORT: same as the home cards - a link is downloaded in the
 	-- background, so the visibility is decided when the download finishes.
