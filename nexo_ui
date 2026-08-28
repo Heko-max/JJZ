@@ -1947,7 +1947,7 @@ function Library.new()
 	--   {0, 157,2,31} -> {0.47, 47,29,32} -> {1, 24,24,24}
 	-- rotated -90 degrees with a flat 0.9 transparency, sitting at ZIndex 0
 	-- BEHIND everything, with the tiled pattern drawn on top of it.
-	-- This is the red-into-dark grand shading of the whole UI.
+	-- This is the red into dark grand shading of the whole UI.
 	-- Built inline because hohoStops is declared further down the file.
 	self.WindowGradient = new("Frame", {
 		Name = "GRADIENT",
@@ -3428,9 +3428,30 @@ function Library:_buildTabsPage()
 		Parent = page,
 	}, {
 		corner(16),
-		-- the flat red outline is gone. The reference gradient outline is
-		-- added with hohoStroke right after this block.
+		-- EXACT REFERENCE SEARCH BOX SHADING: the reference buildSearchBox puts a
+		-- child "Gradient" frame on the box carrying G_BAR at -90 degrees, and the
+		-- G_BAR_STRK outline is added on the bar itself right after this block.
 		padding(0, 18, 0, 18),
+		new("Frame", {
+			Name = "Gradient",
+			-- the offsets cancel the 18px side padding so it covers the whole bar
+			Position = UDim2.fromOffset(-18, 0),
+			Size = UDim2.new(1, 36, 1, 0),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			ZIndex = 0,
+		}, {
+			corner(16),
+			new("UIGradient", {
+				Color = ColorSequence.new({
+					ColorSequenceKeypoint.new(0, Color3.fromRGB(157, 2, 31)),
+					ColorSequenceKeypoint.new(0.07, Color3.fromRGB(76, 22, 32)),
+					ColorSequenceKeypoint.new(0.81, Color3.fromRGB(28, 24, 25)),
+					ColorSequenceKeypoint.new(1, Color3.fromRGB(24, 24, 24)),
+				}),
+				Rotation = -90,
+			}),
+		}),
 		-- the black line is no longer a child here either. It is created as a
 		-- sibling right after this block, sitting BELOW the search bar.
 		new("ImageLabel", {
@@ -3462,7 +3483,9 @@ function Library:_buildTabsPage()
 
 	-- REFERENCE UI OUTLINE: the search box gradient stroke, running G_BAR_STRK
 	-- vertically at -90, exactly like the reference hub search box.
-	hohoStroke(self.SearchBar, 2.5, G_BAR_STRK_RED, -90)
+	-- EXACT REFERENCE PALETTE: the untouched G_BAR_STRK blend, not the red only
+	-- variant. Same 2.5 thickness and -90 rotation as the reference search box.
+	hohoStroke(self.SearchBar, 2.5, G_BAR_STRK, -90)
 
 	-- BLACK LINE *UNDER* THE SEARCH BAR, in the empty space between the bar and
 	-- the first tab row (LAYOUT.GAP + LAYOUT.SearchGap = 32px of room).
@@ -3601,8 +3624,10 @@ function Library:_buildTabsPage()
 		ZIndex = 2,
 		Parent = area,
 	}, {
-		-- a few pixels on every side so no card outline gets clipped
-		padding(3, LAYOUT.TabScrollPad, LAYOUT.TabRowGap, 3),
+		-- ROOM FOR THE OUTLINE: the list clips its contents, so 3px on each side
+		-- was not enough for the 2px stroke and the outline looked cut at the left
+		-- and right edges. 8px on both sides leaves the whole outline visible.
+		padding(8, math.max(LAYOUT.TabScrollPad, 8), LAYOUT.TabRowGap, 8),
 		vlist(LAYOUT.TabRowGap),
 	})
 
@@ -3723,14 +3748,10 @@ function Library:_addCard(ctx, info, isSection)
 	--   stroke(g, 2, G_PANEL_STRK, -57)  <- the reference MAIN_ page cards
 	-- thickness 2, white base color, Transparency 0, the untouched
 	-- G_PANEL_STRK blend, rotated -57 degrees.
-	-- EXACT REFERENCE CARD SHADING STRUCTURE: the reference `buildCard` never
-	-- puts the outline on the slab itself. It creates a child "Gradient" frame
-	-- covering the card and hangs BOTH the G_PANEL fill ramp and the
-	-- G_PANEL_STRK outline on that frame, both at -57 degrees:
-	--   gradient(g, G_PANEL, -57)
-	--   stroke(g, 2, G_PANEL_STRK, -57)
-	-- The negative offsets cancel the card's TabPad padding so the frame covers
-	-- the full card, exactly like the reference frame does.
+	-- EXACT REFERENCE CARD SHADING STRUCTURE: the reference `buildCard` creates a
+	-- child "Gradient" frame covering the card and hangs the G_PANEL fill ramp on
+	-- it at -57 degrees. The negative offsets cancel the card's TabPad padding so
+	-- the frame covers the full card, exactly like the reference frame does.
 	local grad = new("Frame", {
 		Name = "Gradient",
 		Position = UDim2.fromOffset(-LAYOUT.TabPad, -LAYOUT.TabPad),
@@ -3741,7 +3762,12 @@ function Library:_addCard(ctx, info, isSection)
 		Parent = card,
 	}, { new("UICorner", { CornerRadius = UDim.new(0.1, 0) }) })
 	hohoStops(grad, G_PANEL, -57)
-	hohoStroke(grad, 2, G_PANEL_STRK, -57)
+
+	-- OUTLINE VISIBILITY: the card has ClipsDescendants = true, so a stroke that
+	-- lives on a CHILD frame gets CUT OFF at the card edges. The stroke stays on
+	-- the CARD itself, where it draws outside the card bounds and is never
+	-- clipped, so the whole outline is visible on all four sides.
+	hohoStroke(card, 2, G_PANEL_STRK, -57)
 
 	-- HOVER + CLICK HIGHLIGHT
 	-- both layers sit BEHIND the text and the image, and inside the card, so the
@@ -4104,7 +4130,8 @@ function Library:_sectionList(tab)
 		ZIndex = 2,
 		Parent = self.TabArea,
 	}, {
-		padding(3, LAYOUT.TabScrollPad, LAYOUT.TabRowGap, 3),
+		-- same outline room as the root list, so section card outlines are not cut
+		padding(8, math.max(LAYOUT.TabScrollPad, 8), LAYOUT.TabRowGap, 8),
 		vlist(LAYOUT.TabRowGap),
 	})
 
