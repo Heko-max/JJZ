@@ -343,13 +343,17 @@ local LAYOUT = {
 	--   TabBoxStrokeFade = 0 = bright solid line, 1 = invisible line
 	TabBoxStroke   = 2,
 	TabBoxStrokeFade = 1,
-	--   TabBoxInset       = margin between the box and the panel edge.
-	--                      The box used to fill the area EXACTLY, so its
-	--                      round corners and outline were clipped off and
-	--                      it looked like it hung out of the UI.
+	-- BREATHING ROOM around the tab cards. One value per edge, so you can
+	-- tune the sides without touching the top or the bottom.
+	--   TabBoxInsetX      = space on the LEFT and the RIGHT side.
+	--                      RAISE THIS if the tabs look too wide.
+	--   TabBoxInsetTop    = space above the first row of cards
+	--   TabBoxInsetBottom = space under the last row of cards
 	--   TabBoxHeightScale = how tall the box is. 1 = full height,
 	--                      0.8 = four fifths. LOWER THIS to shrink the box.
-	TabBoxInset    = 2,
+	TabBoxInsetX      = 22,
+	TabBoxInsetTop    = 2,
+	TabBoxInsetBottom = 14,
 	--   TabWidthScale = how WIDE one tab card is inside its column slot.
 	--                  1 = fills the slot, 0.8 = four fifths as wide.
 	--                  The card stays centred whatever you set.
@@ -3323,14 +3327,17 @@ function Library:_makeListBox(parent, name)
 	-- INSET keeps the box AND its outline clear of the panel edge on every
 	-- side, so it can never be clipped or look like it hangs out of the UI.
 	-- HeightScale then makes it shorter than the space it sits in.
-	local inset = LAYOUT.TabBoxInset or 10
+	local insX  = LAYOUT.TabBoxInsetX or 22
+	local insT  = LAYOUT.TabBoxInsetTop or 2
+	local insB  = LAYOUT.TabBoxInsetBottom or 14
 	local hs    = LAYOUT.TabBoxHeightScale or 1
 	local ws    = LAYOUT.TabBoxWidthScale or 1
 	return new("Frame", {
 		Name = name or "ListBox",
-		-- the (1 - ws) / 2 on the X scale keeps the narrower box centred
-		Position = UDim2.new((1 - ws) / 2, inset, 0, inset),
-		Size = UDim2.new(ws, -(inset * 2), hs, -(inset * 2)),
+		-- InsetX is taken off BOTH sides, so the cards get equal space left
+		-- and right. Top and bottom are separate, hence insT + insB.
+		Position = UDim2.new((1 - ws) / 2, insX, 0, insT),
+		Size = UDim2.new(ws, -(insX * 2), hs, -(insT + insB)),
 		-- NOT THEME.Card: that is pure black, the same colour as the panel,
 		-- which is why the box could not be seen at all.
 		BackgroundColor3 = THEME.TabBox,
