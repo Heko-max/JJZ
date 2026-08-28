@@ -2852,6 +2852,14 @@ local G_HOME      = { {0, 157, 2, 31}, {0.64, 76, 22, 32}, {1, 36, 29, 30} }
 local G_HOME_STRK = { {0, 157, 2, 31}, {0.29, 76, 22, 32}, {1, 24, 24, 24} }
 -- PAGES CARD PALETTE: the exact gradients the reference hub uses on its
 -- FARM CONFIG / NORMAL FARM / RAID & EVENT / FIRST SEA page cards
+-- BLACK BOTTOM EDGE KNOBS (tab cards + search bar)
+--   BOTTOM_EDGE_H     : line thickness in pixels
+--   BOTTOM_EDGE_INSET : how far it is pulled in on the left and the right
+--   BOTTOM_EDGE_FADE  : 0 = solid black, 1 = invisible
+local BOTTOM_EDGE_H     = 3
+local BOTTOM_EDGE_INSET = 5
+local BOTTOM_EDGE_FADE  = 0.25
+
 local G_PANEL      = { {0, 157, 2, 31}, {0.53, 76, 22, 32}, {0.82, 40, 19, 23}, {1, 24, 18, 19} }
 local G_PANEL_STRK = { {0, 157, 2, 31}, {0.75, 76, 22, 32}, {1, 20, 19, 19} }
 local G_LOGO      = { {0, 157, 2, 31}, {0.42, 163, 5, 33}, {1, 255, 51, 51} }
@@ -3359,6 +3367,17 @@ function Library:_buildTabsPage()
 		corner(16),
 		stroke(THEME.Accent, 2, 0.15),
 		padding(0, 18, 0, 18),
+		-- BLACK BOTTOM EDGE: same thin dark line as the tab cards
+		new("Frame", {
+			Name = "BottomEdge",
+			AnchorPoint = Vector2.new(0.5, 1),
+			Position = UDim2.new(0.5, 0, 1, 0),
+			Size = UDim2.new(1, 36 - BOTTOM_EDGE_INSET * 2, 0, BOTTOM_EDGE_H),
+			BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+			BackgroundTransparency = BOTTOM_EDGE_FADE,
+			BorderSizePixel = 0,
+			ZIndex = 4,
+		}, { new("UICorner", { CornerRadius = UDim.new(1, 0) }) }),
 		new("ImageLabel", {
 			Name = "Icon",
 			AnchorPoint = Vector2.new(0, 0.5),
@@ -3621,6 +3640,23 @@ function Library:_addCard(ctx, info, isSection)
 	-- glow never covers the title, the description or the game icon
 	local pad = LAYOUT.TabPad
 
+	-- BLACK BOTTOM EDGE: a thin dark line along the bottom of the tab that
+	-- reads like a small gap. It is pulled in only a little on the left and
+	-- the right (5px each side), so the sides stay almost full width.
+	-- Change BOTTOM_EDGE_H / BOTTOM_EDGE_INSET below to tune it.
+	new("Frame", {
+		Name = "BottomEdge",
+		AnchorPoint = Vector2.new(0.5, 1),
+		-- +pad cancels the card padding, so the line sits on the real bottom edge
+		Position = UDim2.new(0.5, 0, 1, pad),
+		Size = UDim2.new(1, pad * 2 - BOTTOM_EDGE_INSET * 2, 0, BOTTOM_EDGE_H),
+		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+		BackgroundTransparency = BOTTOM_EDGE_FADE,
+		BorderSizePixel = 0,
+		ZIndex = 4,
+		Parent = card,
+	}, { new("UICorner", { CornerRadius = UDim.new(1, 0) }) })
+
 	local glow = new("Frame", {
 		Name = "Hover",
 		Position = UDim2.fromOffset(-pad, -pad),
@@ -3792,9 +3828,8 @@ function Library:_addCard(ctx, info, isSection)
 	-- image = "" or image = false hides the icon completely
 	slot.Visible = (slot.Icon.Image ~= "")
 
-	-- REFERENCE UI: the icon is tinted with the red logo gradient at -144,
-	-- exactly like every card in the reference hub
-	hohoStops(slot.Icon, G_LOGO, -144)
+	-- NO RED TINT ON THE TAB IMAGE: the red logo gradient is deliberately NOT
+	-- applied here, so the icon shows its own real colors.
 
 	-- IMAGE LINK SUPPORT: same as the home cards - a link is downloaded in the
 	-- background, so the visibility is decided when the download finishes.
