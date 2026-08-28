@@ -321,7 +321,11 @@ local LAYOUT = {
 	-- Pages page (the tab list)
 	TabColumns     = 2,   -- tabs per row  ->  Tab | Tab
 	TabHeight      = 144, -- height of one tab card
-	TabGap         = 16,  -- space between tab cards
+	TabGap         = 16,  -- space between tab cards (LEFT / RIGHT gap only)
+	TabRowGap      = 28,  -- VERTICAL space between tab ROWS. The black line now
+	                      -- lives in this space, UNDER each card, so raise this
+	                      -- to give the line more room. It does NOT change the
+	                      -- gap between the two columns.
 	-- HORIZONTAL THICKNESS of the whole tab row in the Pages page.
 	-- It pulls in the OUTER left and right edges only, so the gap
 	-- between two tabs always stays exactly TabGap.
@@ -2856,7 +2860,9 @@ local G_HOME_STRK = { {0, 157, 2, 31}, {0.29, 76, 22, 32}, {1, 24, 24, 24} }
 --   BOTTOM_EDGE_H     : line thickness in pixels
 --   BOTTOM_EDGE_INSET : how far it is pulled in on the left and the right
 --   BOTTOM_EDGE_FADE  : 0 = solid black, 1 = invisible
-local BOTTOM_EDGE_H     = 16
+local BOTTOM_EDGE_H     = 18
+-- how far the line sits BELOW the card / the search bar
+local BOTTOM_EDGE_GAP   = 4
 local BOTTOM_EDGE_INSET = 5
 local BOTTOM_EDGE_FADE  = 0.1
 
@@ -3378,17 +3384,8 @@ function Library:_buildTabsPage()
 		-- the flat red outline is gone. The reference gradient outline is
 		-- added with hohoStroke right after this block.
 		padding(0, 18, 0, 18),
-		-- BLACK BOTTOM EDGE: same dark line as the tab cards
-		new("Frame", {
-			Name = "BottomEdge",
-			AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.new(0.5, 0, 1, 0),
-			Size = UDim2.new(1, 36 - BOTTOM_EDGE_INSET * 2, 0, BOTTOM_EDGE_H),
-			BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-			BackgroundTransparency = BOTTOM_EDGE_FADE,
-			BorderSizePixel = 0,
-			ZIndex = 4,
-		}, { new("UICorner", { CornerRadius = UDim.new(1, 0) }) }),
+		-- the black line is no longer a child here either. It is created as a
+		-- sibling right after this block, sitting BELOW the search bar.
 		new("ImageLabel", {
 			Name = "Icon",
 			AnchorPoint = Vector2.new(0, 0.5),
@@ -3419,6 +3416,19 @@ function Library:_buildTabsPage()
 	-- REFERENCE UI OUTLINE: the search box gradient stroke, running G_BAR_STRK
 	-- vertically at -90, exactly like the reference hub search box.
 	hohoStroke(self.SearchBar, 2.5, G_BAR_STRK_RED, -90)
+
+	-- BLACK LINE *UNDER* THE SEARCH BAR, in the empty space between the bar and
+	-- the first tab row (LAYOUT.GAP + LAYOUT.SearchGap = 32px of room).
+	new("Frame", {
+		Name = "SearchBottomEdge",
+		Position = UDim2.new(tabRowInset(), 3 + BOTTOM_EDGE_INSET, 0, 3 + LAYOUT.SearchHeight + BOTTOM_EDGE_GAP),
+		Size = UDim2.new(1 - tabRowInset() * 2, -(LAYOUT.TabScrollPad + 6 + LAYOUT.BackButton + LAYOUT.BackGap) - BOTTOM_EDGE_INSET * 2, 0, BOTTOM_EDGE_H),
+		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+		BackgroundTransparency = BOTTOM_EDGE_FADE,
+		BorderSizePixel = 0,
+		ZIndex = 1,
+		Parent = page,
+	}, { new("UICorner", { CornerRadius = UDim.new(1, 0) }) })
 
 	-- GO BACK BUTTON, on the right of the search bar.
 	-- put your own image id in IMAGES.BackIcon.
@@ -3531,8 +3541,8 @@ function Library:_buildTabsPage()
 		Parent = area,
 	}, {
 		-- a few pixels on every side so no card outline gets clipped
-		padding(3, LAYOUT.TabScrollPad, LAYOUT.TabGap, 3),
-		vlist(LAYOUT.TabGap),
+		padding(3, LAYOUT.TabScrollPad, LAYOUT.TabRowGap, 3),
+		vlist(LAYOUT.TabRowGap),
 	})
 
 	-- the root list and every section list share the exact same layout code
@@ -3655,21 +3665,22 @@ function Library:_addCard(ctx, info, isSection)
 	-- glow never covers the title, the description or the game icon
 	local pad = LAYOUT.TabPad
 
-	-- BLACK BOTTOM EDGE: a thin dark line along the bottom of the tab that
-	-- reads like a small gap. It is pulled in only a little on the left and
-	-- the right (5px each side), so the sides stay almost full width.
-	-- Change BOTTOM_EDGE_H / BOTTOM_EDGE_INSET below to tune it.
-	new("Frame", {
-		Name = "BottomEdge",
-		AnchorPoint = Vector2.new(0.5, 1),
-		-- +pad cancels the card padding, so the line sits on the real bottom edge
-		Position = UDim2.new(0.5, 0, 1, pad),
-		Size = UDim2.new(1, pad * 2 - BOTTOM_EDGE_INSET * 2, 0, BOTTOM_EDGE_H),
+	-- BLACK LINE *UNDER* THE CARD, NOT INSIDE IT.
+	-- It used to be a child of the card, which is why it showed up as a black
+	-- bar inside the bottom of every tab. It is now a sibling parented to the
+	-- ROW and placed in the row gap below the card, so the tab stays clean.
+	-- BOTTOM_EDGE_H = thickness, BOTTOM_EDGE_GAP = distance below the card,
+	-- LAYOUT.TabRowGap = how much room there is for it.
+	local edge = new("Frame", {
+		Name = "BottomEdge" .. index,
+		-- matches the card left / right edges, pulled in a few px on each side
+		Position = UDim2.new(cardPos.X.Scale, cardPos.X.Offset + BOTTOM_EDGE_INSET, 1, BOTTOM_EDGE_GAP),
+		Size = UDim2.new(cardSize.X.Scale, cardSize.X.Offset - BOTTOM_EDGE_INSET * 2, 0, BOTTOM_EDGE_H),
 		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
 		BackgroundTransparency = BOTTOM_EDGE_FADE,
 		BorderSizePixel = 0,
-		ZIndex = 4,
-		Parent = card,
+		ZIndex = 1,
+		Parent = row,
 	}, { new("UICorner", { CornerRadius = UDim.new(1, 0) }) })
 
 	local glow = new("Frame", {
@@ -3868,6 +3879,7 @@ function Library:_addCard(ctx, info, isSection)
 		Icon      = slot.Icon,
 		IconSlot  = slot,
 		Glow      = glow,
+		Edge      = edge,
 		Library   = self,
 		IsSection = isSection or false,
 		Sections  = {},
@@ -4005,8 +4017,8 @@ function Library:_sectionList(tab)
 		ZIndex = 2,
 		Parent = self.TabArea,
 	}, {
-		padding(3, LAYOUT.TabScrollPad, LAYOUT.TabGap, 3),
-		vlist(LAYOUT.TabGap),
+		padding(3, LAYOUT.TabScrollPad, LAYOUT.TabRowGap, 3),
+		vlist(LAYOUT.TabRowGap),
 	})
 
 	tab.SectionCtx = {
@@ -4040,6 +4052,9 @@ function Library:_repackLevel(ctx)
 
 	for _, item in ipairs(ctx.Items) do
 		local card = item.Frame
+		-- the black line under a card follows that card: hidden when the search
+		-- filters the card out, shown and re-placed when it comes back
+		if item.Edge then item.Edge.Visible = (card ~= nil and card.Visible) end
 		if card and card.Visible then
 			shown = shown + 1
 			local col = ((shown - 1) % cols) + 1
@@ -4050,6 +4065,12 @@ function Library:_repackLevel(ctx)
 				local cPos, cSize = tabCardGeom(cols, col)
 				card.Position = cPos
 				card.Size = cSize
+				-- move its black line into the same row, under the new slot
+				if item.Edge then
+					item.Edge.Parent = row
+					item.Edge.Position = UDim2.new(cPos.X.Scale, cPos.X.Offset + BOTTOM_EDGE_INSET, 1, BOTTOM_EDGE_GAP)
+					item.Edge.Size = UDim2.new(cSize.X.Scale, cSize.X.Offset - BOTTOM_EDGE_INSET * 2, 0, BOTTOM_EDGE_H)
+				end
 			end
 		end
 	end
