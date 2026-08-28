@@ -324,8 +324,9 @@ local LAYOUT = {
 	TabGap         = 16,  -- space between tab cards
 	-- HORIZONTAL THICKNESS of one tab card in the Pages page.
 	-- 1 = full width (old look), 0.94 = a little bit slimmer,
-	-- 0.85 = clearly slimmer. Cards stay centered in their column.
-	TabWidthScale  = 0.94,
+	-- 0.88 = current, 0.82 = very slim. Cards stay centered in their
+	-- column. The SEARCH BAR and the BACK ICON follow this same number.
+	TabWidthScale  = 0.88,
 	TabPad         = 16,  -- inner padding of a tab card
 	TabIcon        = 108,  -- tab image size
 	TabTitle       = 38,  -- height of the big tab title
@@ -425,6 +426,22 @@ end
 -- The row is split into equal column slots. TabWidthScale shrinks the card
 -- INSIDE its own slot and re-centers it, so the tabs get horizontally
 -- slimmer without ever overlapping and without touching their height.
+
+-- how far each side of the tab row is pulled in by TabWidthScale.
+-- the search bar and the back icon reuse it so their edges line up
+-- exactly with the slimmer tab cards.
+local function tabRowInset()
+	local cols = math.max(1, LAYOUT.TabColumns)
+	local sc   = math.clamp(LAYOUT.TabWidthScale or 1, 0.4, 1)
+	return (1 - sc) / (2 * cols)
+end
+
+-- the back icon gets the same horizontal slimming as a tab card
+local function backButtonW()
+	local sc = math.clamp(LAYOUT.TabWidthScale or 1, 0.4, 1)
+	return math.max(1, math.floor(LAYOUT.BackButton * sc + 0.5))
+end
+
 local function tabCardGeom(cols, col)
 	local sc       = math.clamp(LAYOUT.TabWidthScale or 1, 0.4, 1)
 	local slotSc   = 1 / cols
@@ -3321,8 +3338,8 @@ function Library:_buildTabsPage()
 	self.SearchBar = new("Frame", {
 		Name = "SearchBar",
 		-- inset by 3px so the outline is never clipped by the panel edge
-		Position = UDim2.fromOffset(3, 3),
-		Size = UDim2.new(1, -(LAYOUT.TabScrollPad + 6 + LAYOUT.BackButton + LAYOUT.BackGap), 0, LAYOUT.SearchHeight),
+		Position = UDim2.new(tabRowInset(), 3, 0, 3),
+		Size = UDim2.new(1 - tabRowInset() * 2, -(LAYOUT.TabScrollPad + 6 + backButtonW() + LAYOUT.BackGap), 0, LAYOUT.SearchHeight),
 		BackgroundColor3 = THEME.SearchBar,
 		BackgroundTransparency = 0.15,
 		BorderSizePixel = 0,
@@ -3364,8 +3381,8 @@ function Library:_buildTabsPage()
 	self.BackButton = new("ImageButton", {
 		Name = "BackButton",
 		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -(LAYOUT.TabScrollPad + 3), 0, 3),
-		Size = UDim2.fromOffset(LAYOUT.BackButton, LAYOUT.SearchHeight),
+		Position = UDim2.new(1 - tabRowInset(), -(LAYOUT.TabScrollPad + 3), 0, 3),
+		Size = UDim2.fromOffset(backButtonW(), LAYOUT.SearchHeight),
 		BackgroundColor3 = THEME.SearchBar,
 		BackgroundTransparency = 0.15,
 		BorderSizePixel = 0,
