@@ -439,15 +439,8 @@ local function tabRowInset()
 	return (1 - sc) / 2
 end
 
--- the row is squeezed from its outer edges with a scale based UIPadding,
--- so the cards inside simply get slimmer together.
-local function rowSidePadding()
-	local inset = tabRowInset()
-	return new("UIPadding", {
-		PaddingLeft  = UDim.new(inset, 0),
-		PaddingRight = UDim.new(inset, 0),
-	})
-end
+-- NOTE: rowSidePadding() lives further down, right after the `padding`
+-- helper, because it needs `new` and `new` is not created until later.
 
 -- ORIGINAL column math: columns + gaps fill the row content exactly.
 local function tabCardGeom(cols, col)
@@ -1509,6 +1502,17 @@ local function padding(t, r, b, l)
 		PaddingRight = UDim.new(0, r or 0),
 		PaddingBottom = UDim.new(0, b or 0),
 		PaddingLeft = UDim.new(0, l or 0),
+	})
+end
+
+-- TAB ROW SLIMMING: squeezes a tab row from its OUTER edges with a scale
+-- based UIPadding, so both tabs get slimmer together while the gap
+-- between them stays exactly TabGap. Defined here because it needs `new`.
+local function rowSidePadding()
+	local inset = tabRowInset()
+	return new("UIPadding", {
+		PaddingLeft  = UDim.new(inset, 0),
+		PaddingRight = UDim.new(inset, 0),
 	})
 end
 
