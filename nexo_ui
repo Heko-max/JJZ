@@ -253,8 +253,6 @@ local THEME = {
 	TunerField  = Color3.fromRGB(0, 0, 0),       -- PURE BLACK
 	SearchBar   = Color3.fromRGB(0, 0, 0),       -- PURE BLACK search bar fill
 	DescPill    = Color3.fromRGB(24, 24, 24),    -- soft black behind a tab description, so the pill is visible
-	TabBox      = Color3.fromRGB(18, 18, 18),    -- the box that holds the tab cards. MUST NOT be pure black,
-	                                             -- or it is invisible against the black panel behind it
 	LaserShine  = Color3.fromRGB(255, 228, 228), -- bright silver shine in an outline
 	ControlAccent = Color3.fromRGB(228, 44, 44),  -- outline on buttons / switches / sliders
 	ControlText = Color3.fromRGB(228, 10, 10),    -- button text, switch tick, slider bar. your tuned match
@@ -322,51 +320,21 @@ local LAYOUT = {
 
 	-- Pages page (the tab list)
 	TabColumns     = 2,   -- tabs per row  ->  Tab | Tab
-	TabHeight      = 148, -- height of one tab card
-	TabGap         = 13,  -- space between tab cards
+	TabHeight      = 144, -- height of one tab card
+	TabGap         = 16,  -- space between tab cards
 	TabPad         = 16,  -- inner padding of a tab card
-	TabIcon        = 82,  -- tab image size
+	TabIcon        = 108,  -- tab image size
 	TabTitle       = 38,  -- height of the big tab title
-	TabDescHeight  = 38,  -- height of the description background pill
+	TabDescHeight  = 42,  -- height of the description background pill
 	TabDivider     = 0,   -- line between the columns. 0 = no line, 2 = thin line
-	TabScrollPad   = 2,   -- space kept on the right for the scrollbar
+	TabScrollPad   = 10,   -- space kept on the right for the scrollbar
 	                      -- (the bar is hidden now, so this can stay tiny)
 
-	-- THE BOX that holds the tab cards, and the same box for a section.
-	--   TabBoxRadius = how round the corners of the box are
-	--   TabBoxFade   = 0 = solid box, 1 = fully invisible box
-	--   TabBoxPad    = space between the box edge and the cards inside
-	TabBoxRadius   = 18,
-	TabBoxFade     = 0,
-	TabBoxPad      = 6,
-	--   TabBoxStroke     = thickness of the red outline around the box
-	--   TabBoxStrokeFade = 0 = bright solid line, 1 = invisible line
-	TabBoxStroke   = 2,
-	TabBoxStrokeFade = 1,
-	-- BREATHING ROOM around the tab cards. One value per edge, so you can
-	-- tune the sides without touching the top or the bottom.
-	--   TabBoxInsetX      = space on the LEFT and the RIGHT side.
-	--                      RAISE THIS if the tabs look too wide.
-	--   TabBoxInsetTop    = space above the first row of cards
-	--   TabBoxInsetBottom = space under the last row of cards
-	--   TabBoxHeightScale = how tall the box is. 1 = full height,
-	--                      0.8 = four fifths. LOWER THIS to shrink the box.
-	TabBoxInsetX      = 22,
-	TabBoxInsetTop    = 2,
-	TabBoxInsetBottom = 14,
-	--   TabWidthScale = how WIDE one tab card is inside its column slot.
-	--                  1 = fills the slot, 0.8 = four fifths as wide.
-	--                  The card stays centred whatever you set.
-	TabWidthScale  = 1.00,
-	TabBoxHeightScale = 1.00,
-	--   TabBoxWidthScale = how WIDE the box is. 1 = full width,
-	--                     0.9 = nine tenths. The box stays centred.
-	TabBoxWidthScale  = 1.00,
 
-	SearchHeight   = 60,  -- height of the search bar
+	SearchHeight   = 52,  -- height of the search bar
 	SearchIcon     = 28,  -- size of the search icon
-	SearchGap      = 6,  -- extra space between the search bar and the first tab row
-	BackButton     = 60,  -- width of the go back button, right of the search bar
+	SearchGap      = 14,  -- extra space between the search bar and the first tab row
+	BackButton     = 58,  -- width of the go back button, right of the search bar
 	BackGap        = 12,  -- space between the search bar and the go back button
 
 	-- SWITCHES / BUTTONS / SLIDERS (they live in a rounded box)
@@ -3319,51 +3287,6 @@ end
 --=====================================================
 --  PAGES PAGE (the tab list - no search bar)
 --=====================================================
--- THE BOX. The Pages tab list AND every section list sit inside one of
--- these rounded boxes, exactly like before. The box itself never scrolls
--- and never moves - the cards scroll INSIDE it, so the rounded frame and
--- its outline stay perfectly still.
-function Library:_makeListBox(parent, name)
-	-- INSET keeps the box AND its outline clear of the panel edge on every
-	-- side, so it can never be clipped or look like it hangs out of the UI.
-	-- HeightScale then makes it shorter than the space it sits in.
-	local insX  = LAYOUT.TabBoxInsetX or 22
-	local insT  = LAYOUT.TabBoxInsetTop or 2
-	local insB  = LAYOUT.TabBoxInsetBottom or 14
-	local hs    = LAYOUT.TabBoxHeightScale or 1
-	local ws    = LAYOUT.TabBoxWidthScale or 1
-	return new("Frame", {
-		Name = name or "ListBox",
-		-- InsetX is taken off BOTH sides, so the cards get equal space left
-		-- and right. Top and bottom are separate, hence insT + insB.
-		Position = UDim2.new((1 - ws) / 2, insX, 0, insT),
-		Size = UDim2.new(ws, -(insX * 2), hs, -(insT + insB)),
-		-- NOT THEME.Card: that is pure black, the same colour as the panel,
-		-- which is why the box could not be seen at all.
-		BackgroundColor3 = THEME.TabBox,
-		BackgroundTransparency = LAYOUT.TabBoxFade or 0,
-		BorderSizePixel = 0,
-		ClipsDescendants = true,
-		ZIndex = 1,
-		Parent = parent,
-	}, {
-		corner(LAYOUT.TabBoxRadius or 18),
-		-- the same bright outline the search bar uses, instead of the dim
-		-- faded one that vanished on a smaller panel
-		stroke(THEME.Accent, LAYOUT.TabBoxStroke or 2, LAYOUT.TabBoxStrokeFade or 0.15),
-	})
-end
-
--- The page switching code shows and hides the LISTS. The box has to follow
--- its list, otherwise a hidden list would leave an empty box on screen.
-function Library:_bindListBox(list, box)
-	if not (list and box) then return end
-	box.Visible = list.Visible
-	list:GetPropertyChangedSignal("Visible"):Connect(function()
-		if box.Parent then box.Visible = list.Visible end
-	end)
-end
-
 function Library:_buildTabsPage()
 	local page = new("Frame", {
 		Name = "TabsPage",
@@ -3512,9 +3435,6 @@ function Library:_buildTabsPage()
 	self.TabRows = {}
 	self.TabLines = {}
 
-	-- all the tab cards live inside this one box
-	self.TabBox = self:_makeListBox(area, "TabBox")
-
 	self.TabList = new("ScrollingFrame", {
 		Name = "TabList",
 		Size = UDim2.fromScale(1, 1),
@@ -3528,18 +3448,12 @@ function Library:_buildTabsPage()
 		ScrollingDirection = Enum.ScrollingDirection.Y,
 		ClipsDescendants = true,
 		ZIndex = 2,
-		Parent = self.TabBox,
+		Parent = area,
 	}, {
-		-- TabBoxPad keeps the cards off the inside wall of the box
-		padding(
-			LAYOUT.TabBoxPad,
-			LAYOUT.TabScrollPad + LAYOUT.TabBoxPad,
-			LAYOUT.TabGap + LAYOUT.TabBoxPad,
-			LAYOUT.TabBoxPad
-		),
+		-- a few pixels on every side so no card outline gets clipped
+		padding(3, LAYOUT.TabScrollPad, LAYOUT.TabGap, 3),
 		vlist(LAYOUT.TabGap),
 	})
-	self:_bindListBox(self.TabList, self.TabBox)
 
 	-- the root list and every section list share the exact same layout code
 	self.Tabs = self.Tabs or {}
@@ -3560,8 +3474,6 @@ function Library:_buildTabsPage()
 		Text = "No tabs yet. Add them with ui:AddTab({ ... })",
 		TextSize = 16,
 		TextColor3 = THEME.SubText,
-		-- above the box, or the solid box would hide this message
-		ZIndex = 3,
 		Parent = area,
 	})
 end
@@ -3630,24 +3542,10 @@ function Library:_addCard(ctx, info, isSection)
 
 	-- RULE 2: columns + gaps fill the row exactly, so every tab is the same
 	-- width and they can never overlap
-	-- TabWidthScale makes the card narrower than its column slot. The width
-	-- that is taken off is split evenly left and right, so the card stays
-	-- centred in its slot and the two columns still line up.
-	local w     = LAYOUT.TabWidthScale or 1
-	local slotS = 1 / cols
-	local slotO = -LAYOUT.TabGap * (cols - 1) / cols
-	local edgeS = slotS * (1 - w) / 2
-	local edgeO = slotO * (1 - w) / 2
-
 	local card = new("Frame", {
 		Name = (isSection and "Section" or "Tab") .. index,
-		Position = UDim2.new(
-			(col - 1) / cols + edgeS,
-			(col - 1) * LAYOUT.TabGap / cols + edgeO,
-			0,
-			0
-		),
-		Size = UDim2.new(slotS * w, slotO * w, 1, 0),
+		Position = UDim2.new((col - 1) / cols, (col - 1) * LAYOUT.TabGap / cols, 0, 0),
+		Size = UDim2.new(1 / cols, -LAYOUT.TabGap * (cols - 1) / cols, 1, 0),
 		BackgroundColor3 = THEME.TabCard,
 		BackgroundTransparency = 0.1,
 		BorderSizePixel = 0,
@@ -3969,10 +3867,6 @@ end
 function Library:_sectionList(tab)
 	if tab.SectionCtx then return tab.SectionCtx end
 
-	-- the section gets its OWN box, identical to the tab box
-	local box = self:_makeListBox(self.TabArea, "SectionBox")
-	box.Visible = false
-
 	local list = new("ScrollingFrame", {
 		Name = "SectionList",
 		Size = UDim2.fromScale(1, 1),
@@ -3987,17 +3881,11 @@ function Library:_sectionList(tab)
 		ClipsDescendants = true,
 		Visible = false,
 		ZIndex = 2,
-		Parent = box,
+		Parent = self.TabArea,
 	}, {
-		padding(
-			LAYOUT.TabBoxPad,
-			LAYOUT.TabScrollPad + LAYOUT.TabBoxPad,
-			LAYOUT.TabGap + LAYOUT.TabBoxPad,
-			LAYOUT.TabBoxPad
-		),
+		padding(3, LAYOUT.TabScrollPad, LAYOUT.TabGap, 3),
 		vlist(LAYOUT.TabGap),
 	})
-	self:_bindListBox(list, box)
 
 	tab.SectionCtx = {
 		List  = list,
