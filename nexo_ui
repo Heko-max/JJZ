@@ -343,6 +343,14 @@ local LAYOUT = {
 	--   TabBoxStrokeFade = 0 = bright solid line, 1 = invisible line
 	TabBoxStroke   = 2,
 	TabBoxStrokeFade = 0.15,
+	--   TabBoxInset       = margin between the box and the panel edge.
+	--                      The box used to fill the area EXACTLY, so its
+	--                      round corners and outline were clipped off and
+	--                      it looked like it hung out of the UI.
+	--   TabBoxHeightScale = how tall the box is. 1 = full height,
+	--                      0.8 = four fifths. LOWER THIS to shrink the box.
+	TabBoxInset    = 10,
+	TabBoxHeightScale = 0.82,
 
 	SearchHeight   = 52,  -- height of the search bar
 	SearchIcon     = 28,  -- size of the search icon
@@ -3305,9 +3313,15 @@ end
 -- and never moves - the cards scroll INSIDE it, so the rounded frame and
 -- its outline stay perfectly still.
 function Library:_makeListBox(parent, name)
+	-- INSET keeps the box AND its outline clear of the panel edge on every
+	-- side, so it can never be clipped or look like it hangs out of the UI.
+	-- HeightScale then makes it shorter than the space it sits in.
+	local inset = LAYOUT.TabBoxInset or 10
+	local hs    = LAYOUT.TabBoxHeightScale or 1
 	return new("Frame", {
 		Name = name or "ListBox",
-		Size = UDim2.fromScale(1, 1),
+		Position = UDim2.fromOffset(inset, inset),
+		Size = UDim2.new(1, -(inset * 2), hs, -(inset * 2)),
 		-- NOT THEME.Card: that is pure black, the same colour as the panel,
 		-- which is why the box could not be seen at all.
 		BackgroundColor3 = THEME.TabBox,
