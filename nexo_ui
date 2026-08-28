@@ -244,6 +244,8 @@ local THEME = {
 	TunerField  = Color3.fromRGB(0, 0, 0),       -- PURE BLACK
 	SearchBar   = Color3.fromRGB(0, 0, 0),       -- PURE BLACK search bar fill
 	DescPill    = Color3.fromRGB(24, 24, 24),    -- soft black behind a tab description, so the pill is visible
+	TabBox      = Color3.fromRGB(18, 18, 18),    -- the box that holds the tab cards. MUST NOT be pure black,
+	                                             -- or it is invisible against the black panel behind it
 	LaserShine  = Color3.fromRGB(255, 228, 228), -- bright silver shine in an outline
 	ControlAccent = Color3.fromRGB(228, 44, 44),  -- outline on buttons / switches / sliders
 	ControlText = Color3.fromRGB(228, 10, 10),    -- button text, switch tick, slider bar. your tuned match
@@ -311,10 +313,10 @@ local LAYOUT = {
 
 	-- Pages page (the tab list)
 	TabColumns     = 2,   -- tabs per row  ->  Tab | Tab
-	TabHeight      = 144, -- height of one tab card
+	TabHeight      = 126, -- height of one tab card
 	TabGap         = 16,  -- space between tab cards
 	TabPad         = 16,  -- inner padding of a tab card
-	TabIcon        = 108, -- tab image size
+	TabIcon        = 94,  -- tab image size
 	TabTitle       = 38,  -- height of the big tab title
 	TabDescHeight  = 42,  -- height of the description background pill
 	TabDivider     = 0,   -- line between the columns. 0 = no line, 2 = thin line
@@ -327,6 +329,10 @@ local LAYOUT = {
 	TabBoxRadius   = 18,
 	TabBoxFade     = 0,
 	TabBoxPad      = 10,
+	--   TabBoxStroke     = thickness of the red outline around the box
+	--   TabBoxStrokeFade = 0 = bright solid line, 1 = invisible line
+	TabBoxStroke   = 2,
+	TabBoxStrokeFade = 0.15,
 
 	SearchHeight   = 52,  -- height of the search bar
 	SearchIcon     = 28,  -- size of the search icon
@@ -3291,7 +3297,9 @@ function Library:_makeListBox(parent, name)
 	return new("Frame", {
 		Name = name or "ListBox",
 		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = THEME.Card,
+		-- NOT THEME.Card: that is pure black, the same colour as the panel,
+		-- which is why the box could not be seen at all.
+		BackgroundColor3 = THEME.TabBox,
 		BackgroundTransparency = LAYOUT.TabBoxFade or 0,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
@@ -3299,7 +3307,9 @@ function Library:_makeListBox(parent, name)
 		Parent = parent,
 	}, {
 		corner(LAYOUT.TabBoxRadius or 18),
-		softStroke(THEME.Accent, 1.3, 0.55, 0.45),
+		-- the same bright outline the search bar uses, instead of the dim
+		-- faded one that vanished on a smaller panel
+		stroke(THEME.Accent, LAYOUT.TabBoxStroke or 2, LAYOUT.TabBoxStrokeFade or 0.15),
 	})
 end
 
