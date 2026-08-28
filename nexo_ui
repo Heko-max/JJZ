@@ -266,13 +266,13 @@ local LAYOUT = {
 
 	HeaderHeight   = 62,
 	-- the NEXO image top left. Lower both to shrink it, raise to grow it.
-	LogoWidth      = 210,
-	LogoHeight     = 86,
+	LogoWidth      = 176,
+	LogoHeight     = 72,
 
-	ArrowSize      = 36,  -- size of one >> arrow box
-	ArrowText      = 26,  -- font size of the >> arrows
-	ArrowGap       = 14,  -- space between the arrows
-	ArrowOffsetX   = 70,  -- push the whole arrow row to the right
+	ArrowSize      = 30,  -- size of one >> arrow box
+	ArrowText      = 22,  -- font size of the >> arrows
+	ArrowGap       = 10,  -- space between the arrows
+	ArrowOffsetX   = 46,  -- push the whole arrow row to the right
 
 	HeroHeight     = 330,
 	HeroLeftWidth  = 0.40,
@@ -375,10 +375,17 @@ local HOME_CLONE = true
 -- Same scale size, same width driven 1.50464 aspect, same rounded
 -- corner, and NO outline. Set it to false to get the old pixel panel.
 local UI_CLONE     = true
--- BIGGER: raise the 0.55 to grow the whole window, lower it to shrink.
--- The height follows automatically through CLONE_ASPECT below.
-local CLONE_SIZE   = UDim2.new(0.55, 15, 0.7625, 15)
+-- WINDOW SIZE: how much of the screen WIDTH the panel fills.
+-- 0.55 = a bit over half the screen. Raise it to make the whole UI
+-- bigger, lower it to make it smaller. Everything inside scales with
+-- it as one piece, so the pages never spill out of the panel.
+local CLONE_WIDTH  = 0.55
 local CLONE_ASPECT = 1.50464
+-- The panel is BUILT at its original pixel size (the size every page and
+-- tab was designed for) and only the reference SHAPE is taken from the
+-- aspect. The UIScale in _fitToScreen does the shrinking.
+local CLONE_HEIGHT = math.floor(LAYOUT.PanelWidth / CLONE_ASPECT + 0.5)
+local CLONE_SIZE   = UDim2.fromOffset(LAYOUT.PanelWidth, CLONE_HEIGHT)
 local CLONE_CORNER = UDim.new(0.075, 0)
 
 local function socialW()
@@ -2707,7 +2714,9 @@ function Library:_buildHeader()
 		BackgroundTransparency = 1,
 		ClipsDescendants = true,
 		Parent = self.Header,
-	}, { hlist(40, Enum.HorizontalAlignment.Right) })
+		-- 28 = space between Home / Pages / Credits. Lower it if they ever
+		-- feel too far apart.
+	}, { hlist(28, Enum.HorizontalAlignment.Right) })
 
 	for i, label in ipairs(TEXT.Nav) do
 		local btn = new("TextButton", {
@@ -2719,7 +2728,7 @@ function Library:_buildHeader()
 			AutoButtonColor = false,
 			Font = Enum.Font.GothamMedium,
 			Text = label,
-			TextSize = 21,
+			TextSize = 18, -- Home / Pages / Credits font size
 			TextColor3 = THEME.NavIdle,
 			Parent = nav,
 		})
@@ -6144,7 +6153,14 @@ function Library:_fitToScreen()
 	-- the clone shell already sizes itself from the viewport, so its
 	-- UIScale must rest at 1 or the panel would get shrunk twice.
 	if UI_CLONE then
-		self.BaseScale = UI_SIZE
+		-- shrink the ENTIRE panel until it fills CLONE_WIDTH of the screen.
+		-- Because this is a UIScale, the header, arrows, nav, home cards and
+		-- every tab shrink by the exact same amount, so the layout stays
+		-- identical to the original - just smaller. Never let it grow past
+		-- the screen height either.
+		local wantW = (viewport.X * CLONE_WIDTH) / LAYOUT.PanelWidth
+		local capH  = (viewport.Y * SCREEN_FILL) / CLONE_HEIGHT
+		self.BaseScale = math.min(wantW, capH) * UI_SIZE
 	else
 		self.BaseScale = math.clamp(fit, MIN_SCALE, MAX_SCALE) * UI_SIZE
 	end
