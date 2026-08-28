@@ -266,13 +266,21 @@ local LAYOUT = {
 
 	HeaderHeight   = 62,
 	-- the NEXO image top left. Lower both to shrink it, raise to grow it.
-	LogoWidth      = 176,
-	LogoHeight     = 72,
+	LogoWidth      = 210,
+	LogoHeight     = 86,
 
-	ArrowSize      = 30,  -- size of one >> arrow box
-	ArrowText      = 22,  -- font size of the >> arrows
-	ArrowGap       = 10,  -- space between the arrows
-	ArrowOffsetX   = 46,  -- push the whole arrow row to the right
+	ArrowSize      = 36,  -- size of one >> arrow box
+	ArrowText      = 26,  -- font size of the >> arrows
+	ArrowGap       = 14,  -- space between the arrows
+	ArrowOffsetX   = 70,  -- push the whole arrow row to the right
+
+	-- TOP LINE POSITION
+	--   HeaderOffsetY = push the WHOLE top row (logo, arrows, nav) DOWN.
+	--                  bigger = further down. 0 = right at the top.
+	--   NavOffsetX    = pull Home / Pages / Credits to the LEFT,
+	--                  away from the right edge. bigger = further left.
+	HeaderOffsetY  = 14,
+	NavOffsetX     = 22,
 
 	HeroHeight     = 330,
 	HeroLeftWidth  = 0.40,
@@ -1877,8 +1885,8 @@ function Library.new()
 	-- everything below the header lives in here, one frame per page
 	self.Content = new("Frame", {
 		Name = "Content",
-		Position = UDim2.fromOffset(0, LAYOUT.HeaderHeight + LAYOUT.GAP),
-		Size = UDim2.new(1, 0, 1, -(LAYOUT.HeaderHeight + LAYOUT.GAP)),
+		Position = UDim2.fromOffset(0, LAYOUT.HeaderOffsetY + LAYOUT.HeaderHeight + LAYOUT.GAP),
+		Size = UDim2.new(1, 0, 1, -(LAYOUT.HeaderOffsetY + LAYOUT.HeaderHeight + LAYOUT.GAP)),
 		BackgroundTransparency = 1,
 		ClipsDescendants = true,
 		Parent = self.Body,
@@ -2655,6 +2663,7 @@ end
 function Library:_buildHeader()
 	self.Header = new("Frame", {
 		Name = "Header",
+		Position = UDim2.fromOffset(0, LAYOUT.HeaderOffsetY),
 		Size = UDim2.new(1, 0, 0, LAYOUT.HeaderHeight),
 		BackgroundTransparency = 1,
 		Parent = self.Body,
@@ -2709,7 +2718,8 @@ function Library:_buildHeader()
 	local nav = new("Frame", {
 		Name = "Nav",
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, 0, 0.5, 0),
+		-- pulled in from the right edge by LAYOUT.NavOffsetX
+		Position = UDim2.new(1, -LAYOUT.NavOffsetX, 0.5, 0),
 		Size = UDim2.new(0.38, 0, 0, 32),
 		BackgroundTransparency = 1,
 		ClipsDescendants = true,
@@ -6230,11 +6240,13 @@ function Library:_applyLayout()
 	end
 	self:_fitToScreen()
 
+	self.Header.Position = UDim2.fromOffset(0, LAYOUT.HeaderOffsetY)
 	self.Header.Size = UDim2.new(1, 0, 0, headerH)
 	self.Logo.Size   = UDim2.fromOffset(LAYOUT.LogoWidth, LAYOUT.LogoHeight)
 
-	self.Content.Position = UDim2.fromOffset(0, headerH + LAYOUT.GAP)
-	self.Content.Size     = UDim2.new(1, 0, 1, -(headerH + LAYOUT.GAP))
+	local topDrop = LAYOUT.HeaderOffsetY + headerH + LAYOUT.GAP
+	self.Content.Position = UDim2.fromOffset(0, topDrop)
+	self.Content.Size     = UDim2.new(1, 0, 1, -topDrop)
 
 	-- the clone front page sizes itself with scales, so these pixel writes
 	-- are skipped. Everything else in this pass still runs.
