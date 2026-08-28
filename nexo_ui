@@ -2711,6 +2711,67 @@ end
 --=====================================================
 --  HOME PAGE (hero + 3 cards)
 --=====================================================
+--=====================================================
+--  HOME CARD DESIGN (shared)
+--  The look is taken from the reference hub: gradient body, gradient
+--  outline, gradient logo, scaled title + desc. NOTHING here adds tabs,
+--  it only styles the tabs YOU add with ui:AddHomeTab({ ... }).
+--=====================================================
+local G_HOME      = { {0, 157, 2, 31}, {0.64, 76, 22, 32}, {1, 36, 29, 30} }
+local G_HOME_STRK = { {0, 157, 2, 31}, {0.29, 76, 22, 32}, {1, 24, 24, 24} }
+local G_LOGO      = { {0, 157, 2, 31}, {0.42, 163, 5, 33}, {1, 255, 51, 51} }
+
+-- one card slice, same proportions as the reference
+local HOME_CARD_SIZE   = UDim2.fromScale(0.2906, 0.7433)
+local HOME_CARD_RADIUS = UDim.new(0, 10)
+local HOME_CARD_GAP    = UDim.new(0.02, 0)
+
+local HOHO_SANS = "rbxasset://fonts/families/SourceSansPro.json"
+local HOHO_FALLBACK = {
+	Regular  = Enum.Font.SourceSans,
+	SemiBold = Enum.Font.SourceSansSemibold,
+	Bold     = Enum.Font.SourceSansBold,
+	Heavy    = Enum.Font.SourceSansBold,
+}
+
+-- FontFace needs a modern client. If Font.new is missing we quietly drop back
+-- to the closest Enum.Font so nothing errors on an older executor.
+local function hohoFont(inst, weight)
+	weight = weight or "Regular"
+	local ok = pcall(function()
+		inst.FontFace = Font.new(HOHO_SANS, Enum.FontWeight[weight])
+	end)
+	if not ok then
+		pcall(function() inst.Font = HOHO_FALLBACK[weight] or Enum.Font.SourceSans end)
+	end
+end
+
+-- multi stop gradient
+local function hohoStops(parent, cols, rot, transparency)
+	local ks = {}
+	for _, c in ipairs(cols) do
+		ks[#ks + 1] = ColorSequenceKeypoint.new(c[1], Color3.fromRGB(c[2], c[3], c[4]))
+	end
+	local g = Instance.new("UIGradient")
+	g.Color = ColorSequence.new(ks)
+	g.Rotation = rot or 0
+	if transparency then
+		g.Transparency = NumberSequence.new(transparency)
+	end
+	g.Parent = parent
+	return g
+end
+
+local function hohoStroke(parent, thickness, cols, rot)
+	local s = Instance.new("UIStroke")
+	s.Color = Color3.fromRGB(255, 255, 255)
+	s.Thickness = thickness
+	s.Transparency = 0
+	s.Parent = parent
+	if cols then hohoStops(s, cols, rot) end
+	return s
+end
+
 function Library:_buildHomePage()
 	local page = new("Frame", {
 		Name = "HomePage",
@@ -2722,70 +2783,19 @@ function Library:_buildHomePage()
 	self.PageFrames[TEXT.Nav[1] or "Home"] = page
 
 	--=====================================================
-	--  HOME PAGE - HOHO HUB gen4 CLONE
-	--  Every colour, position, size, gradient, font and asset id below is
-	--  the exact value from the reference script.
-	--  ONE conversion is applied: the reference measures Y from the top of
-	--  the whole window, where its TOP_BAR owns the first 17%. This page is
+	--  HOME PAGE LAYOUT
+	--  The GEOMETRY (where things sit and how big they are) matches the
+	--  reference hub. The CONTENT is all yours: your welcome text, your
+	--  subtitle, your banner, your social links. No borrowed tabs.
+	--
+	--  One conversion is applied: the reference measures Y from the top of
+	--  the whole window, where its top bar owns the first 17%. This page is
 	--  parented to Content, which already starts BELOW the header, so every
 	--  reference Y is remapped with  y = (y_ref - 0.17) / 0.83.
 	--=====================================================
 	local WHITE  = Color3.fromRGB(255, 255, 255)
-	local ACCENT = Color3.fromRGB(255, 51, 51)
-	local PANEL  = Color3.fromRGB(20, 20, 20)
+	local ACCENT = THEME.Accent
 
-	-- exact gradient palettes from the reference
-	local G_HOME      = { {0, 157, 2, 31}, {0.64, 76, 22, 32}, {1, 36, 29, 30} }
-	local G_HOME_STRK = { {0, 157, 2, 31}, {0.29, 76, 22, 32}, {1, 24, 24, 24} }
-	local G_LOGO      = { {0, 157, 2, 31}, {0.42, 163, 5, 33}, {1, 255, 51, 51} }
-
-	local SANS = "rbxasset://fonts/families/SourceSansPro.json"
-
-	-- FontFace needs a modern client. If Font.new is missing we quietly drop
-	-- back to the closest Enum.Font so the page still renders everywhere.
-	local FALLBACK = {
-		Regular  = Enum.Font.SourceSans,
-		SemiBold = Enum.Font.SourceSansSemibold,
-		Bold     = Enum.Font.SourceSansBold,
-		Heavy    = Enum.Font.SourceSansBold,
-	}
-	local function setFont(inst, weight)
-		weight = weight or "Regular"
-		local ok = pcall(function()
-			inst.FontFace = Font.new(SANS, Enum.FontWeight[weight])
-		end)
-		if not ok then
-			pcall(function() inst.Font = FALLBACK[weight] or Enum.Font.SourceSans end)
-		end
-	end
-
-	-- multi stop gradient, same helper the reference uses
-	local function stops(parent, cols, rot, transparency)
-		local ks = {}
-		for _, c in ipairs(cols) do
-			ks[#ks + 1] = ColorSequenceKeypoint.new(c[1], Color3.fromRGB(c[2], c[3], c[4]))
-		end
-		local g = Instance.new("UIGradient")
-		g.Color = ColorSequence.new(ks)
-		g.Rotation = rot or 0
-		if transparency then
-			g.Transparency = NumberSequence.new(transparency)
-		end
-		g.Parent = parent
-		return g
-	end
-
-	local function gradStroke(parent, thickness, cols, rot)
-		local s = Instance.new("UIStroke")
-		s.Color = WHITE
-		s.Thickness = thickness
-		s.Transparency = 0
-		s.Parent = parent
-		if cols then stops(s, cols, rot) end
-		return s
-	end
-
-	-- the reference Y remap
 	local function Y(y) return (y - 0.17) / 0.83 end
 	local function H(h) return h / 0.83 end
 
@@ -2802,53 +2812,55 @@ function Library:_buildHomePage()
 	self.Hero = Upper
 	self.Left = Upper
 
+	-- YOUR welcome text, in the reference's header slot
 	local header = new("TextLabel", {
-		Name = "HEADER",
+		Name = "Welcome",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.2255, Y(0.2863)),
 		Size = UDim2.fromScale(0.3408, H(0.2333)),
 		BackgroundTransparency = 1,
 		RichText = true,
-		Text = 'WELCOME TO\n<font color="#f8042e">BEST FREE</font>\nBLOX FRUIT HUB',
-		TextColor3 = WHITE,
+		Text = TEXT.Welcome,
+		TextColor3 = THEME.Text,
 		TextScaled = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Parent = Upper,
 	})
-	setFont(header, "Heavy")
+	hohoFont(header, "Heavy")
 
-	local title1 = new("TextLabel", {
-		Name = "TITLE1",
+	-- YOUR subtitle
+	local subtitle = new("TextLabel", {
+		Name = "Subtitle",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.2478, Y(0.4853)),
 		Size = UDim2.fromScale(0.3855, H(0.1647)),
 		BackgroundTransparency = 1,
 		RichText = true,
-		Text = "Thanks for using our services. \nWe are commited to bring greatest \nexperience to users !",
-		TextColor3 = WHITE,
+		Text = TEXT.Subtitle,
+		TextColor3 = THEME.SubText,
 		TextScaled = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Parent = Upper,
 	})
-	setFont(title1, "SemiBold")
+	hohoFont(subtitle, "SemiBold")
 
-	-- UPDATE_BANNER1. Reference Y is 0.155, which sits slightly under its top
-	-- bar, so it clamps to the very top of this page.
+	-- YOUR banner, in the reference's banner slot. Reference Y is 0.155,
+	-- which sits under its top bar, so it clamps to the top of this page.
 	self.Banner = new("ImageLabel", {
-		Name = "UPDATE_BANNER1",
+		Name = "Banner",
 		Position = UDim2.fromScale(0.4676, math.max(0, Y(0.155))),
 		Size = UDim2.fromScale(0.4831, H(0.5338)),
 		BackgroundTransparency = 1,
-		Image = img(IMAGES.Banner or "16171568093"),
+		Image = img(IMAGES.Banner),
 		ScaleType = Enum.ScaleType.Fit,
 		Parent = Upper,
 	})
 
 	--------------------------------------------------------------
-	-- SOCIALS_BUTTONS : 3 tinted icons with the round hover glow
+	-- YOUR socials (Discord + YouTube), with the round hover glow
 	--------------------------------------------------------------
 	self.Socials = new("Frame", {
-		Name = "SOCIALS_BUTTONS",
+		Name = "Socials",
 		Position = UDim2.fromScale(0.0551, Y(0.5768)),
 		Size = UDim2.fromScale(0.3855, H(0.0786)),
 		BackgroundTransparency = 1,
@@ -2857,32 +2869,31 @@ function Library:_buildHomePage()
 		new("UIListLayout", {
 			FillDirection = Enum.FillDirection.Horizontal,
 			Padding = UDim.new(0.05, 0),
-			SortOrder = Enum.SortOrder.Name,
+			SortOrder = Enum.SortOrder.LayoutOrder,
 			HorizontalAlignment = Enum.HorizontalAlignment.Left,
 			VerticalAlignment = Enum.VerticalAlignment.Center,
 		}),
 	})
 
-	local socialIds   = { "16171891828", "16171897995", "16171900314" }
-	local socialNames = { "Discord", "YouTube", "Discord" }
-	local socialLinks = {
-		SOCIAL_LINKS.Discord,
-		SOCIAL_LINKS.YouTube,
-		SOCIAL_LINKS.Discord,
+	local socialItems = {
+		{ name = "Discord", id = IMAGES.Discord, link = SOCIAL_LINKS.Discord },
+		{ name = "YouTube", id = IMAGES.YouTube, link = SOCIAL_LINKS.YouTube },
 	}
 
-	for i, id in ipairs(socialIds) do
+	for i, data in ipairs(socialItems) do
 		local b = new("ImageButton", {
-			Name = tostring(i),
+			Name = data.name,
+			LayoutOrder = i,
 			AnchorPoint = Vector2.new(0.5, 0.5),
-			Size = UDim2.fromScale(0.139, 0.909),
+			Size = UDim2.fromScale(SOCIAL_ICON_SCALE_X * 0.139, SOCIAL_ICON_SCALE_Y * 0.909),
 			BackgroundTransparency = 1,
-			Image = img(id),
-			ImageColor3 = ACCENT,
+			Image = img(data.id),
+			ImageColor3 = SOCIAL_TINT and ACCENT or Color3.fromRGB(255, 255, 255),
 			ScaleType = Enum.ScaleType.Fit,
 			Parent = self.Socials,
 		})
 
+		-- the soft round glow that fades in behind the icon on hover
 		local hover = new("ImageLabel", {
 			Name = "Hover",
 			AnchorPoint = Vector2.new(0.5, 0.5),
@@ -2892,6 +2903,7 @@ function Library:_buildHomePage()
 			Image = img("16171994145"),
 			ImageColor3 = ACCENT,
 			ImageTransparency = 1,
+			ZIndex = 0,
 			Parent = b,
 		})
 
@@ -2903,13 +2915,15 @@ function Library:_buildHomePage()
 			playTween(hover, tweenInfo(0.25), { ImageTransparency = 1 }, channel)
 		end)
 		b.MouseButton1Click:Connect(function()
-			local link = socialLinks[i]
-			if link then self:OpenLink(link, socialNames[i]) end
+			self:OpenLink(data.link, data.name)
 		end)
+
+		table.insert(self.SocialBoxes, b)
 	end
 
 	--------------------------------------------------------------
-	-- Functions : the sliding 2 page pager that holds the cards
+	-- the card row. It starts EMPTY, exactly like before. Fill it with
+	--   ui:AddHomeTab({ title = "...", desc = "...", image = "...", callback = fn })
 	--------------------------------------------------------------
 	local Functions = new("Frame", {
 		Name = "Functions",
@@ -2919,254 +2933,26 @@ function Library:_buildHomePage()
 		Parent = page,
 	})
 
-	local HOME_PAGER = new("Frame", {
-		Name = "HOME_PAGER",
+	self.CardRow = new("Frame", {
+		Name = "Cards",
 		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
-		ClipsDescendants = true,
 		Parent = Functions,
-	})
-
-	local PAGES_HOLDER = new("Frame", {
-		Name = "PAGES_HOLDER",
-		Size = UDim2.fromScale(2, 1),
-		BackgroundTransparency = 1,
-		Parent = HOME_PAGER,
-	})
-
-	local PAGE_SHORTCUTS = new("Frame", {
-		Name = "PAGE_SHORTCUTS",
-		Size = UDim2.fromScale(0.5, 1),
-		BackgroundTransparency = 1,
-		Parent = PAGES_HOLDER,
 	}, {
 		new("UIListLayout", {
 			FillDirection = Enum.FillDirection.Horizontal,
-			Padding = UDim.new(0.02, 0),
+			Padding = HOME_CARD_GAP,
 			SortOrder = Enum.SortOrder.LayoutOrder,
 			HorizontalAlignment = Enum.HorizontalAlignment.Center,
 			VerticalAlignment = Enum.VerticalAlignment.Center,
 		}),
 	})
 
-	local PAGE_FAVORITES = new("Frame", {
-		Name = "PAGE_FAVORITES",
-		Position = UDim2.fromScale(0.5, 0),
-		Size = UDim2.fromScale(0.5, 1),
-		BackgroundTransparency = 1,
-		Parent = PAGES_HOLDER,
-	}, {
-		new("UIListLayout", {
-			FillDirection = Enum.FillDirection.Horizontal,
-			Padding = UDim.new(0.02, 0),
-			HorizontalAlignment = Enum.HorizontalAlignment.Center,
-			VerticalAlignment = Enum.VerticalAlignment.Center,
-		}),
-	})
-
-	local favEmpty = new("TextLabel", {
-		Name = "FavEmpty",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromScale(0.8, 0.12),
-		BackgroundTransparency = 1,
-		ZIndex = 2,
-		Text = "No favorites yet \226\128\148 tap \226\152\133 on any sub-page.",
-		TextColor3 = WHITE,
-		TextTransparency = 0.4,
-		TextScaled = true,
-		Parent = PAGE_FAVORITES,
-	})
-	setFont(favEmpty, "Regular")
-
-	--------------------------------------------------------------
-	-- DOTS : the two page indicators under the cards
-	--------------------------------------------------------------
-	local DOTS = new("Frame", {
-		Name = "DOTS",
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.fromScale(0.5, 1),
-		Size = UDim2.fromScale(0.2, 0.08),
-		BackgroundTransparency = 1,
-		ZIndex = 50,
-		Parent = HOME_PAGER,
-	}, {
-		new("UIListLayout", {
-			FillDirection = Enum.FillDirection.Horizontal,
-			Padding = UDim.new(0.08, 0),
-			HorizontalAlignment = Enum.HorizontalAlignment.Center,
-			VerticalAlignment = Enum.VerticalAlignment.Center,
-		}),
-	})
-
-	local dots = {}
-	for i = 1, 2 do
-		local d = new("TextButton", {
-			Name = "DOT_" .. i,
-			Size = UDim2.fromScale(0.35, 0.7),
-			BackgroundColor3 = WHITE,
-			BackgroundTransparency = (i == 1) and 0.1 or 0.7,
-			BorderSizePixel = 0,
-			Text = "",
-			ZIndex = 51,
-			Parent = DOTS,
-		}, {
-			new("UIAspectRatioConstraint", { AspectRatio = 1 }),
-			new("UICorner", { CornerRadius = UDim.new(1, 0) }),
-		})
-		dots[i] = d
-	end
-
-	local function homePage(index)
-		playTween(
-			PAGES_HOLDER,
-			tweenInfo(0.4, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-			{ Position = UDim2.fromScale(index == 1 and 0 or -1, 0) },
-			"homePager"
-		)
-		dots[1].BackgroundTransparency = index == 1 and 0.1 or 0.7
-		dots[2].BackgroundTransparency = index == 2 and 0.1 or 0.7
-	end
-
-	dots[1].MouseButton1Click:Connect(function() homePage(1) end)
-	dots[2].MouseButton1Click:Connect(function() homePage(2) end)
-
-	--------------------------------------------------------------
-	-- the shared card builder, identical geometry to the reference
-	--------------------------------------------------------------
-	local function buildCard(parent, cfg)
-		local btn = new("TextButton", {
-			Name = cfg.name,
-			Position = UDim2.fromScale(0.3634, 0.1283),
-			Size = cfg.size,
-			BackgroundColor3 = PANEL,
-			BackgroundTransparency = 0.5,
-			BorderSizePixel = 0,
-			LayoutOrder = cfg.order or 0,
-			Text = "",
-			ZIndex = 1,
-			AutoButtonColor = false,
-			Parent = parent,
-		}, {
-			new("UICorner", { CornerRadius = cfg.radius }),
-		})
-
-		local g = new("Frame", {
-			Name = "Gradient",
-			Size = UDim2.fromScale(1, 1),
-			BackgroundTransparency = 1,
-			ZIndex = 0,
-			Parent = btn,
-		}, {
-			new("UICorner", { CornerRadius = cfg.radius }),
-		})
-		stops(g, cfg.grad, cfg.gradRot)
-		gradStroke(g, cfg.strokeThickness, cfg.gradStroke, cfg.gradRot)
-
-		local logo = new("ImageLabel", {
-			Name = "Logo",
-			Position = UDim2.fromScale(cfg.logoX, 0.148),
-			Size = UDim2.fromScale(0.3158, 0.6961),
-			BackgroundTransparency = 1,
-			ZIndex = 2,
-			Image = "http://www.roblox.com/asset/?id=" .. cfg.icon,
-			ScaleType = Enum.ScaleType.Fit,
-			Parent = btn,
-		})
-		stops(logo, G_LOGO, -144)
-
-		local title = new("TextLabel", {
-			Name = "Title",
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.33, 0.2871),
-			Size = UDim2.fromScale(0.5402, 0.3836),
-			BackgroundTransparency = 1,
-			ZIndex = 2,
-			RichText = true,
-			Text = cfg.title,
-			TextColor3 = WHITE,
-			TextScaled = true,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Parent = btn,
-		}, {
-			new("UITextSizeConstraint", { MaxTextSize = 100, MinTextSize = 1 }),
-		})
-		setFont(title, "Bold")
-
-		local desc = new("TextLabel", {
-			Name = "Desc",
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.33, 0.6433),
-			Size = UDim2.fromScale(0.5307, 0.4017),
-			BackgroundTransparency = 1,
-			ZIndex = 2,
-			RichText = true,
-			Text = cfg.desc,
-			TextColor3 = WHITE,
-			TextScaled = true,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			Parent = btn,
-		}, {
-			new("UITextSizeConstraint", { MaxTextSize = 100, MinTextSize = 1 }),
-		})
-		setFont(desc, "Regular")
-
-		if cfg.aspect then
-			new("UIAspectRatioConstraint", {
-				AspectRatio = cfg.aspect,
-				AspectType = Enum.AspectType.ScaleWithParentSize,
-				DominantAxis = Enum.DominantAxis.Width,
-				Parent = btn,
-			})
-		end
-
-		btn.MouseEnter:Connect(function()
-			playTween(btn, tweenInfo(0.2), { BackgroundTransparency = 0.25 }, "cardFade")
-		end)
-		btn.MouseLeave:Connect(function()
-			playTween(btn, tweenInfo(0.2), { BackgroundTransparency = 0.5 }, "cardFade")
-		end)
-
-		return btn
-	end
-
-	--------------------------------------------------------------
-	-- the 3 shortcut cards : SETTING | MISC | CONFIG
-	--------------------------------------------------------------
-	local HOME_CARDS = {
-		{ title = "SETTING", desc = "Fully customize your favorite script hub", icon = "6031280882" },
-		{ title = "MISC",    desc = "Cool features like ESP or Teleport",       icon = "6022668909" },
-		{ title = "CONFIG",  desc = "Set up the script before the `handless` journey", icon = "6034418511" },
-	}
-
 	self.Cards = {}
-	for i, c in ipairs(HOME_CARDS) do
-		local card = buildCard(PAGE_SHORTCUTS, {
-			name = "HOMEPAGE_BUTTON",
-			order = i,
-			size = UDim2.fromScale(0.2906, 0.7433),
-			radius = UDim.new(0, 10),
-			grad = G_HOME,
-			gradStroke = G_HOME_STRK,
-			gradRot = 45,
-			strokeThickness = 2.5,
-			logoX = 0.635,
-			icon = c.icon,
-			title = c.title,
-			desc = c.desc,
-		})
-		card.MouseButton1Click:Connect(function()
-			pcall(function() self:SelectPage(TEXT.Nav[2] or "Pages") end)
-		end)
-		self.Cards[i] = card
-	end
-
-	-- handles the rest of the library still expects
-	self.CardRow   = PAGE_SHORTCUTS
-	self.HomeTabs  = {}
+	self.HomeTabs = {}
 	self.HomeLinks = {}
 	self.IconSlots = self.IconSlots or {}
-	self.TextCols  = self.TextCols or {}
+	self.TextCols = self.TextCols or {}
 end
 
 --=====================================================
@@ -3175,12 +2961,11 @@ end
 --  maximum of MAX_HOME_TABS (3) cards.
 --=====================================================
 function Library:_resizeHomeTabs()
-	local count = math.max(1, #self.HomeTabs)
-	local cardW = 1 / count
-	local cardOffset = -math.floor((LAYOUT.CardGap * (count - 1)) / count)
+	-- Every card is the same slice as the reference (0.2906 x 0.7433) and the
+	-- centered list layout does the spacing, so 1, 2 or 3 cards all look right.
 	for i, tab in ipairs(self.HomeTabs) do
 		tab.Frame.LayoutOrder = i
-		tab.Frame.Size = UDim2.new(cardW, cardOffset, 1, 0)
+		tab.Frame.Size = HOME_CARD_SIZE
 	end
 end
 
@@ -3193,165 +2978,118 @@ function Library:AddHomeTab(info)
 	end
 
 	local index = #self.HomeTabs + 1
-	local pad = LAYOUT.CardPad
 
+	-- THE CARD. Same design as the reference hub: a dark translucent slab
+	-- with a red gradient body, a gradient outline, the logo on the right
+	-- under a red gradient, and the title / desc scaled on the left.
 	local card = new("Frame", {
 		Name = "HomeTab" .. index,
 		LayoutOrder = index,
-		Size = UDim2.new(1, 0, 1, 0), -- corrected by _resizeHomeTabs
-		BackgroundColor3 = THEME.Card,
-		BackgroundTransparency = 0.15,
+		Size = HOME_CARD_SIZE, -- kept in step by _resizeHomeTabs
+		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
+		BackgroundTransparency = 0.5,
 		BorderSizePixel = 0,
-		ClipsDescendants = true,
 		Parent = self.CardRow,
 	}, {
-		corner(16),
-		stroke(THEME.Accent, 1.4, 0.45),
-		padding(pad, pad, pad, pad),
+		new("UICorner", { CornerRadius = HOME_CARD_RADIUS }),
 	})
 
-	gradient(THEME.AccentDark, THEME.Card, 205).Parent = card
-
-	-- hover + click highlight, behind the text and the image
+	-- the gradient body and its gradient outline, on a layer behind the text
 	local glow = new("Frame", {
-		Name = "Hover",
-		Position = UDim2.fromOffset(-pad, -pad),
-		Size = UDim2.new(1, pad * 2, 1, pad * 2),
-		BackgroundColor3 = THEME.Accent,
+		Name = "Gradient",
+		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
 		ZIndex = 0,
-		Parent = card,
-	}, { corner(16) })
-
-	local ripple = new("Frame", {
-		Name = "Ripple",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Size = UDim2.fromOffset(0, 0),
-		BackgroundColor3 = THEME.Accent,
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		Visible = false,
-		ZIndex = 0,
-		Parent = card,
-	}, { new("UICorner", { CornerRadius = UDim.new(1, 0) }) })
-
-	if HOVER_ENABLED then
-		local fade = HOVER_FADE -- shared, was rebuilt for every single card
-
-		local hit = new("TextButton", {
-			Name = "Hit",
-			Position = UDim2.fromOffset(-pad, -pad),
-			Size = UDim2.new(1, pad * 2, 1, pad * 2),
-			BackgroundTransparency = 1,
-			Text = "",
-			AutoButtonColor = false,
-			ZIndex = 5,
-			Parent = card,
-		})
-
-		hit.MouseEnter:Connect(function()
-			playTween(glow, fade, { BackgroundTransparency = HOVER_STRENGTH }, "hover")
-		end)
-
-		hit.MouseLeave:Connect(function()
-			playTween(glow, fade, { BackgroundTransparency = 1 }, "hover")
-		end)
-
-		hit.MouseButton1Down:Connect(function()
-			local mouse = UserInputService:GetMouseLocation()
-			local origin = Vector2.new(mouse.X, mouse.Y) - card.AbsolutePosition
-			local w, h = card.AbsoluteSize.X, card.AbsoluteSize.Y
-			local reach = math.sqrt(w * w + h * h) * 2
-
-			ripple.Position = UDim2.fromOffset(origin.X - pad, origin.Y - pad)
-			ripple.Size = UDim2.fromOffset(0, 0)
-			ripple.BackgroundTransparency = HOVER_STRENGTH - 0.08
-			ripple.Visible = true
-
-			-- shared TweenInfo, and playTween cancels a ripple that is still
-			-- expanding. Clicking fast used to start a second ripple whose
-			-- finisher hid the frame while the first was still growing.
-			local grow = playTween(
-				ripple,
-				CLICK_TWEEN,
-				{ Size = UDim2.fromOffset(reach, reach), BackgroundTransparency = 1 },
-				"ripple"
-			)
-			if grow then
-				grow.Completed:Once(function(playbackState)
-					if playbackState == Enum.PlaybackState.Completed then
-						ripple.Visible = false
-					end
-				end)
-			end
-		end)
-
-		if info.callback then
-			hit.MouseButton1Click:Connect(function()
-				task.spawn(info.callback)
-			end)
-		end
-	end
-
-	-- RULE 1: the text column reserves the icon width plus a GAP
-	local textCol = new("Frame", {
-		Name = "Text",
-		Size = UDim2.new(1, -(LAYOUT.CardIcon + LAYOUT.GAP), 1, 0),
-		BackgroundTransparency = 1,
-		ClipsDescendants = true,
-		Parent = card,
-	}, { vlist(6) })
-	table.insert(self.TextCols, textCol)
-
-	local title = new("TextLabel", {
-		Name = "Title",
-		LayoutOrder = 1,
-		Size = UDim2.new(1, 0, 0, 32),
-		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamBold,
-		Text = info.title or ("Tab " .. index),
-		TextScaled = true,
-		TextColor3 = THEME.Text,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Center,
-		Parent = textCol,
-	}, { clampText(26) })
-
-	local desc = new("TextLabel", {
-		Name = "Desc",
-		LayoutOrder = 2,
-		Size = UDim2.new(1, 0, 1, -38),
-		BackgroundTransparency = 1,
-		Font = Enum.Font.Gotham,
-		Text = info.desc or "",
-		TextScaled = true,
-		TextColor3 = THEME.SubText,
-		TextWrapped = true,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Top,
-		Parent = textCol,
-	}, { clampText(14) })
-
-	local slot = new("Frame", {
-		Name = "IconSlot",
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, 0, 0.5, 0),
-		Size = UDim2.fromOffset(LAYOUT.CardIcon, LAYOUT.CardIcon),
-		BackgroundTransparency = 1,
-		ClipsDescendants = true,
 		Parent = card,
 	}, {
-		corner(12),
+		new("UICorner", { CornerRadius = HOME_CARD_RADIUS }),
+	})
+	hohoStops(glow, G_HOME, 45)
+	hohoStroke(glow, 2.5, G_HOME_STRK, 45)
+
+	-- the logo, right hand side, tinted by the red gradient
+	local slot = new("Frame", {
+		Name = "IconSlot",
+		Position = UDim2.fromScale(0.635, 0.148),
+		Size = UDim2.fromScale(0.3158, 0.6961),
+		BackgroundTransparency = 1,
+		ZIndex = 2,
+		Parent = card,
+	}, {
 		new("ImageLabel", {
 			Name = "Icon",
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
 			Image = img(pickIcon(info, IMAGES["Card" .. math.min(index, 3) .. "Icon"] or IMAGES.Card1Icon)),
-			ScaleType = Enum.ScaleType.Crop,
-		}, { corner(12) }),
+			ScaleType = Enum.ScaleType.Fit,
+		}),
 	})
+	hohoStops(slot.Icon, G_LOGO, -144)
 	table.insert(self.IconSlots, slot)
+
+	local title = new("TextLabel", {
+		Name = "Title",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.33, 0.2871),
+		Size = UDim2.fromScale(0.5402, 0.3836),
+		BackgroundTransparency = 1,
+		ZIndex = 2,
+		RichText = true,
+		Text = info.title or ("Tab " .. index),
+		TextColor3 = THEME.Text,
+		TextScaled = true,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = card,
+	}, {
+		new("UITextSizeConstraint", { MaxTextSize = 100, MinTextSize = 1 }),
+	})
+	hohoFont(title, "Bold")
+
+	local desc = new("TextLabel", {
+		Name = "Desc",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.33, 0.6433),
+		Size = UDim2.fromScale(0.5307, 0.4017),
+		BackgroundTransparency = 1,
+		ZIndex = 2,
+		RichText = true,
+		Text = info.desc or "",
+		TextColor3 = THEME.SubText,
+		TextScaled = true,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		Parent = card,
+	}, {
+		new("UITextSizeConstraint", { MaxTextSize = 100, MinTextSize = 1 }),
+	})
+	hohoFont(desc, "Regular")
+
+	-- one invisible button covering the whole card takes the clicks
+	local hit = new("TextButton", {
+		Name = "Hit",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Text = "",
+		AutoButtonColor = false,
+		ZIndex = 5,
+		Parent = card,
+	})
+
+	if HOVER_ENABLED then
+		-- the reference hover: the whole slab just lifts from 0.5 to 0.25
+		local channel = "homeCard" .. index
+		hit.MouseEnter:Connect(function()
+			playTween(card, tweenInfo(0.2), { BackgroundTransparency = 0.25 }, channel)
+		end)
+		hit.MouseLeave:Connect(function()
+			playTween(card, tweenInfo(0.2), { BackgroundTransparency = 0.5 }, channel)
+		end)
+	end
+
+	if info.callback then
+		hit.MouseButton1Click:Connect(function()
+			task.spawn(info.callback)
+		end)
+	end
 
 	slot.Visible = (slot.Icon.Image ~= "")
 
