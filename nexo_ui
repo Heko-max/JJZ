@@ -64,7 +64,7 @@ local SOCIAL_ICON_SCALE = 1      -- 1 = fills the whole square, lower = padding
 -- SQUASH THE LOGOS ON ONE AXIS ONLY
 --   X = width   (1 = keep the full width, do not make the logo thinner)
 --   Y = height  (lower than 1 = the logo gets SHORTER, width stays the same)
-local SOCIAL_ICON_SCALE_X = 1      -- width  : untouched
+local SOCIAL_ICON_SCALE_X = 1.5      -- width  : untouched
 local SOCIAL_ICON_SCALE_Y = 0.85   -- height : smaller only vertically
 
 -- how the artwork is placed inside that square:
