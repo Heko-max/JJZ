@@ -75,8 +75,8 @@ local SOCIAL_ICON_MODE = "fill"
 
 -- per icon fine tuning, only if one artwork has extra empty space baked in
 local SOCIAL_ICON_TWEAK = {
-	Discord = 1,
-	YouTube = 1,
+	Discord = 0.5,
+	YouTube = 0.5,
 }
 
 -- SOCIAL LOGOS WITHOUT AN IMAGE ID
@@ -164,7 +164,7 @@ local SOCIAL_LINKS = {
 }
 
 -- how big the icon pops when your mouse is over it, and how fast
-local SOCIAL_HOVER_SCALE = 1.45
+local SOCIAL_HOVER_SCALE = 1
 local SOCIAL_HOVER_TIME  = 0.22
 
 local SOCIAL_PLAIN = true
