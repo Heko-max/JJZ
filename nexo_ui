@@ -3593,17 +3593,23 @@ function Library:_addCard(ctx, info, isSection)
 		Name = (isSection and "Section" or "Tab") .. index,
 		Position = cardPos,
 		Size = cardSize,
-		BackgroundColor3 = THEME.TabCard,
-		BackgroundTransparency = 0.1,
+		-- HOME PAGE LOOK: the exact same dark slab as the 3 front page cards
+		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
+		BackgroundTransparency = 0.5,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		ZIndex = 2,
 		Parent = row,
 	}, {
 		corner(18),
-		stroke(THEME.Accent, 1.6, 0.3),
+		-- the flat red outline is gone. the gradient outline is added right
+		-- below with hohoStroke, exactly like the front page cards.
 		padding(LAYOUT.TabPad, LAYOUT.TabPad, LAYOUT.TabPad, LAYOUT.TabPad),
 	})
+
+	-- SAME OUTLINE AS THE HOME PAGE CARDS: a 2.5 thick gradient stroke that
+	-- runs G_HOME_STRK at 45 degrees, instead of the old flat accent line.
+	hohoStroke(card, 2.5, G_HOME_STRK, 45)
 
 	-- HOVER + CLICK HIGHLIGHT
 	-- both layers sit BEHIND the text and the image, and inside the card, so the
@@ -3710,7 +3716,7 @@ function Library:_addCard(ctx, info, isSection)
 		LayoutOrder = 1,
 		Size = UDim2.new(1, 0, 0, LAYOUT.TabTitle),
 		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamBold,
+		Font = Enum.Font.GothamBold, -- fallback only, hohoFont overrides it below
 		Text = info.title or ("TAB " .. index),
 		TextScaled = true,
 		TextWrapped = true,
@@ -3719,6 +3725,8 @@ function Library:_addCard(ctx, info, isSection)
 		TextYAlignment = Enum.TextYAlignment.Center,
 		Parent = textCol,
 	}, { clampText(28) })
+	-- SAME TITLE FONT AS THE HOME PAGE CARDS
+	hohoFont(title, "Bold")
 
 	-- the description sits on its own rounded background pill
 	local pill = new("Frame", {
@@ -3739,7 +3747,7 @@ function Library:_addCard(ctx, info, isSection)
 		Name = "Desc",
 		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
-		Font = Enum.Font.Gotham,
+		Font = Enum.Font.Gotham, -- fallback only, hohoFont overrides it below
 		Text = info.desc or "",
 		TextScaled = true,
 		TextColor3 = THEME.SubText,
@@ -3748,6 +3756,8 @@ function Library:_addCard(ctx, info, isSection)
 		TextYAlignment = Enum.TextYAlignment.Center,
 		Parent = pill,
 	}, { clampText(14) })
+	-- SAME DESCRIPTION FONT AS THE HOME PAGE CARDS
+	hohoFont(desc, "Regular")
 
 	local slot = new("Frame", {
 		Name = "IconSlot",
