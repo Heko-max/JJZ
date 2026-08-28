@@ -342,7 +342,7 @@ local LAYOUT = {
 	--   TabBoxStroke     = thickness of the red outline around the box
 	--   TabBoxStrokeFade = 0 = bright solid line, 1 = invisible line
 	TabBoxStroke   = 2,
-	TabBoxStrokeFade = 0.15,
+	TabBoxStrokeFade = 0.45,
 	--   TabBoxInset       = margin between the box and the panel edge.
 	--                      The box used to fill the area EXACTLY, so its
 	--                      round corners and outline were clipped off and
@@ -350,7 +350,11 @@ local LAYOUT = {
 	--   TabBoxHeightScale = how tall the box is. 1 = full height,
 	--                      0.8 = four fifths. LOWER THIS to shrink the box.
 	TabBoxInset    = 10,
-	TabBoxHeightScale = 0.82,
+	--   TabWidthScale = how WIDE one tab card is inside its column slot.
+	--                  1 = fills the slot, 0.8 = four fifths as wide.
+	--                  The card stays centred whatever you set.
+	TabWidthScale  = 0.84,
+	TabBoxHeightScale = 0.92,
 
 	SearchHeight   = 52,  -- height of the search bar
 	SearchIcon     = 28,  -- size of the search icon
@@ -3614,10 +3618,24 @@ function Library:_addCard(ctx, info, isSection)
 
 	-- RULE 2: columns + gaps fill the row exactly, so every tab is the same
 	-- width and they can never overlap
+	-- TabWidthScale makes the card narrower than its column slot. The width
+	-- that is taken off is split evenly left and right, so the card stays
+	-- centred in its slot and the two columns still line up.
+	local w     = LAYOUT.TabWidthScale or 1
+	local slotS = 1 / cols
+	local slotO = -LAYOUT.TabGap * (cols - 1) / cols
+	local edgeS = slotS * (1 - w) / 2
+	local edgeO = slotO * (1 - w) / 2
+
 	local card = new("Frame", {
 		Name = (isSection and "Section" or "Tab") .. index,
-		Position = UDim2.new((col - 1) / cols, (col - 1) * LAYOUT.TabGap / cols, 0, 0),
-		Size = UDim2.new(1 / cols, -LAYOUT.TabGap * (cols - 1) / cols, 1, 0),
+		Position = UDim2.new(
+			(col - 1) / cols + edgeS,
+			(col - 1) * LAYOUT.TabGap / cols + edgeO,
+			0,
+			0
+		),
+		Size = UDim2.new(slotS * w, slotO * w, 1, 0),
 		BackgroundColor3 = THEME.TabCard,
 		BackgroundTransparency = 0.1,
 		BorderSizePixel = 0,
