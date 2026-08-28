@@ -64,8 +64,8 @@ local SOCIAL_ICON_SCALE = 1      -- 1 = fills the whole square, lower = padding
 -- SQUASH THE LOGOS ON ONE AXIS ONLY
 --   X = width   (1 = keep the full width, do not make the logo thinner)
 --   Y = height  (lower than 1 = the logo gets SHORTER, width stays the same)
-local SOCIAL_ICON_SCALE_X = 0.1      -- width  : untouched
-local SOCIAL_ICON_SCALE_Y = 0.2   -- height : smaller only vertically
+local SOCIAL_ICON_SCALE_X = 1      -- width  : untouched
+local SOCIAL_ICON_SCALE_Y = 0.85   -- height : smaller only vertically
 
 -- how the artwork is placed inside that square:
 --   "fill" -> stretched to fill it. every icon ends up EXACTLY the same size
@@ -280,7 +280,7 @@ local LAYOUT = {
 	--   SocialBox   = HEIGHT of the button   (bigger = taller)
 	--   SocialWidth = WIDTH of the button    (smaller = slimmer)
 	-- 62 x 62 was the old square look. 34 x 62 is slim and tall.
-	SocialBox      = 62,
+	SocialBox      = 44,
 	SocialWidth    = 34,
 	SocialGap      = 12,  -- space between the two icons
 	SocialOffsetY  = 56,  -- push the 3 social icons down
@@ -371,11 +371,13 @@ local LAYOUT = {
 -- Roblox ids never need any of that and keep working on every executor.
 
 local IMG = {}
+local GIF -- animated GIF engine, built further down
 
 IMG.CACHE_DIR   = "nexohub_images"
 IMG.MIN_BYTES   = 64
 IMG.MAX_RETRIES = 2
-IMG.VALID_EXT   = { png = true, jpg = true, jpeg = true, bmp = true, tga = true }
+IMG.VALID_EXT   = { png = true, jpg = true, jpeg = true, bmp = true, tga = true, gif = true }
+IMG.gifBodies   = {}   -- url -> raw gif bytes, kept for the GIF engine
 IMG.memory      = {}   -- input string -> resolved content id
 IMG.pending     = {}   -- token number  -> input string
 IMG.pendingN    = 0
@@ -535,8 +537,14 @@ function IMG.download(url)
 			end
 
 			local kind = IMG.sniff(body)
-			if kind == "gif" or kind == "webp" then
-				return nil, "roblox cannot show " .. kind:upper() .. " images"
+			if kind == "gif" then
+				-- Roblox cannot display a raw .gif, so the bytes are handed to the
+				-- GIF engine, which decodes the frames and animates them instead.
+				IMG.gifBodies[url] = body
+				return nil, "animated gif, handled by the GIF engine"
+			end
+			if kind == "webp" then
+				return nil, "roblox cannot show WEBP images"
 			end
 			if kind then path = base .. "." .. kind end
 
@@ -609,6 +617,14 @@ function IMG.set(inst, prop, input, onDone)
 		return
 	end
 
+	-- ANIMATED GIF: any link that points at a .gif (or an imgur / giphy /
+	-- tenor page that has one behind it) is played frame by frame on this
+	-- very same ImageLabel. Everything else carries on as a still image.
+	if kind == "http" and prop == "Image" and GIF and GIF.ready and GIF.looksGif(value) then
+		GIF.attach(inst, value, onDone)
+		return
+	end
+
 	local cached = IMG.memory[tostring(input)]
 	if cached then
 		pcall(function() inst[prop] = cached end)
@@ -650,6 +666,507 @@ function IMG.clearCache()
 		end
 	end
 	return removed
+end
+
+--=====================================================
+--  ANIMATED GIF ENGINE
+--  Decodes a .gif and plays its frames on a normal ImageLabel using an
+--  EditableImage. Any image field in this library (Background, Logo,
+--  Banner, MiniIcon, social icons, notification icons, card icons)
+--  accepts a gif link now - nothing else about them changed.
+--  Falls back silently to a still image when the executor or client
+--  cannot do EditableImage.
+--=====================================================
+local GIF_ASSETS = select(2, pcall(function() return game:GetService("AssetService") end))
+local GIF_RUN    = select(2, pcall(function() return game:GetService("RunService") end))
+
+GIF = {
+	ready     = false,
+	cache     = {},   -- url -> { pending, waiting, data, fault }
+	players   = {},   -- player -> true
+	budget    = 26 * 1024 * 1024,
+	maxFrames = 300,
+}
+
+local GIF_BUFFER_OK = type(buffer) == "table" and type(buffer.create) == "function"
+if GIF_BUFFER_OK and GIF_ASSETS and Content ~= nil then
+	GIF.ready = pcall(function()
+		local probe = GIF_ASSETS:CreateEditableImage({ Size = Vector2.new(2, 2) })
+		probe:WritePixelsBuffer(Vector2.zero, Vector2.new(2, 2), buffer.create(16))
+		return Content.fromObject(probe)
+	end)
+end
+
+local function lzwDecode(data, minCode, limit)
+	local out = buffer.create(math.max(1, limit))
+	local prefix, suffix, stack = table.create(4096, 0), table.create(4096, 0), table.create(4096, 0)
+	local clear = bit32.lshift(1, minCode)
+	local eoi = clear + 1
+	local codeSize = minCode + 1
+	local maxCode = bit32.lshift(1, codeSize)
+	local nextFree = eoi + 1
+	local old, first, outPos = -1, 0, 0
+	local pos, acc, accBits, length = 1, 0, 0, #data
+	while true do
+		while accBits < codeSize and pos <= length do
+			acc = bit32.bor(acc, bit32.lshift(string.byte(data, pos), accBits))
+			accBits = accBits + 8
+			pos = pos + 1
+		end
+		if accBits < codeSize then break end
+		local code = bit32.band(acc, maxCode - 1)
+		acc = bit32.rshift(acc, codeSize)
+		accBits = accBits - codeSize
+		if code == eoi then break end
+		if code == clear then
+			codeSize = minCode + 1
+			maxCode = bit32.lshift(1, codeSize)
+			nextFree = eoi + 1
+			old = -1
+		elseif old == -1 then
+			if code < clear then
+				if outPos < limit then
+					buffer.writeu8(out, outPos, code)
+					outPos = outPos + 1
+				end
+				first, old = code, code
+			end
+		else
+			local current, top = code, 0
+			if code >= nextFree then
+				stack[top] = first
+				top = top + 1
+				current = old
+			end
+			local guard = 0
+			while current >= clear and guard < 4096 do
+				stack[top] = suffix[current]
+				top = top + 1
+				current = prefix[current]
+				guard = guard + 1
+			end
+			first = current
+			stack[top] = current
+			top = top + 1
+			for index = top - 1, 0, -1 do
+				if outPos < limit then
+					buffer.writeu8(out, outPos, stack[index])
+					outPos = outPos + 1
+				end
+			end
+			if nextFree < 4096 then
+				prefix[nextFree] = old
+				suffix[nextFree] = first
+				nextFree = nextFree + 1
+				if nextFree >= maxCode and codeSize < 12 then
+					codeSize = codeSize + 1
+					maxCode = bit32.lshift(1, codeSize)
+				end
+			end
+			old = code
+		end
+	end
+	return out
+end
+
+local PASSES = { { 0, 8 }, { 4, 8 }, { 2, 4 }, { 1, 2 } }
+
+local function deinterlace(source, width, height)
+	local target = buffer.create(math.max(1, width * height))
+	local row = 0
+	for _, pass in ipairs(PASSES) do
+		local y = pass[1]
+		while y < height do
+			buffer.copy(target, y * width, source, row * width, width)
+			row = row + 1
+			y = y + pass[2]
+		end
+	end
+	return target
+end
+
+local function palettePack(palette)
+	local count = math.floor(#palette / 3)
+	local packed = table.create(math.max(1, count), 0)
+	for index = 0, count - 1 do
+		local base = index * 3
+		local r = string.byte(palette, base + 1) or 0
+		local g = string.byte(palette, base + 2) or 0
+		local b = string.byte(palette, base + 3) or 0
+		packed[index] = r + g * 256 + b * 65536 + 4278190080
+	end
+	return packed, count
+end
+
+local function gifDecode(bytes)
+	if type(bytes) ~= "string" or #bytes < 14 or string.sub(bytes, 1, 3) ~= "GIF" then return nil, "This link is not a GIF file" end
+	local screenW = string.byte(bytes, 7) + string.byte(bytes, 8) * 256
+	local screenH = string.byte(bytes, 9) + string.byte(bytes, 10) * 256
+	if screenW < 1 or screenH < 1 then return nil, "This GIF reports no size" end
+	if screenW * screenH > 1440 * 900 then return nil, "This GIF is too large to animate" end
+	local packed = string.byte(bytes, 11)
+	local pos = 14
+	local globalTable = nil
+	if bit32.band(packed, 128) ~= 0 then
+		local size = bit32.lshift(1, bit32.band(packed, 7) + 1)
+		globalTable = string.sub(bytes, pos, pos + size * 3 - 1)
+		pos = pos + size * 3
+	end
+	local frames = {}
+	local frameBytes = screenW * screenH * 4
+	local canvas = buffer.create(frameBytes)
+	local saved = nil
+	local total, loops = 0, 0
+	local delay, disposal, transparent = 10, 0, nil
+	local pendingDisposal, pendingRect = 0, nil
+	local dirtyL, dirtyT, dirtyR, dirtyB = screenW, screenH, 0, 0
+	local clock = os.clock()
+	local limit = #bytes
+	while pos <= limit do
+		local block = string.byte(bytes, pos)
+		if not block or block == 59 then break end
+		if block == 33 then
+			local label = string.byte(bytes, pos + 1) or 0
+			pos = pos + 2
+			if label == 249 then
+				local size = string.byte(bytes, pos) or 4
+				local flags = string.byte(bytes, pos + 1) or 0
+				delay = (string.byte(bytes, pos + 2) or 0) + (string.byte(bytes, pos + 3) or 0) * 256
+				local index = string.byte(bytes, pos + 4) or 0
+				disposal = bit32.band(bit32.rshift(flags, 2), 7)
+				transparent = bit32.band(flags, 1) == 1 and index or nil
+				pos = pos + size + 1
+				while true do
+					local sub = string.byte(bytes, pos)
+					if not sub or sub == 0 then
+						pos = pos + 1
+						break
+					end
+					pos = pos + sub + 1
+				end
+			elseif label == 255 then
+				local size = string.byte(bytes, pos) or 0
+				local name = string.sub(bytes, pos + 1, pos + size)
+				pos = pos + size + 1
+				while true do
+					local sub = string.byte(bytes, pos)
+					if not sub or sub == 0 then
+						pos = pos + 1
+						break
+					end
+					if string.sub(name, 1, 8) == "NETSCAPE" and sub >= 3 then
+						loops = (string.byte(bytes, pos + 2) or 0) + (string.byte(bytes, pos + 3) or 0) * 256
+					end
+					pos = pos + sub + 1
+				end
+			else
+				while true do
+					local sub = string.byte(bytes, pos)
+					if not sub or sub == 0 then
+						pos = pos + 1
+						break
+					end
+					pos = pos + sub + 1
+				end
+			end
+		elseif block == 44 then
+			local left = (string.byte(bytes, pos + 1) or 0) + (string.byte(bytes, pos + 2) or 0) * 256
+			local top = (string.byte(bytes, pos + 3) or 0) + (string.byte(bytes, pos + 4) or 0) * 256
+			local fw = (string.byte(bytes, pos + 5) or 0) + (string.byte(bytes, pos + 6) or 0) * 256
+			local fh = (string.byte(bytes, pos + 7) or 0) + (string.byte(bytes, pos + 8) or 0) * 256
+			local flags = string.byte(bytes, pos + 9) or 0
+			pos = pos + 10
+			local palette = globalTable
+			if bit32.band(flags, 128) ~= 0 then
+				local size = bit32.lshift(1, bit32.band(flags, 7) + 1)
+				palette = string.sub(bytes, pos, pos + size * 3 - 1)
+				pos = pos + size * 3
+			end
+			local interlace = bit32.band(flags, 64) ~= 0
+			local minCode = string.byte(bytes, pos) or 8
+			pos = pos + 1
+			local chunks = {}
+			while true do
+				local sub = string.byte(bytes, pos)
+				if not sub or sub == 0 then
+					pos = pos + 1
+					break
+				end
+				table.insert(chunks, string.sub(bytes, pos + 1, pos + sub))
+				pos = pos + sub + 1
+			end
+			if palette and fw > 0 and fh > 0 and minCode >= 2 and minCode <= 11 then
+				local indices = lzwDecode(table.concat(chunks), minCode, fw * fh)
+				if interlace then indices = deinterlace(indices, fw, fh) end
+				if pendingDisposal == 2 and pendingRect then
+					local rectX = math.max(0, pendingRect[1])
+					local rectW = math.min(pendingRect[3], screenW - rectX)
+					if rectW > 0 then
+						for y = pendingRect[2], pendingRect[2] + pendingRect[4] - 1 do
+							if y >= 0 and y < screenH then buffer.fill(canvas, (y * screenW + rectX) * 4, 0, rectW * 4) end
+						end
+					end
+					dirtyL = math.min(dirtyL, rectX)
+					dirtyT = math.min(dirtyT, math.max(0, pendingRect[2]))
+					dirtyR = math.max(dirtyR, math.min(screenW, pendingRect[1] + pendingRect[3]))
+					dirtyB = math.max(dirtyB, math.min(screenH, pendingRect[2] + pendingRect[4]))
+				elseif pendingDisposal == 3 and saved then
+					buffer.copy(canvas, 0, saved, 0, frameBytes)
+					dirtyL, dirtyT, dirtyR, dirtyB = 0, 0, screenW, screenH
+				end
+				if disposal == 3 then
+					saved = saved or buffer.create(frameBytes)
+					buffer.copy(saved, 0, canvas, 0, frameBytes)
+				end
+				local colors, colorCount = palettePack(palette)
+				for y = 0, fh - 1 do
+					local canvasY = top + y
+					if canvasY >= 0 and canvasY < screenH then
+						local rowBase = canvasY * screenW
+						local sourceBase = y * fw
+						for x = 0, fw - 1 do
+							local canvasX = left + x
+							if canvasX >= 0 and canvasX < screenW then
+								local index = buffer.readu8(indices, sourceBase + x)
+								if index ~= transparent and index < colorCount then buffer.writeu32(canvas, (rowBase + canvasX) * 4, colors[index]) end
+							end
+						end
+					end
+				end
+				local ms = delay * 10
+				if ms < 20 then ms = 100 end
+				dirtyL = math.min(dirtyL, math.max(0, left))
+				dirtyT = math.min(dirtyT, math.max(0, top))
+				dirtyR = math.max(dirtyR, math.min(screenW, left + fw))
+				dirtyB = math.max(dirtyB, math.min(screenH, top + fh))
+				if #frames > 0 and (total + frameBytes > GIF.budget or #frames >= GIF.maxFrames) then
+					frames[#frames].delay = frames[#frames].delay + ms
+				else
+					local snapshot = buffer.create(frameBytes)
+					buffer.copy(snapshot, 0, canvas, 0, frameBytes)
+					local rx, ry = dirtyL, dirtyT
+					local rw, rh = dirtyR - dirtyL, dirtyB - dirtyT
+					if #frames == 0 or rw < 1 or rh < 1 then rx, ry, rw, rh = 0, 0, screenW, screenH end
+					table.insert(frames, { pixels = snapshot, delay = ms, x = rx, y = ry, w = rw, h = rh })
+					total = total + frameBytes
+					dirtyL, dirtyT, dirtyR, dirtyB = screenW, screenH, 0, 0
+				end
+				pendingDisposal = disposal
+				pendingRect = { left, top, fw, fh }
+			end
+			if os.clock() - clock > 0.003 then
+				task.wait()
+				clock = os.clock()
+			end
+		else
+			pos = pos + 1
+		end
+	end
+	if #frames == 0 then return nil, "No frames were found inside this GIF" end
+	return { width = screenW, height = screenH, frames = frames, loops = loops, bytes = total }
+end
+
+local function writePixels(editable, position, size, pixels)
+	editable:WritePixelsBuffer(position, size, pixels)
+end
+
+function GIF.push(player, full)
+	local data = player.data
+	local editable = player.editable
+	if not data or not editable then return end
+	local frame = data.frames[player.frame]
+	if not frame then return end
+	if full or not frame.w or (frame.w >= data.width and frame.h >= data.height) then
+		pcall(writePixels, editable, Vector2.zero, player.size, frame.pixels)
+		return
+	end
+	local rowBytes = frame.w * 4
+	local bytes = rowBytes * frame.h
+	if player.scratchBytes ~= bytes then
+		player.scratch = buffer.create(bytes)
+		player.scratchBytes = bytes
+	end
+	local scratch = player.scratch
+	local stride = data.width * 4
+	local origin = frame.y * stride + frame.x * 4
+	for row = 0, frame.h - 1 do buffer.copy(scratch, row * rowBytes, frame.pixels, origin + row * stride, rowBytes) end
+	if not pcall(writePixels, editable, Vector2.new(frame.x, frame.y), Vector2.new(frame.w, frame.h), scratch) then
+		pcall(writePixels, editable, Vector2.zero, player.size, frame.pixels)
+	end
+end
+
+function GIF.detach(player, restore)
+	if not player then return end
+	GIF.players[player] = nil
+	player.playing = false
+	local target = player.target
+	if target and target.Parent then
+		pcall(function() target.Image = restore or "" end)
+	end
+	player.editable = nil
+	player.data = nil
+	player.scratch = nil
+	player.scratchBytes = nil
+end
+
+-- imgur / giphy / tenor pages -> the real .gif file behind them
+function GIF.twin(url)
+	local imgur = url:match("^https://i%.imgur%.com/([%w]+)%.%w+$")
+		or url:match("^https://imgur%.com/([%w]+)%.gifv?$")
+	if imgur then return "https://i.imgur.com/" .. imgur .. ".gif" end
+	local giphy = url:match("giphy%.com/media/([%w_%-]+)/")
+	if giphy then return "https://media.giphy.com/media/" .. giphy .. "/giphy.gif" end
+	local tenor = url:match("^(https://media[%w%.%-]*%.tenor%.com/[%w_%-]+/[^/%.]+)%.%w+$")
+	if tenor then return tenor .. ".gif" end
+	return nil
+end
+
+function GIF.looksGif(url)
+	if type(url) ~= "string" then return false end
+	local path = url:match("^[^?#]+") or url
+	local ext = path:match("%.(%w+)$")
+	if ext and ext:lower() == "gif" then return true end
+	return GIF.twin(url) ~= nil
+end
+
+-- the raw bytes, either kept by IMG.download or fetched now
+function GIF.bytes(url)
+	local body = IMG.gifBodies[url]
+	if type(body) == "string" and body:sub(1, 3) == "GIF" then return body end
+	body = IMG.httpGet(url)
+	if type(body) ~= "string" or body:sub(1, 3) ~= "GIF" then
+		local twin = GIF.twin(url)
+		if twin and twin ~= url then body = IMG.httpGet(twin) end
+	end
+	if type(body) == "string" and body:sub(1, 3) == "GIF" then return body end
+	return nil
+end
+
+-- decode once per link, everyone else waits on the same job
+function GIF.load(url, done)
+	local entry = GIF.cache[url]
+	if entry then
+		if entry.pending then
+			table.insert(entry.waiting, done)
+		else
+			task.spawn(done, entry.data, entry.fault)
+		end
+		return
+	end
+
+	entry = { pending = true, waiting = { done } }
+	GIF.cache[url] = entry
+
+	task.spawn(function()
+		local bytes = GIF.bytes(url)
+		local data, fault
+		if type(bytes) == "string" then
+			local ok, result, problem = pcall(gifDecode, bytes)
+			if ok then
+				data, fault = result, problem
+			else
+				fault = "the gif decoder stopped early"
+			end
+		else
+			fault = "could not download the gif"
+		end
+		IMG.gifBodies[url] = nil
+		entry.pending = false
+		entry.data    = data
+		entry.fault   = fault
+		local waiting = entry.waiting
+		entry.waiting = {}
+		for _, callback in ipairs(waiting) do task.spawn(callback, data, fault) end
+	end)
+end
+
+-- play a gif on an existing ImageLabel / ImageButton
+function GIF.attach(target, url, onDone)
+	if not GIF.ready or not target then
+		if onDone then onDone(false, "this client cannot animate gifs") end
+		return nil
+	end
+
+	local player = {
+		target = target, url = url, frame = 1, clock = 0,
+		speed = 1, playing = true, ready = false, loopsDone = 0,
+	}
+	GIF.players[player] = true
+	pcall(function() target.Image = "" end)
+
+	GIF.load(url, function(data, fault)
+		if not GIF.players[player] then return end
+		if not data then
+			GIF.players[player] = nil
+			if onDone then onDone(false, fault or "this gif could not be decoded") end
+			return
+		end
+
+		local ok, editable = pcall(function()
+			return GIF_ASSETS:CreateEditableImage({ Size = Vector2.new(data.width, data.height) })
+		end)
+		if not ok or not editable then
+			GIF.players[player] = nil
+			if onDone then onDone(false, "this client cannot draw gif frames") end
+			return
+		end
+
+		player.data     = data
+		player.editable = editable
+		player.size     = Vector2.new(data.width, data.height)
+
+		if not pcall(function() target.ImageContent = Content.fromObject(editable) end) then
+			GIF.players[player] = nil
+			if onDone then onDone(false, "this client cannot draw gif frames") end
+			return
+		end
+
+		player.ready   = true
+		player.playing = #data.frames > 1
+		GIF.push(player, true)
+		IMG.hideFallbacks(target)
+		if onDone then onDone(true, url) end
+	end)
+
+	return player
+end
+
+-- one heartbeat drives every gif on screen
+if GIF_RUN then
+	GIF_RUN.Heartbeat:Connect(function(step)
+		for player in pairs(GIF.players) do
+			local target = player.target
+			if not target or not target.Parent then
+				GIF.detach(player)
+			elseif player.ready and player.playing and player.data then
+				local frames = player.data.frames
+				local count  = #frames
+				player.clock = player.clock + step * 1000 * player.speed
+				if player.clock > 320 then player.clock = 320 end
+
+				local advance = 0
+				while advance < 40 do
+					local current = frames[player.frame]
+					if not current or player.clock < current.delay then break end
+					player.clock = player.clock - current.delay
+					local nextIndex = player.frame + 1
+					if nextIndex > count then
+						player.loopsDone = player.loopsDone + 1
+						if player.data.loops > 0 and player.loopsDone >= player.data.loops then
+							player.playing = false
+							break
+						end
+						nextIndex = 1
+						advance = advance + 1
+					end
+					player.frame = nextIndex
+					advance = advance + 1
+				end
+
+				if advance > 0 then GIF.push(player, advance > 1) end
+			end
+		end
+	end)
 end
 
 -- img(id) keeps its old job: turn any input into something an ImageLabel
@@ -905,9 +1422,9 @@ local SLIDE_PUSH = 0.30 -- how far it starts off screen. bigger = longer travel
 --  open  = small  ->  big
 --  hide  = shrink ->  vanish
 --=====================================================
-local OPEN_TIME  = 0.38 -- how long the grow / shrink takes (seconds)
-local OPEN_START = 0.55 -- opens from a little over half size and grows to full
-local HIDE_END   = 0.55 -- shrinks back down to that same size before it goes
+local OPEN_TIME  = 0.26 -- how long the grow / shrink takes (seconds)
+local OPEN_START = 0.60 -- opens from a little over half size and grows to full
+local HIDE_END   = 0.60 -- shrinks back down to that same size before it goes
 -- OPEN_START / HIDE_END used to be 0.02 (a dot). The whole window scales as
 -- one piece now, so a gentler distance keeps the motion smooth instead of
 -- squeezing every tab and button through a pinhole.
@@ -1000,7 +1517,7 @@ local SLIDE_TWEEN  = tweenInfo(SLIDE_TIME, Enum.EasingStyle.Quart, Enum.EasingDi
 -- so the open and the close are one continuous, even motion with no snap at
 -- either end.
 local OPEN_TWEEN   = tweenInfo(OPEN_TIME, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-local HIDE_TWEEN   = tweenInfo(OPEN_TIME, Enum.EasingStyle.Quart, Enum.EasingDirection.InOut)
+local HIDE_TWEEN   = tweenInfo(OPEN_TIME, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
 local HOVER_FADE   = tweenInfo(HOVER_SPEED, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local CLICK_TWEEN  = tweenInfo(CLICK_SPEED, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 local TOGGLE_TWEEN = tweenInfo(TOGGLE_SMOOTH, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
@@ -1209,6 +1726,10 @@ Library.__index = Library
 function Library.new()
 	local self = setmetatable({}, Library)
 
+	-- stays false for the whole build, so no layout pass is allowed to
+	-- write a scale onto the panel while it is still being assembled
+	self._introDone = false
+
 	-- RUN IT TWICE AND YOU STILL GET ONE UI:
 	-- any old NexoHub screen is deleted before the new one is built
 	local function wipeOld(holder)
@@ -1241,6 +1762,9 @@ function Library.new()
 
 	self.Main = new("Frame", {
 		Name = "Main",
+		-- Built INVISIBLE. The intro grow at the end of new() is what puts it
+		-- on screen, exactly once.
+		Visible = false,
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromOffset(LAYOUT.PanelWidth, 575),
@@ -1332,6 +1856,28 @@ function Library.new()
 
 	-- the round HIDE / OPEN icon on the left of the screen
 	self:_buildMiniIcon()
+
+	-- FIRST OPEN
+	-- The panel used to be assembled while it was visible. Building the
+	-- header, the home page, the tabs and the credits page each triggers a
+	-- layout pass, and every pass writes a new scale into the same UIScale.
+	-- You saw every one of them: that is the small / big / small / big
+	-- blinking 4-5 times on execute. Now nothing is drawn until the layout
+	-- has settled, then ONE clean grow plays.
+	self.Shown = false
+	self.Main.Visible = false
+
+	task.spawn(function()
+		-- let the deferred layout passes finish first
+		for _ = 1, 2 do task.wait() end
+		if self.Destroyed or not self.Main then return end
+		pcall(function() self:_fitToScreen() end)
+		pcall(function() self:_refreshControlBoxes() end)
+		task.wait()
+		if self.Destroyed or not self.Main then return end
+		self._introDone = true
+		self:SetVisible(true)
+	end)
 
 	return self
 end
@@ -1556,7 +2102,7 @@ function Library:SetVisible(state, instant)
 	if state == self.Shown and not self.Animating then
 		self:_unlockPanelPos()
 		if state then self:_restorePanelPos() end
-		if FAST_OPEN and self.Body then self.Body.Visible = true end
+		if self.Body then self.Body.Visible = true end
 		self.Main.Visible = state
 		if scaleObj then scaleObj.Scale = base end
 		return
@@ -1570,7 +2116,7 @@ function Library:SetVisible(state, instant)
 	if (not scaleObj) or instant then
 		self:_unlockPanelPos()
 		if state then self:_restorePanelPos() end
-		if FAST_OPEN and self.Body then self.Body.Visible = true end
+		if self.Body then self.Body.Visible = true end
 		self.Main.Visible = state
 		if scaleObj then scaleObj.Scale = base end
 		self.Animating = false
@@ -1607,14 +2153,14 @@ function Library:SetVisible(state, instant)
 		-- travels to the corner
 		self:_restorePanelPos()
 		self:_lockPanelPos()
-		if FAST_OPEN and self.Body then self.Body.Visible = false end
+		if self.Body then self.Body.Visible = true end
 		scaleObj.Scale = base * OPEN_START
 		self.Main.Visible = true
 		tween = TweenService:Create(scaleObj, OPEN_TWEEN, { Scale = base })
 	else
 		-- HIDE: shrink down to a dot, then vanish
 		self:_lockPanelPos()
-		if FAST_OPEN and self.Body then self.Body.Visible = false end
+		if self.Body then self.Body.Visible = true end
 		tween = TweenService:Create(scaleObj, HIDE_TWEEN, { Scale = base * HIDE_END })
 	end
 
@@ -1628,7 +2174,7 @@ function Library:SetVisible(state, instant)
 		-- released even for a superseded ticket, otherwise a cancelled
 		-- animation would leave the panel pinned or the content hidden
 		self:_unlockPanelPos()
-		if FAST_OPEN and self.Body then self.Body.Visible = true end
+		if self.Body then self.Body.Visible = true end
 
 		if token ~= self.AnimToken then return end
 		self.OpenTween = nil
@@ -5613,7 +6159,9 @@ function Library:_fitToScreen()
 	-- BaseScale is the real resting size. the open / hide animation borrows
 	-- this same UIScale, so we never overwrite it mid animation.
 	self.BaseScale = math.clamp(fit, MIN_SCALE, MAX_SCALE) * UI_SIZE
-	if not self.Animating then
+	-- Writing the scale during the build, or on top of a running tween, is
+	-- what made the panel jump. Only a settled, visible panel gets it.
+	if not self.Animating and self._introDone ~= false then
 		scaleObj.Scale = self.BaseScale
 	end
 
