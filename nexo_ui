@@ -334,7 +334,12 @@ local LAYOUT = {
 	-- 1 = full width (old look), 0.95 = barely slimmer,
 	-- 0.90 = current, 0.85 = clearly slim.
 	-- The SEARCH BAR uses the same number for its left / right edges.
-	TabWidthScale  = 0.99,
+	TabWidthScale  = 0.90,
+	-- HORIZONTAL WIDTH OF THE TABS *INSIDE* THE BOX ONLY.
+	-- 1 = the tabs fill the whole box, 0.9 = slimmer inside it.
+	-- This never touches the box itself or the search bar, those two keep
+	-- using TabWidthScale above.
+	TabRowWidthScale = 1,
 	TabPad         = 16,  -- inner padding of a tab card
 	TabIcon        = 108,  -- tab image size
 	TabTitle       = 38,  -- height of the big tab title
@@ -1515,7 +1520,10 @@ end
 -- based UIPadding, so both tabs get slimmer together while the gap
 -- between them stays exactly TabGap. Defined here because it needs `new`.
 local function rowSidePadding()
-	local inset = tabRowInset()
+	-- uses its OWN knob, so making the tabs wider inside the box leaves the
+	-- box and the search bar exactly where they were
+	local sc = math.clamp(LAYOUT.TabRowWidthScale or LAYOUT.TabWidthScale or 1, 0.4, 1)
+	local inset = (1 - sc) / 2
 	return new("UIPadding", {
 		PaddingLeft  = UDim.new(inset, 0),
 		PaddingRight = UDim.new(inset, 0),
