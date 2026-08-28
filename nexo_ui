@@ -258,12 +258,16 @@ local LAYOUT = {
 	GAP            = 18,
 
 	PanelWidth     = 1010, -- panel height is calculated, not set
-	PanelPadding   = 26,
-	PanelPaddingX  = 38,
+	-- how far the content sits in from the panel edge. THIS is what used to
+	-- look like a thick black border around everything. Raise them to get
+	-- the padding back, lower them to push the content closer to the edge.
+	PanelPadding   = 12,
+	PanelPaddingX  = 16,
 
 	HeaderHeight   = 62,
-	LogoWidth      = 210,
-	LogoHeight     = 86,
+	-- the NEXO image top left. Lower both to shrink it further.
+	LogoWidth      = 168,
+	LogoHeight     = 69,
 
 	ArrowSize      = 36,  -- size of one >> arrow box
 	ArrowText      = 26,  -- font size of the >> arrows
@@ -371,7 +375,9 @@ local HOME_CLONE = true
 -- Same scale size, same width driven 1.50464 aspect, same rounded
 -- corner, and NO outline. Set it to false to get the old pixel panel.
 local UI_CLONE     = true
-local CLONE_SIZE   = UDim2.new(0.4678, 15, 0.6485, 15)
+-- BIGGER: raise the 0.55 to grow the whole window, lower it to shrink.
+-- The height follows automatically through CLONE_ASPECT below.
+local CLONE_SIZE   = UDim2.new(0.55, 15, 0.7625, 15)
 local CLONE_ASPECT = 1.50464
 local CLONE_CORNER = UDim.new(0.075, 0)
 
