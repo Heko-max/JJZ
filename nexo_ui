@@ -326,7 +326,7 @@ local LAYOUT = {
 	-- 1 = full width (old look), 0.94 = a little bit slimmer,
 	-- 0.88 = current, 0.82 = very slim. Cards stay centered in their
 	-- column. The SEARCH BAR and the BACK ICON follow this same number.
-	TabWidthScale  = 0.88,
+	TabWidthScale  = 0.80,
 	TabPad         = 16,  -- inner padding of a tab card
 	TabIcon        = 108,  -- tab image size
 	TabTitle       = 38,  -- height of the big tab title
@@ -3575,13 +3575,14 @@ function Library:_addCard(ctx, info, isSection)
 	local cols = math.max(1, LAYOUT.TabColumns)
 	local col  = ((index - 1) % cols) + 1
 	local row  = self:_rowIn(ctx, math.floor((index - 1) / cols) + 1)
+	local cardPos, cardSize = tabCardGeom(cols, col)
 
 	-- RULE 2: columns + gaps fill the row exactly, so every tab is the same
 	-- width and they can never overlap
 	local card = new("Frame", {
 		Name = (isSection and "Section" or "Tab") .. index,
-		Position = (select(1, tabCardGeom(cols, col))),
-		Size = (select(2, tabCardGeom(cols, col))),
+		Position = cardPos,
+		Size = cardSize,
 		BackgroundColor3 = THEME.TabCard,
 		BackgroundTransparency = 0.1,
 		BorderSizePixel = 0,
