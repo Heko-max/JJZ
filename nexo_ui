@@ -1422,9 +1422,11 @@ local SLIDE_PUSH = 0.30 -- how far it starts off screen. bigger = longer travel
 --  open  = small  ->  big
 --  hide  = shrink ->  vanish
 --=====================================================
-local OPEN_TIME  = 0.26 -- how long the grow / shrink takes (seconds)
-local OPEN_START = 0.60 -- opens from a little over half size and grows to full
-local HIDE_END   = 0.60 -- shrinks back down to that same size before it goes
+--  >>> THE 4 NUMBERS THAT CONTROL THE OPEN / HIDE FEEL <<<
+local OPEN_TIME  = 1.25 -- how LONG the grow / shrink takes (seconds). 1.0 - 1.5 is the slow, silky range
+local OPEN_DELAY = 0.50 -- SMOOTHING DELAY: dead-still pause before the motion starts. 0 = instant reaction
+local OPEN_START = 0.72 -- opens from this size and grows to full. closer to 1 = shorter, smoother travel
+local HIDE_END   = 0.72 -- shrinks back down to that same size before it goes
 -- OPEN_START / HIDE_END used to be 0.02 (a dot). The whole window scales as
 -- one piece now, so a gentler distance keeps the motion smooth instead of
 -- squeezing every tab and button through a pinhole.
@@ -1513,11 +1515,13 @@ end
 
 -- pre-built infos for the animations that run the most often
 local SLIDE_TWEEN  = tweenInfo(SLIDE_TIME, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
--- Quart InOut on both sides: it eases out of rest and eases back into rest,
--- so the open and the close are one continuous, even motion with no snap at
--- either end.
-local OPEN_TWEEN   = tweenInfo(OPEN_TIME, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-local HIDE_TWEEN   = tweenInfo(OPEN_TIME, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+-- Sine InOut on BOTH sides. Over a long 1.25s move this is the smoothest
+-- curve there is: it eases out of rest and eases back into rest with no
+-- sudden burst of speed anywhere, so nothing ever looks like it stutters.
+-- OPEN_DELAY is baked into both tweens as the tween's own delay, so the
+-- pause costs nothing and cannot desync from the motion.
+local OPEN_TWEEN   = tweenInfo(OPEN_TIME, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, 0, OPEN_DELAY)
+local HIDE_TWEEN   = tweenInfo(OPEN_TIME, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, 0, OPEN_DELAY)
 local HOVER_FADE   = tweenInfo(HOVER_SPEED, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local CLICK_TWEEN  = tweenInfo(CLICK_SPEED, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 local TOGGLE_TWEEN = tweenInfo(TOGGLE_SMOOTH, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
@@ -5072,7 +5076,7 @@ function Library:_addParagraph(card, info)
 			refitQueued = false
 			if self.Animating then
 				-- never measure text mid animation, retry once it settles
-				task.delay(OPEN_TIME, refit)
+				task.delay(OPEN_TIME + OPEN_DELAY, refit)
 				return
 			end
 			refit()
