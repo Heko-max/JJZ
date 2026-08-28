@@ -320,6 +320,14 @@ local LAYOUT = {
 	TabDivider     = 0,   -- line between the columns. 0 = no line, 2 = thin line
 	TabScrollPad   = 10,  -- space kept on the right for the scrollbar
 
+	-- THE BOX that holds the tab cards, and the same box for a section.
+	--   TabBoxRadius = how round the corners of the box are
+	--   TabBoxFade   = 0 = solid box, 1 = fully invisible box
+	--   TabBoxPad    = space between the box edge and the cards inside
+	TabBoxRadius   = 18,
+	TabBoxFade     = 0,
+	TabBoxPad      = 10,
+
 	SearchHeight   = 52,  -- height of the search bar
 	SearchIcon     = 28,  -- size of the search icon
 	SearchGap      = 14,  -- extra space between the search bar and the first tab row
@@ -3275,6 +3283,36 @@ end
 --=====================================================
 --  PAGES PAGE (the tab list - no search bar)
 --=====================================================
+-- THE BOX. The Pages tab list AND every section list sit inside one of
+-- these rounded boxes, exactly like before. The box itself never scrolls
+-- and never moves - the cards scroll INSIDE it, so the rounded frame and
+-- its outline stay perfectly still.
+function Library:_makeListBox(parent, name)
+	return new("Frame", {
+		Name = name or "ListBox",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = THEME.Card,
+		BackgroundTransparency = LAYOUT.TabBoxFade or 0,
+		BorderSizePixel = 0,
+		ClipsDescendants = true,
+		ZIndex = 1,
+		Parent = parent,
+	}, {
+		corner(LAYOUT.TabBoxRadius or 18),
+		softStroke(THEME.Accent, 1.3, 0.55, 0.45),
+	})
+end
+
+-- The page switching code shows and hides the LISTS. The box has to follow
+-- its list, otherwise a hidden list would leave an empty box on screen.
+function Library:_bindListBox(list, box)
+	if not (list and box) then return end
+	box.Visible = list.Visible
+	list:GetPropertyChangedSignal("Visible"):Connect(function()
+		if box.Parent then box.Visible = list.Visible end
+	end)
+end
+
 function Library:_buildTabsPage()
 	local page = new("Frame", {
 		Name = "TabsPage",
@@ -3423,6 +3461,9 @@ function Library:_buildTabsPage()
 	self.TabRows = {}
 	self.TabLines = {}
 
+	-- all the tab cards live inside this one box
+	self.TabBox = self:_makeListBox(area, "TabBox")
+
 	self.TabList = new("ScrollingFrame", {
 		Name = "TabList",
 		Size = UDim2.fromScale(1, 1),
@@ -3435,12 +3476,18 @@ function Library:_buildTabsPage()
 		ScrollingDirection = Enum.ScrollingDirection.Y,
 		ClipsDescendants = true,
 		ZIndex = 2,
-		Parent = area,
+		Parent = self.TabBox,
 	}, {
-		-- a few pixels on every side so no card outline gets clipped
-		padding(3, LAYOUT.TabScrollPad, LAYOUT.TabGap, 3),
+		-- TabBoxPad keeps the cards off the inside wall of the box
+		padding(
+			LAYOUT.TabBoxPad,
+			LAYOUT.TabScrollPad + LAYOUT.TabBoxPad,
+			LAYOUT.TabGap + LAYOUT.TabBoxPad,
+			LAYOUT.TabBoxPad
+		),
 		vlist(LAYOUT.TabGap),
 	})
+	self:_bindListBox(self.TabList, self.TabBox)
 
 	-- the root list and every section list share the exact same layout code
 	self.Tabs = self.Tabs or {}
@@ -3461,6 +3508,8 @@ function Library:_buildTabsPage()
 		Text = "No tabs yet. Add them with ui:AddTab({ ... })",
 		TextSize = 16,
 		TextColor3 = THEME.SubText,
+		-- above the box, or the solid box would hide this message
+		ZIndex = 3,
 		Parent = area,
 	})
 end
@@ -3854,6 +3903,10 @@ end
 function Library:_sectionList(tab)
 	if tab.SectionCtx then return tab.SectionCtx end
 
+	-- the section gets its OWN box, identical to the tab box
+	local box = self:_makeListBox(self.TabArea, "SectionBox")
+	box.Visible = false
+
 	local list = new("ScrollingFrame", {
 		Name = "SectionList",
 		Size = UDim2.fromScale(1, 1),
@@ -3867,11 +3920,17 @@ function Library:_sectionList(tab)
 		ClipsDescendants = true,
 		Visible = false,
 		ZIndex = 2,
-		Parent = self.TabArea,
+		Parent = box,
 	}, {
-		padding(3, LAYOUT.TabScrollPad, LAYOUT.TabGap, 3),
+		padding(
+			LAYOUT.TabBoxPad,
+			LAYOUT.TabScrollPad + LAYOUT.TabBoxPad,
+			LAYOUT.TabGap + LAYOUT.TabBoxPad,
+			LAYOUT.TabBoxPad
+		),
 		vlist(LAYOUT.TabGap),
 	})
+	self:_bindListBox(list, box)
 
 	tab.SectionCtx = {
 		List  = list,
