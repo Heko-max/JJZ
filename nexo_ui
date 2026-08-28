@@ -342,6 +342,7 @@ local LAYOUT = {
 	TabDivider     = 0,   -- line between the columns. 0 = no line, 2 = thin line
 	TabScrollPad   = 10,   -- space kept on the right for the scrollbar
 	                      -- (the bar is hidden now, so this can stay tiny)
+	PagesBottomSpace = 26, -- EMPTY SPACE kept UNDER the box, like the reference
 
 
 	SearchHeight   = 46,  -- height of the search bar (was 52, now a bit smaller)
@@ -2870,6 +2871,8 @@ local BOTTOM_EDGE_FADE  = 0.1
 
 local G_PANEL      = { {0, 157, 2, 31}, {0.53, 76, 22, 32}, {0.82, 40, 19, 23}, {1, 24, 18, 19} }
 local G_PANEL_STRK = { {0, 157, 2, 31}, {0.75, 76, 22, 32}, {1, 20, 19, 19} }
+-- THE BOX OUTLINE, straight from the reference `Sections` frame
+local G_SECTION    = { {0, 26, 25, 25}, {0.15, 34, 23, 25}, {0.56, 156, 3, 31}, {0.92, 33, 23, 25}, {1, 37, 22, 25} }
 -- SEARCH BAR PALETTE, straight from the reference hub search box
 local G_BAR        = { {0, 157, 2, 31}, {0.07, 76, 22, 32}, {0.81, 28, 24, 25}, {1, 24, 24, 24} }
 local G_BAR_STRK   = { {0, 157, 2, 31}, {0.29, 76, 22, 32}, {0.66, 28, 24, 25}, {1, 24, 24, 24} }
@@ -3519,14 +3522,24 @@ function Library:_buildTabsPage()
 	-- RULE 2: the tab list starts below the search bar, never on top of it
 	local gridTop = LAYOUT.SearchHeight + LAYOUT.GAP + LAYOUT.SearchGap
 
+	-- THE BOX, exactly like the reference `Sections` frame: pure black at 0.75
+	-- transparency, 0.075 scale rounding, and a 2.5 thick G_SECTION gradient
+	-- outline at 90 degrees. Every tab now lives INSIDE this box, and
+	-- LAYOUT.PagesBottomSpace keeps empty space UNDER it.
 	local area = new("Frame", {
-		Name = "GridArea",
-		Position = UDim2.fromOffset(0, gridTop),
-		Size = UDim2.new(1, 0, 1, -gridTop),
-		BackgroundTransparency = 1,
+		Name = "Sections",
+		Position = UDim2.new(tabRowInset(), 0, 0, gridTop),
+		Size = UDim2.new(1 - tabRowInset() * 2, 0, 1, -(gridTop + LAYOUT.PagesBottomSpace)),
+		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+		BackgroundTransparency = 0.75,
+		BorderSizePixel = 0,
 		ClipsDescendants = true,
+		ZIndex = 3,
 		Parent = page,
+	}, {
+		new("UICorner", { CornerRadius = UDim.new(0.075, 0) }),
 	})
+	hohoStroke(area, 2.5, G_SECTION, 90)
 	self.TabArea = area
 
 	-- The tab list is built ROW BY ROW so every card lines up perfectly
@@ -3535,7 +3548,9 @@ function Library:_buildTabsPage()
 
 	self.TabList = new("ScrollingFrame", {
 		Name = "TabList",
-		Size = UDim2.fromScale(1, 1),
+		-- inset inside the box, the exact reference scroll frame slice
+		Position = UDim2.fromScale(0.0217, 0.0537),
+		Size = UDim2.fromScale(0.9653, 0.9463),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		CanvasSize = UDim2.new(),
@@ -4015,7 +4030,9 @@ function Library:_sectionList(tab)
 
 	local list = new("ScrollingFrame", {
 		Name = "SectionList",
-		Size = UDim2.fromScale(1, 1),
+		-- same inset as the root list, so a section sits in the box too
+		Position = UDim2.fromScale(0.0217, 0.0537),
+		Size = UDim2.fromScale(0.9653, 0.9463),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		CanvasSize = UDim2.new(),
