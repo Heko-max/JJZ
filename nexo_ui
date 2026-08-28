@@ -92,14 +92,16 @@ local DISCORD_FACE  = Color3.fromRGB(255, 255, 255)  -- the two eyes
 
 -- RED EFFECT ON TOP OF AN ICON
 -- SOCIAL_TINT_COLOR   = paints the image itself in this color
--- SOCIAL_TINT_OVERLAY = 0 no red layer on top, 1 fully red layer on top
+-- SOCIAL_TINT_OVERLAY = the RED EFFECT on top of the Discord / YouTube icon.
+--   it is the transparency of the red G_LOGO gradient laid over the logo:
+--   0 = full red effect, 0.5 = half strength, 1 = off (raw logo colors)
 local SOCIAL_TINT_COLOR = {
 	Discord = nil,  -- no red effect, the discord image keeps its own colors
 	YouTube = nil,
 }
 local SOCIAL_TINT_OVERLAY = {
-	Discord = 0,    -- 0 = no red layer on top
-	YouTube = 0,
+	Discord = 0,    -- 0 = FULL red effect on the discord logo, 1 = off
+	YouTube = 0,    -- 0 = FULL red effect on the youtube logo, 1 = off
 }
 
 -- CREDITS PAGE PROFILE
@@ -3050,6 +3052,12 @@ function Library:_buildHomePage()
 			ScaleType = Enum.ScaleType.Fit,
 			Parent = self.Socials,
 		})
+
+		-- RED EFFECT ON TOP OF THE LOGO: the exact same G_LOGO gradient the home
+		-- page card icons use, laid over the Discord / YouTube image.
+		-- Strength per icon lives in SOCIAL_TINT_OVERLAY at the top of the file
+		-- (0 = full red, 1 = off). Delete this block for the raw logo colors.
+		hohoStops(b, G_LOGO, -144, SOCIAL_TINT_OVERLAY[data.name] or 0)
 
 		-- the soft round glow that fades in behind the icon on hover
 		local hover = new("ImageLabel", {
