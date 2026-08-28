@@ -265,9 +265,9 @@ local LAYOUT = {
 	PanelPaddingX  = 16,
 
 	HeaderHeight   = 62,
-	-- the NEXO image top left. Lower both to shrink it further.
-	LogoWidth      = 168,
-	LogoHeight     = 69,
+	-- the NEXO image top left. Lower both to shrink it, raise to grow it.
+	LogoWidth      = 210,
+	LogoHeight     = 86,
 
 	ArrowSize      = 36,  -- size of one >> arrow box
 	ArrowText      = 26,  -- font size of the >> arrows
@@ -1459,10 +1459,15 @@ local SLIDE_PUSH = 0.30 -- how far it starts off screen. bigger = longer travel
 --  hide  = shrink ->  vanish
 --=====================================================
 --  >>> THE 4 NUMBERS THAT CONTROL THE OPEN / HIDE FEEL <<<
-local OPEN_TIME  = 0.42 -- how LONG the grow / shrink takes (seconds)
+local OPEN_TIME  = 0.38 -- how LONG the grow / shrink takes (seconds)
 local OPEN_DELAY = 0.00 -- pause before the motion starts. 0 = reacts the instant you click
-local OPEN_START = 0.02 -- A DOT. opens from a tiny 2% dot and grows out to the full panel
-local HIDE_END   = 0.02 -- shrinks all the way back down to that dot before it vanishes
+local OPEN_START = 0.88 -- HOHO FEEL. the window fades in while swelling from 88% to full.
+local HIDE_END   = 0.88 -- set BOTH of these back to 0.02 if you want the old dot again
+-- HOHO REFERENCE FADE: its window is one CanvasGroup, so opening / closing
+-- fades the ENTIRE panel as a single flat picture instead of every tab,
+-- card and image fading on its own. 1 = fully invisible, 0 = fully solid.
+local FADE_ENABLED = true -- false = no fade, scale only (the old behaviour)
+local FADE_HIDDEN  = 1    -- how see through the panel is at the start / end
 -- OPEN_START / HIDE_END used to be 0.02 (a dot). The whole window scales as
 -- one piece now, so a gentler distance keeps the motion smooth instead of
 -- squeezing every tab and button through a pinhole.
@@ -1554,8 +1559,9 @@ local SLIDE_TWEEN  = tweenInfo(SLIDE_TIME, Enum.EasingStyle.Quart, Enum.EasingDi
 -- Growing out of a 2% dot is a huge distance to cover, so the curve is
 -- what sells it. Quint Out leaves the dot fast and glides into full size,
 -- Quint In does the mirror on the way down. Fast to react, soft to land.
-local OPEN_TWEEN   = tweenInfo(OPEN_TIME, Enum.EasingStyle.Quint, Enum.EasingDirection.Out, 0, OPEN_DELAY)
-local HIDE_TWEEN   = tweenInfo(OPEN_TIME, Enum.EasingStyle.Quint, Enum.EasingDirection.In, 0, OPEN_DELAY)
+-- Quart in / out is the easing the reference window uses.
+local OPEN_TWEEN   = tweenInfo(OPEN_TIME, Enum.EasingStyle.Quart, Enum.EasingDirection.Out, 0, OPEN_DELAY)
+local HIDE_TWEEN   = tweenInfo(OPEN_TIME, Enum.EasingStyle.Quart, Enum.EasingDirection.In, 0, OPEN_DELAY)
 local HOVER_FADE   = tweenInfo(HOVER_SPEED, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local CLICK_TWEEN  = tweenInfo(CLICK_SPEED, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 local TOGGLE_TWEEN = tweenInfo(TOGGLE_SMOOTH, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
@@ -1798,7 +1804,20 @@ function Library.new()
 		Parent = (Players.LocalPlayer and Players.LocalPlayer:WaitForChild("PlayerGui")),
 	})
 
-	self.Main = new("Frame", {
+	-- The reference window is a CanvasGroup. That is the ONLY way the whole
+	-- panel can fade as one piece. If an executor cannot make one we quietly
+	-- fall back to a normal Frame and just skip the fade.
+	local MAIN_CLASS = "Frame"
+	if FADE_ENABLED then
+		local okCg, probe = pcall(Instance.new, "CanvasGroup")
+		if okCg and probe then
+			MAIN_CLASS = "CanvasGroup"
+			pcall(function() probe:Destroy() end)
+		end
+	end
+	self.CanFade = (MAIN_CLASS == "CanvasGroup")
+
+	self.Main = new(MAIN_CLASS, {
 		Name = "Main",
 		-- Built INVISIBLE. The intro grow at the end of new() is what puts it
 		-- on screen, exactly once.
@@ -1810,6 +1829,7 @@ function Library.new()
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		Active = true,
+		ZIndex = 999, -- same stacking order as the reference window
 		Parent = self.Gui,
 	}, {
 		-- clone shell: 0.075 scale corner and NO UIStroke, so the panel has
@@ -2139,6 +2159,13 @@ function Library:_restorePanelPos()
 	if self.MainDrag then self.MainDrag.setPosition(pos) end
 end
 
+-- Writes the whole window fade in one shot. Silently does nothing when the
+-- panel is a plain Frame instead of a CanvasGroup.
+function Library:_setGroupFade(value)
+	if not (FADE_ENABLED and self.CanFade and self.Main) then return end
+	pcall(function() self.Main.GroupTransparency = value end)
+end
+
 function Library:SetVisible(state, instant)
 	if not self.Main then return end
 	state = state and true or false
@@ -2155,6 +2182,7 @@ function Library:SetVisible(state, instant)
 		if self.Body then self.Body.Visible = true end
 		self.Main.Visible = state
 		if scaleObj then scaleObj.Scale = base end
+		self:_setGroupFade(state and 0 or FADE_HIDDEN)
 		return
 	end
 
@@ -2169,6 +2197,7 @@ function Library:SetVisible(state, instant)
 		if self.Body then self.Body.Visible = true end
 		self.Main.Visible = state
 		if scaleObj then scaleObj.Scale = base end
+		self:_setGroupFade(state and 0 or FADE_HIDDEN)
 		self.Animating = false
 		self:_setLoopTweens(state)
 		return
@@ -2184,6 +2213,12 @@ function Library:SetVisible(state, instant)
 	if self.OpenTween then
 		pcall(function() self.OpenTween:Cancel() end)
 		self.OpenTween = nil
+	end
+
+	-- the fade runs beside the scale, so it has to be cancelled beside it too
+	if self.FadeTween then
+		pcall(function() self.FadeTween:Cancel() end)
+		self.FadeTween = nil
 	end
 
 	self.Animating = true
@@ -2210,14 +2245,25 @@ function Library:SetVisible(state, instant)
 		-- made a mid animation click look like it did nothing.
 		if not self.Main.Visible then
 			scaleObj.Scale = base * OPEN_START
+			-- start fully transparent ONLY on a real open. Mid animation spam
+			-- keeps whatever fade it is already at and finishes from there.
+			self:_setGroupFade(FADE_HIDDEN)
 		end
 		self.Main.Visible = true
 		tween = TweenService:Create(scaleObj, OPEN_TWEEN, { Scale = base })
+		if FADE_ENABLED and self.CanFade then
+			self.FadeTween = TweenService:Create(self.Main, OPEN_TWEEN, { GroupTransparency = 0 })
+			self.FadeTween:Play()
+		end
 	else
 		-- HIDE: shrink down to a dot, then vanish
 		self:_lockPanelPos()
 		if self.Body then self.Body.Visible = true end
 		tween = TweenService:Create(scaleObj, HIDE_TWEEN, { Scale = base * HIDE_END })
+		if FADE_ENABLED and self.CanFade then
+			self.FadeTween = TweenService:Create(self.Main, HIDE_TWEEN, { GroupTransparency = FADE_HIDDEN })
+			self.FadeTween:Play()
+		end
 	end
 
 	self.OpenTween = tween
@@ -5886,6 +5932,10 @@ function Library:Destroy()
 	if self.OpenTween then
 		pcall(function() self.OpenTween:Cancel() end)
 		self.OpenTween = nil
+	end
+	if self.FadeTween then
+		pcall(function() self.FadeTween:Cancel() end)
+		self.FadeTween = nil
 	end
 
 	-- every endless ring / laser spin. Without this they kept running for
