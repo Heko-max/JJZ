@@ -61,6 +61,12 @@ local IMAGES = {
 -- uploaded image (big, small, wide, tall) makes no difference at all.
 local SOCIAL_ICON_SCALE = 1      -- 1 = fills the whole square, lower = padding
 
+-- SQUASH THE LOGOS ON ONE AXIS ONLY
+--   X = width   (1 = keep the full width, do not make the logo thinner)
+--   Y = height  (lower than 1 = the logo gets SHORTER, width stays the same)
+local SOCIAL_ICON_SCALE_X = 1      -- width  : untouched
+local SOCIAL_ICON_SCALE_Y = 1   -- height : smaller only vertically
+
 -- how the artwork is placed inside that square:
 --   "fill" -> stretched to fill it. every icon ends up EXACTLY the same size
 --   "crop" -> zoomed in and cropped. same size, keeps the shape, cuts edges
@@ -899,9 +905,12 @@ local SLIDE_PUSH = 0.30 -- how far it starts off screen. bigger = longer travel
 --  open  = small  ->  big
 --  hide  = shrink ->  vanish
 --=====================================================
-local OPEN_TIME  = 0.45 -- how long the grow / shrink takes (seconds)
-local OPEN_START = 0.02 -- opens from the size of a dot and grows to full size
-local HIDE_END   = 0.02 -- shrinks all the way down to a dot before it vanishes
+local OPEN_TIME  = 0.38 -- how long the grow / shrink takes (seconds)
+local OPEN_START = 0.55 -- opens from a little over half size and grows to full
+local HIDE_END   = 0.55 -- shrinks back down to that same size before it goes
+-- OPEN_START / HIDE_END used to be 0.02 (a dot). The whole window scales as
+-- one piece now, so a gentler distance keeps the motion smooth instead of
+-- squeezing every tab and button through a pinhole.
 
 -- SMOOTH FEEL
 local DRAG_SMOOTH   = 0.09 -- how much the panel lags behind your finger while dragging
@@ -987,8 +996,11 @@ end
 
 -- pre-built infos for the animations that run the most often
 local SLIDE_TWEEN  = tweenInfo(SLIDE_TIME, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-local OPEN_TWEEN   = tweenInfo(OPEN_TIME, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
-local HIDE_TWEEN   = tweenInfo(OPEN_TIME, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
+-- Quart InOut on both sides: it eases out of rest and eases back into rest,
+-- so the open and the close are one continuous, even motion with no snap at
+-- either end.
+local OPEN_TWEEN   = tweenInfo(OPEN_TIME, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+local HIDE_TWEEN   = tweenInfo(OPEN_TIME, Enum.EasingStyle.Quart, Enum.EasingDirection.InOut)
 local HOVER_FADE   = tweenInfo(HOVER_SPEED, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local CLICK_TWEEN  = tweenInfo(CLICK_SPEED, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 local TOGGLE_TWEEN = tweenInfo(TOGGLE_SMOOTH, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
@@ -1481,7 +1493,14 @@ end
 -- of elements 60 times a second, and it is the main reason opening felt heavy.
 -- The outer panel, background and outline still scale, so it still reads as a
 -- normal grow. Set this to false to go back to scaling the content too.
-local FAST_OPEN = true
+--
+-- NOW OFF ON PURPOSE. With FAST_OPEN = true the inner Body (tabs, buttons,
+-- sections, every control) was snapped invisible the instant you pressed the
+-- toggle key, and only the empty outer panel animated. That is why it looked
+-- like the UI closed in two parts: buttons vanish first, frame shrinks after.
+-- With it false the WHOLE window - frame, tabs, buttons, everything - grows
+-- and shrinks together as one single piece.
+local FAST_OPEN = false
 
 -- Pins the panel in place for the duration of the open / close animation.
 -- Cheap: one comparison per frame, and only while animating.
@@ -2305,8 +2324,8 @@ function Library:_buildHomePage()
 				-- EXACT SAME SIZE FOR EVERY SOCIAL ICON. the square below never
 				-- changes, so the resolution of the uploaded image does nothing.
 				Size = UDim2.fromScale(
-					SOCIAL_ICON_SCALE * (SOCIAL_ICON_TWEAK[data.name] or 1),
-					SOCIAL_ICON_SCALE * (SOCIAL_ICON_TWEAK[data.name] or 1)
+					SOCIAL_ICON_SCALE * SOCIAL_ICON_SCALE_X * (SOCIAL_ICON_TWEAK[data.name] or 1),
+					SOCIAL_ICON_SCALE * SOCIAL_ICON_SCALE_Y * (SOCIAL_ICON_TWEAK[data.name] or 1)
 				),
 				BackgroundTransparency = 1,
 				Image = img(data.id),
@@ -2316,10 +2335,11 @@ function Library:_buildHomePage()
 				ScaleType = (SOCIAL_ICON_MODE == "fit" and Enum.ScaleType.Fit)
 					or (SOCIAL_ICON_MODE == "crop" and Enum.ScaleType.Crop)
 					or Enum.ScaleType.Stretch,
-			}, { corner(12), new("UIAspectRatioConstraint", {
-				-- the icon follows the slim shape of the button
-				AspectRatio = (LAYOUT.SocialWidth or LAYOUT.SocialBox) / LAYOUT.SocialBox,
-			}) }),
+				-- NO UIAspectRatioConstraint here on purpose. A ratio lock forces
+				-- width and height to shrink together, so the logo could never be
+				-- made shorter without also getting thinner. Without it the two
+				-- scales above are free: X stays 1, Y squashes the logo.
+			}, { corner(12) }),
 		})
 
 		-- if this social is drawn by code, blank the image and build the shapes
@@ -6445,7 +6465,7 @@ end
 --   ui:ResetColors()            -- back to the original red
 --   ui:GetColorParts()          -- list of every part name
 
-local DEFAULT_UI_TAB = true   -- false = do not add the built in "UI" tab
+local DEFAULT_UI_TAB = false  -- false = do not add the built in "UI" tab
 
 local UICOLOR = {}
 
