@@ -229,6 +229,15 @@ local TEXT = {
 --=====================================================
 --  3) THEME - EDIT EVERY COLOUR HERE
 --=====================================================
+--=====================================================
+--  SCROLL BARS
+--  0 + 1 = completely invisible, but scrolling with the wheel and by
+--  dragging still works exactly the same.
+--  Want them back? SCROLLBAR_SIZE = 4 and SCROLLBAR_FADE = 0.
+--=====================================================
+local SCROLLBAR_SIZE = 0 -- thickness in pixels. 0 = gone
+local SCROLLBAR_FADE = 1 -- 1 = fully see through, 0 = solid
+
 local THEME = {
 	Panel       = Color3.fromRGB(0, 0, 0),       -- PURE BLACK
 	Card        = Color3.fromRGB(0, 0, 0),       -- PURE BLACK
@@ -313,14 +322,15 @@ local LAYOUT = {
 
 	-- Pages page (the tab list)
 	TabColumns     = 2,   -- tabs per row  ->  Tab | Tab
-	TabHeight      = 126, -- height of one tab card
+	TabHeight      = 108, -- height of one tab card
 	TabGap         = 16,  -- space between tab cards
 	TabPad         = 16,  -- inner padding of a tab card
-	TabIcon        = 94,  -- tab image size
-	TabTitle       = 38,  -- height of the big tab title
-	TabDescHeight  = 42,  -- height of the description background pill
+	TabIcon        = 80,  -- tab image size
+	TabTitle       = 33,  -- height of the big tab title
+	TabDescHeight  = 36,  -- height of the description background pill
 	TabDivider     = 0,   -- line between the columns. 0 = no line, 2 = thin line
-	TabScrollPad   = 10,  -- space kept on the right for the scrollbar
+	TabScrollPad   = 2,   -- space kept on the right for the scrollbar
+	                      -- (the bar is hidden now, so this can stay tiny)
 
 	-- THE BOX that holds the tab cards, and the same box for a section.
 	--   TabBoxRadius = how round the corners of the box are
@@ -2633,7 +2643,8 @@ function Library:ShowInfo(info)
 		BorderSizePixel = 0,
 		CanvasSize = UDim2.new(),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		ScrollBarThickness = 4,
+		ScrollBarThickness = SCROLLBAR_SIZE,
+		ScrollBarImageTransparency = SCROLLBAR_FADE,
 		ScrollBarImageColor3 = THEME.Accent,
 		ClipsDescendants = true,
 		ZIndex = 92,
@@ -3481,7 +3492,8 @@ function Library:_buildTabsPage()
 		BorderSizePixel = 0,
 		CanvasSize = UDim2.new(),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		ScrollBarThickness = 4,
+		ScrollBarThickness = SCROLLBAR_SIZE,
+		ScrollBarImageTransparency = SCROLLBAR_FADE,
 		ScrollBarImageColor3 = THEME.Accent,
 		ScrollingDirection = Enum.ScrollingDirection.Y,
 		ClipsDescendants = true,
@@ -3924,7 +3936,8 @@ function Library:_sectionList(tab)
 		BorderSizePixel = 0,
 		CanvasSize = UDim2.new(),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		ScrollBarThickness = 4,
+		ScrollBarThickness = SCROLLBAR_SIZE,
+		ScrollBarImageTransparency = SCROLLBAR_FADE,
 		ScrollBarImageColor3 = THEME.Accent,
 		ScrollingDirection = Enum.ScrollingDirection.Y,
 		ClipsDescendants = true,
@@ -4183,7 +4196,8 @@ function Library:_controlBox(card)
 		BorderSizePixel = 0,
 		CanvasSize = UDim2.new(),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		ScrollBarThickness = 4,
+		ScrollBarThickness = SCROLLBAR_SIZE,
+		ScrollBarImageTransparency = SCROLLBAR_FADE,
 		ScrollBarImageColor3 = THEME.ControlAccent,
 		ScrollingDirection = Enum.ScrollingDirection.Y,
 		ClipsDescendants = true,
@@ -5420,7 +5434,8 @@ function Library:_addDropdown(card, info)
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		CanvasSize = UDim2.new(),
-		ScrollBarThickness = 3,
+		ScrollBarThickness = SCROLLBAR_SIZE,
+		ScrollBarImageTransparency = SCROLLBAR_FADE,
 		ScrollBarImageColor3 = THEME.ControlAccent,
 		Visible = false,
 		ZIndex = 3,
