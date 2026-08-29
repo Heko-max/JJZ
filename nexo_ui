@@ -188,11 +188,11 @@ local HOVER_STRENGTH = 0.88 -- 1 = invisible, 0.80 = stronger glow
 -- down to fit the card, but never renders bigger than this.
 -- BUILD STAMP: printed to the console on load. If the number you see in
 -- game is not this one, the copy running is NOT this file.
-local NEXO_BUILD = "tabtext-4"
+local NEXO_BUILD = "tabtext-5"
 print("[NEXO HUB] UI library build: " .. NEXO_BUILD)
 
-local TAB_TITLE_SIZE = 34 -- "NORMAL FARM" line
-local TAB_DESC_SIZE  = 20 -- "Auto farm levels, bosses, items ..." line
+local TAB_TITLE_SIZE = 42 -- "NORMAL FARM" line (bigger text)
+local TAB_DESC_SIZE  = 26 -- "Auto farm levels, bosses, items ..." line (bigger text)
 
 -- TAB / SECTION HOVER: strength of the red gradient wash on mouse over.
 -- 1 = invisible, 0 = fully solid. Lower = stronger red.
@@ -343,7 +343,7 @@ local LAYOUT = {
 
 	-- Pages page (the tab list)
 	TabColumns     = 2,   -- tabs per row  ->  Tab | Tab
-	TabHeight      = 144, -- height of one tab card
+	TabHeight      = 164, -- height of one tab card (raised only so the bigger text fits)
 	TabGap         = 16,  -- space between tab cards (LEFT / RIGHT gap only)
 	TabRowGap      = 28,  -- VERTICAL space between tab ROWS. The black line now
 	                      -- lives in this space, UNDER each card, so raise this
@@ -362,9 +362,9 @@ local LAYOUT = {
 	TabRowWidthScale = 1,
 	TabPad         = 16,  -- inner padding of a tab card
 	TabIcon        = 108,  -- tab image size
-	TabTitle       = 44,  -- height of the big tab title. Must be >= TAB_TITLE_SIZE
+	TabTitle       = 52,  -- height of the big tab title. Must be >= TAB_TITLE_SIZE
 	-- Must fit TWO wrapped lines of TAB_DESC_SIZE, plus the 4px pill padding.
-	TabDescHeight  = 56,  -- height of the description background pill
+	TabDescHeight  = 70,  -- height of the description background pill
 	TabDivider     = 0,   -- line between the columns. 0 = no line, 2 = thin line
 	TabScrollPad   = 10,   -- space kept on the right for the scrollbar
 	                      -- (the bar is hidden now, so this can stay tiny)
