@@ -42,7 +42,7 @@ local AssetService = game:GetService("AssetService")
 --=====================================================
 local IMAGES = {
 	Background  = "https://i.imgur.com/lyJQbo7.png", -- fills the entire panel behind everything
-	Logo        = "https://i.imgur.com/qt9icWV.png", -- "NEXO" logo, top-left
+	Logo        = "https://i.imgur.com/yck4043.png", -- "NEXO" logo, top-left
 	Banner      = "132582095265277", -- big PREMIUM+ / V4.0 artwork on the Home page
 	Discord     = "16171891828",     -- social button 1 (Discord)
 	YouTube     = "16171897995",      -- social button 2 (YouTube)
@@ -266,7 +266,7 @@ local THEME = {
 --  4) LAYOUT - EDIT EVERY SIZE HERE
 --=====================================================
 local LAYOUT = {
-	GAP            = 18,
+	GAP            = 12,
 
 	PanelWidth     = 1010, -- panel height is calculated, not set
 	-- how far the content sits in from the panel edge. THIS is what used to
@@ -277,8 +277,8 @@ local LAYOUT = {
 
 	HeaderHeight   = 62,
 	-- the NEXO image top left. Lower both to shrink it, raise to grow it.
-	LogoWidth      = 250, -- wider logo horizontally
-	LogoHeight     = 72,
+	LogoWidth      = 230, -- wider logo horizontally
+	LogoHeight     = 62,
 
 	ArrowSize      = 36,  -- size of one >> arrow box
 	ArrowText      = 26,  -- font size of the >> arrows
@@ -294,7 +294,7 @@ local LAYOUT = {
 	NavOffsetX     = 72,
 	--   HeaderOffsetX = push the logo and the >> arrows to the RIGHT.
 	--                  bigger = further right. 0 = hard against the edge.
-	HeaderOffsetX  = 20,
+	HeaderOffsetX  = 10,
 
 	HeroHeight     = 330,
 	HeroLeftWidth  = 0.40,
