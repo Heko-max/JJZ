@@ -203,14 +203,11 @@ local MAX_SCALE   = 1.00
 --  2) TEXT - EDIT EVERY WORD HERE
 --=====================================================
 local TEXT = {
-	Welcome  = 'Welcome back to <font color="rgb(255,0,0)">NEXO HUB</font>',
-	-- keep each line SHORT so it never wraps. 5 lines fits this box perfectly.
+	Welcome  = 'WELCOME TO\n<font color="#f8042e">BEST FREE</font>\nJUJUTSU ZERO HUB',
 	Subtitle = table.concat({
-		"Fast, clean and always up to date.",
-		"Tabs hold sections, sections hold controls.",
-		"Save configs and autoload your favourite.",
-		"Works on PC, phone and every executor.",
-		"Press RightShift to hide the panel.",
+		"Thanks for using our services. ",
+		"We are commited to bring greatest ",
+		"experience to users !",
 	}, "\n"),
 
 	Nav = { "Home", "Pages", "Credits" }, -- order shown left to right
