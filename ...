@@ -178,6 +178,10 @@ local SOCIAL_TINT  = false
 -- tab hover / click highlight
 local HOVER_ENABLED  = true
 local HOVER_SPEED    = 0.25 -- seconds of the smooth fade
+-- RED EFFECT on the Pages TAB icons only (same gradient as the home cards).
+-- Section icons never get it. 0 = FULL red effect, 1 = off completely.
+local TAB_TINT_OVERLAY = 0
+
 local HOVER_STRENGTH = 0.88 -- 1 = invisible, 0.80 = stronger glow
 local CLICK_SPEED    = 0.45 -- seconds of the click ripple
 
@@ -294,7 +298,7 @@ local LAYOUT = {
 	NavOffsetX     = 72,
 	--   HeaderOffsetX = push the logo and the >> arrows to the RIGHT.
 	--                  bigger = further right. 0 = hard against the edge.
-	HeaderOffsetX  = 48,
+	HeaderOffsetX  = 52,
 
 	HeroHeight     = 330,
 	HeroLeftWidth  = 0.40,
@@ -4027,8 +4031,14 @@ function Library:_addCard(ctx, info, isSection)
 	-- image = "" or image = false hides the icon completely
 	slot.Visible = (slot.Icon.Image ~= "")
 
-	-- NO RED TINT ON THE TAB IMAGE: the red logo gradient is deliberately NOT
-	-- applied here, so the icon shows its own real colors.
+	-- RED EFFECT ON TOP OF THE TAB IMAGE: the exact same G_LOGO gradient the
+	-- Home page card icons use, laid over the icon.
+	-- TABS ONLY. Section icons are left with their own real colors.
+	-- TAB_TINT_OVERLAY at the top of the file controls the strength
+	-- (0 = full red, 1 = off).
+	if not isSection then
+		hohoStops(slot.Icon, G_LOGO, -144, TAB_TINT_OVERLAY)
+	end
 
 	-- IMAGE LINK SUPPORT: same as the home cards - a link is downloaded in the
 	-- background, so the visibility is decided when the download finishes.
