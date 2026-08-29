@@ -238,7 +238,8 @@ local LAYOUT = {
 	TabTextGap     = 26,
 
 	TabTitleLines  = 2,
-	TabTitleMin    = 24,
+	TabTitleGap    = 14,
+	TabTitleMin    = 20,
 	TabTitleStep   = 0.86,
 	TabTitleLine   = 1.25,
 	TabDivider     = 0,
@@ -3577,7 +3578,7 @@ function Library:_addCard(ctx, info, isSection)
 		BackgroundTransparency = 1,
 		ClipsDescendants = true,
 		Parent = card,
-	}, { vlist(6) })
+	}, { vlist(LAYOUT.TabTitleGap or 14) })
 
 	do
 		local layout = textCol:FindFirstChildOfClass("UIListLayout")
@@ -3618,18 +3619,28 @@ function Library:_addCard(ctx, info, isSection)
 
 	do
 		local baseSize = TAB_TITLE_SIZE
-		local minSize  = math.min(baseSize, LAYOUT.TabTitleMin or 24)
+		local minSize  = math.min(baseSize, LAYOUT.TabTitleMin or 20)
 		local stepDown = LAYOUT.TabTitleStep or 0.86
 		local lineMul  = LAYOUT.TabTitleLine or 1.25
 		local maxLines = math.max(1, LAYOUT.TabTitleLines or 2)
 		local busy = false
+
+		local function roomFor()
+			local total = textCol.AbsoluteSize.Y
+			if total <= 0 then total = LAYOUT.TabHeight or 164 end
+			local used = (LAYOUT.TabDescHeight or 70) + (LAYOUT.TabTitleGap or 14) + 4
+			return math.max(24, math.floor(total - used))
+		end
 
 		local function fitTitle()
 			if busy then return end
 			if title.AbsoluteSize.X <= 0 then return end
 			busy = true
 
+			local room = roomFor()
+			local cap  = math.min(room, math.ceil(baseSize * lineMul * maxLines))
 			local size = baseSize
+			titleCap.MaxSize = Vector2.new(math.huge, room)
 			title.TextSize = size
 
 			for _ = 1, 60 do
@@ -3639,7 +3650,7 @@ function Library:_addCard(ctx, info, isSection)
 
 				if size > want then
 					size = want
-				elseif rows > maxLines or high > math.ceil(size * lineMul * maxLines) then
+				elseif rows > maxLines or high > cap then
 					size = size - 1
 				else
 					break
@@ -3654,7 +3665,7 @@ function Library:_addCard(ctx, info, isSection)
 				title.TextSize = size
 			end
 
-			titleCap.MaxSize = Vector2.new(math.huge, math.ceil(size * lineMul * maxLines))
+			titleCap.MaxSize = Vector2.new(math.huge, math.min(room, math.max(math.ceil(title.TextBounds.Y), math.ceil(size * lineMul))))
 			busy = false
 		end
 
@@ -7449,9 +7460,9 @@ Library.StatusCfg = {
 	TitleSize  = 18,
 	RowSize    = 16,
 	RowGap     = 5,
-	Icon       = "https://i.pinimg.com/736x/d3/19/d4/d319d4b087d849a94f6da32483086cab.jpg",
-	IconColor  = Color3.new(1, 1, 1),
-	IconSize   = 18,
+	Icon       = "rbxassetid://16282494512",
+	IconColor  = Color3.new(1, 0.2, 0.2),
+	IconSize   = 16,
 	IconX      = -26,
 	RowPadLeft = 38,
 	TitleX     = 24,
@@ -7674,8 +7685,6 @@ function Library:_statusRow(text)
 		ImageColor3 = CFG.IconColor,
 		ScaleType = Enum.ScaleType.Fit,
 		Parent = item,
-	}, {
-		corner(4),
 	})
 	pcall(function() IMG.set(mark, "Image", CFG.Icon) end)
 
@@ -7763,10 +7772,13 @@ Library.AiCfg = {
 	DecorImage  = "rbxassetid://124670495450647",
 	BotAvatar   = "https://media.tenor.com/XUsHKOqQYwMAAAAj/columbina.gif",
 	UserAvatar  = "",
-	StatusIcon  = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSP9LONjMcIFJ8_wzRBBzp_as-H9UmOKHpvyndRpGkL8SHdgQhDyZV3GoY&s=10",
+	StatusIcon  = "https://i.pinimg.com/736x/d3/19/d4/d319d4b087d849a94f6da32483086cab.jpg",
 	StatusName  = "Live Status",
 	LogoSize    = 60,
-	TitleX      = 96,
+	LogoW       = 165,
+	LogoH       = 56,
+	LogoRound   = 8,
+	TitleX      = 200,
 	LogoX       = 22,
 	LogoY       = 16,
 	Corner      = 16,
@@ -8247,7 +8259,7 @@ function Library:_buildAiWindow()
 
 	local Logo = Instance.new("ImageLabel")
 	Logo.Name = "Logo"
-	Logo.Size = UDim2.new(0, CFG.LogoSize, 0, CFG.LogoSize)
+	Logo.Size = UDim2.new(0, CFG.LogoW, 0, CFG.LogoH)
 	Logo.Position = UDim2.new(0, CFG.LogoX, 0, CFG.LogoY)
 	Logo.BackgroundTransparency = 1
 	Logo.BorderSizePixel = 0
@@ -8257,7 +8269,7 @@ function Library:_buildAiWindow()
 	Logo.Parent = Background
 
 	local logoCorner = Instance.new("UICorner")
-	logoCorner.CornerRadius = UDim.new(1, 0)
+	logoCorner.CornerRadius = UDim.new(0, CFG.LogoRound)
 	logoCorner.Parent = Logo
 
 	self:_aiImage(Logo, (CFG.Logo ~= "" and CFG.Logo) or IMAGES.Logo, CFG.BtnFallback)
@@ -8755,9 +8767,11 @@ function Library:_buildAiWindow()
 		uStreaming.TextSize = phone and 15 or 17
 		ChatBar.TextSize = phone and 15 or 16
 		Label.TextSize = phone and 17 or 20
-		Logo.Size = UDim2.fromOffset(phone and 46 or CFG.LogoSize, phone and 46 or CFG.LogoSize)
-		Logo.Position = UDim2.new(0, phone and 16 or CFG.LogoX, 0, phone and 12 or CFG.LogoY)
-		Label.Position = UDim2.new(0, phone and 74 or CFG.TitleX, 0, 24)
+		local lw = phone and math.floor(CFG.LogoW * 0.72) or CFG.LogoW
+		local lh = phone and math.floor(CFG.LogoH * 0.72) or CFG.LogoH
+		Logo.Size = UDim2.fromOffset(lw, lh)
+		Logo.Position = UDim2.new(0, phone and 14 or CFG.LogoX, 0, phone and 12 or CFG.LogoY)
+		Label.Position = UDim2.new(0, (phone and 14 or CFG.LogoX) + lw + 14, 0, 24)
 		local px, py = Background.AbsolutePosition.X, Background.AbsolutePosition.Y
 		if px < -20 or py < 0 or px > vp.X - 60 or py > vp.Y - 60 then
 			Background.Position = UDim2.new(0.5, 0, 0.5, 0)
