@@ -275,15 +275,15 @@ local LAYOUT = {
 	PanelPadding   = 12,
 	PanelPaddingX  = 16,
 
-	HeaderHeight   = 62,
+	HeaderHeight   = 74,
 	-- the NEXO image top left. Lower both to shrink it, raise to grow it.
-	LogoWidth      = 210, -- wider logo horizontally
-	LogoHeight     = 60,
+	LogoWidth      = 185, -- wider logo horizontally
+	LogoHeight     = 52,
 
 	ArrowSize      = 36,  -- size of one >> arrow box
 	ArrowText      = 26,  -- font size of the >> arrows
 	ArrowGap       = 14,  -- space between the arrows
-	ArrowOffsetX   = 0,   -- push the whole arrow row to the right
+	ArrowOffsetX   = 48,  -- push the whole arrow row to the right
 
 	-- TOP LINE POSITION
 	--   HeaderOffsetY = push the WHOLE top row (logo, arrows, nav) DOWN.
@@ -294,7 +294,7 @@ local LAYOUT = {
 	NavOffsetX     = 72,
 	--   HeaderOffsetX = push the logo and the >> arrows to the RIGHT.
 	--                  bigger = further right. 0 = hard against the edge.
-	HeaderOffsetX  = 8,
+	HeaderOffsetX  = 48,
 
 	HeroHeight     = 330,
 	HeroLeftWidth  = 0.40,
