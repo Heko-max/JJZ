@@ -41,7 +41,7 @@ local AssetService = game:GetService("AssetService")
 --  1) IMAGE IDS - REPLACE THESE WITH YOUR OWN
 --=====================================================
 local IMAGES = {
-	Background  = "2151741365", -- fills the entire panel behind everything
+	Background  = "https://img.magnific.com/premium-photo/witch-standing-hillside-crescent-moon_605022-195637.jpg?w=360", -- fills the entire panel behind everything
 	Logo        = "https://i.imgur.com/yck4043.png", -- "NEXO" logo, top-left
 	Banner      = "132582095265277", -- big PREMIUM+ / V4.0 artwork on the Home page
 	Discord     = "16171891828",     -- social button 1 (Discord)
@@ -192,6 +192,9 @@ local TAB_DESC_SIZE  = 16 -- "Auto farm levels, bosses, items ..." line
 -- TAB / SECTION HOVER: strength of the red gradient wash on mouse over.
 -- 1 = invisible, 0 = fully solid. Lower = stronger red.
 local TAB_HOVER_STRENGTH = 0.12
+-- direction of that wash. -45 = red bottom-left, clean top-right corner.
+-- 0 = straight left-to-right. -90 = red along the bottom edge only.
+local TAB_HOVER_ANGLE = -45
 local CLICK_SPEED    = 0.45 -- seconds of the click ripple
 
 -- how many tabs the FRONT PAGE can hold. the reference design fits 3
@@ -2954,8 +2957,11 @@ local G_BAR_STRK   = { {0, 157, 2, 31}, {0.29, 76, 22, 32}, {0.66, 28, 24, 25}, 
 local G_TAB_STRK_RED = { {0, 157, 2, 31}, {0.55, 120, 14, 30}, {1, 76, 22, 32} }
 local G_BAR_STRK_RED = { {0, 157, 2, 31}, {0.55, 120, 14, 30}, {1, 76, 22, 32} }
 local G_LOGO      = { {0, 157, 2, 31}, {0.42, 163, 5, 33}, {1, 255, 51, 51} }
--- the mouse-over wash on a Pages tab: dark on the left, bright red on the right
-local G_TAB_HOVER = { {0, 26, 20, 21}, {0.45, 104, 12, 30}, {1, 182, 8, 40} }
+-- the mouse-over wash on a Pages tab. Offset 0 is the RED end, offset 1 is
+-- the dark end. With TAB_HOVER_ANGLE = -45 the axis runs bottom-left ->
+-- top-right, so: red down the LEFT side, a little red at the BOTTOM-RIGHT
+-- corner, and NO red in the TOP-RIGHT corner.
+local G_TAB_HOVER = { {0, 182, 8, 40}, {0.42, 120, 12, 32}, {0.72, 52, 22, 24}, {1, 24, 19, 20} }
 
 -- one card slice, same proportions as the reference
 local HOME_CARD_SIZE   = UDim2.fromScale(0.2906, 0.7433)
@@ -3882,7 +3888,7 @@ function Library:_addCard(ctx, info, isSection)
 		Parent = card,
 	}, { new("UICorner", { CornerRadius = UDim.new(0.1, 0) }) })
 	-- the red gradient wash that fades in under the cursor
-	hohoStops(glow, G_TAB_HOVER, 0)
+	hohoStops(glow, G_TAB_HOVER, TAB_HOVER_ANGLE)
 
 	local ripple = new("Frame", {
 		Name = "Ripple",
@@ -3975,14 +3981,18 @@ function Library:_addCard(ctx, info, isSection)
 		BackgroundTransparency = 1,
 		Font = Enum.Font.GothamBold, -- fallback only, hohoFont overrides it below
 		Text = info.title or ("TAB " .. index),
-		TextScaled = true,
-		TextWrapped = true,
+		-- FIXED SIZE: TextScaled is OFF so TAB_TITLE_SIZE is obeyed exactly.
+		-- With TextScaled on, the label filled its box and the size cap was
+		-- never the limiting factor, so changing it did nothing.
+		TextScaled = false,
+		TextSize = TAB_TITLE_SIZE,
+		TextWrapped = false,
 		TextColor3 = THEME.Text,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Center,
 		Parent = textCol,
-	-- MAIN FONT: the tab / section title cap. TAB_TITLE_SIZE at the top.
-	}, { clampText(TAB_TITLE_SIZE) })
+	-- MAIN FONT: size comes from TAB_TITLE_SIZE at the top of the file.
+	})
 	-- SAME TITLE FONT AS THE HOME PAGE CARDS
 	hohoFont(title, "Bold")
 
@@ -4009,15 +4019,17 @@ function Library:_addCard(ctx, info, isSection)
 		BackgroundTransparency = 1,
 		Font = Enum.Font.Gotham, -- fallback only, hohoFont overrides it below
 		Text = info.desc or "",
-		TextScaled = true,
+		-- FIXED SIZE: same reason as the title above.
+		TextScaled = false,
+		TextSize = TAB_DESC_SIZE,
 		-- REFERENCE UI: the description is white, like the reference cards
 		TextColor3 = Color3.fromRGB(255, 255, 255),
 		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Center,
+		TextYAlignment = Enum.TextYAlignment.Top,
 		Parent = pill,
-	-- the description cap. TAB_DESC_SIZE at the top of the file.
-	}, { clampText(TAB_DESC_SIZE) })
+	-- size comes from TAB_DESC_SIZE at the top of the file.
+	})
 	-- SAME DESCRIPTION FONT AS THE HOME PAGE CARDS
 	hohoFont(desc, "Regular")
 
