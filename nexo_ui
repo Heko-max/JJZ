@@ -203,7 +203,12 @@ local MAX_SCALE   = 1.00
 --  2) TEXT - EDIT EVERY WORD HERE
 --=====================================================
 local TEXT = {
+	-- EXACT REFERENCE HEADER. #f8042e is the reference red, and it only works
+	-- because the label has RichText = true. Single quotes outside, because the
+	-- font tag uses double quotes inside.
 	Welcome  = 'WELCOME TO\n<font color="#f8042e">BEST FREE</font>\nJUJUTSU ZERO HUB',
+	-- EXACT REFERENCE TITLE1, 3 lines. Fewer lines = bigger text, because the
+	-- label is TextScaled, which is what makes it read like the reference.
 	Subtitle = table.concat({
 		"Thanks for using our services. ",
 		"We are commited to bring greatest ",
@@ -222,7 +227,7 @@ local TEXT = {
 		{ title = "Settings", desc = "Personalize your favourite script hub however you like." },
 	},
 
-	Credits = "NEXO HUB\n\nPut your credits here.",
+	Credits = 'JUJUTSU ZERO\n<font color="#f8042e">HUB</font>',
 }
 
 --=====================================================
@@ -1944,7 +1949,7 @@ function Library.new()
 	--   {0, 157,2,31} -> {0.47, 47,29,32} -> {1, 24,24,24}
 	-- rotated -90 degrees with a flat 0.9 transparency, sitting at ZIndex 0
 	-- BEHIND everything, with the tiled pattern drawn on top of it.
-	-- This is the red into dark grand shading of the whole UI.
+	-- This is the red-into-dark grand shading of the whole UI.
 	-- Built inline because hohoStops is declared further down the file.
 	self.WindowGradient = new("Frame", {
 		Name = "GRADIENT",
@@ -2968,35 +2973,6 @@ local function hohoStroke(parent, thickness, cols, rot)
 	return s
 end
 
---=====================================================
---  CONTROL SKIN
---  The buttons / switches / sliders / dropdowns inside a section now use
---  the EXACT same colors, shading and blending as the pages tab cards:
---    fill    : Color3.fromRGB(20, 20, 20) at 0.5
---    outline : G_PANEL_STRK gradient, white base, rotated -57
---  hohoBorder returns the instance, so it drops straight into a children
---  table right where the old flat accent stroke used to be.
---=====================================================
-local function hohoSeq(cols)
-	local ks = {}
-	for _, c in ipairs(cols) do
-		ks[#ks + 1] = ColorSequenceKeypoint.new(c[1], Color3.fromRGB(c[2], c[3], c[4]))
-	end
-	return ColorSequence.new(ks)
-end
-
-local function hohoBorder(thickness, cols, rot)
-	local s = Instance.new("UIStroke")
-	s.Color = Color3.fromRGB(255, 255, 255)
-	s.Thickness = thickness or 2
-	s.Transparency = 0
-	local g = Instance.new("UIGradient")
-	g.Color = hohoSeq(cols or G_PANEL_STRK)
-	g.Rotation = rot or -57
-	g.Parent = s
-	return s
-end
-
 function Library:_buildHomePage()
 	local page = new("Frame", {
 		Name = "HomePage",
@@ -3062,7 +3038,8 @@ function Library:_buildHomePage()
 		BackgroundTransparency = 1,
 		RichText = true,
 		Text = TEXT.Subtitle,
-		TextColor3 = THEME.SubText,
+		-- the reference subtitle is pure white, same as its header
+		TextColor3 = THEME.Text,
 		TextScaled = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Parent = Upper,
@@ -3454,30 +3431,9 @@ function Library:_buildTabsPage()
 		Parent = page,
 	}, {
 		corner(16),
-		-- EXACT REFERENCE SEARCH BOX SHADING: the reference buildSearchBox puts a
-		-- child "Gradient" frame on the box carrying G_BAR at -90 degrees, and the
-		-- G_BAR_STRK outline is added on the bar itself right after this block.
+		-- the flat red outline is gone. The reference gradient outline is
+		-- added with hohoStroke right after this block.
 		padding(0, 18, 0, 18),
-		new("Frame", {
-			Name = "Gradient",
-			-- the offsets cancel the 18px side padding so it covers the whole bar
-			Position = UDim2.fromOffset(-18, 0),
-			Size = UDim2.new(1, 36, 1, 0),
-			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
-			ZIndex = 0,
-		}, {
-			corner(16),
-			new("UIGradient", {
-				Color = ColorSequence.new({
-					ColorSequenceKeypoint.new(0, Color3.fromRGB(157, 2, 31)),
-					ColorSequenceKeypoint.new(0.07, Color3.fromRGB(76, 22, 32)),
-					ColorSequenceKeypoint.new(0.81, Color3.fromRGB(28, 24, 25)),
-					ColorSequenceKeypoint.new(1, Color3.fromRGB(24, 24, 24)),
-				}),
-				Rotation = -90,
-			}),
-		}),
 		-- the black line is no longer a child here either. It is created as a
 		-- sibling right after this block, sitting BELOW the search bar.
 		new("ImageLabel", {
@@ -3509,9 +3465,7 @@ function Library:_buildTabsPage()
 
 	-- REFERENCE UI OUTLINE: the search box gradient stroke, running G_BAR_STRK
 	-- vertically at -90, exactly like the reference hub search box.
-	-- EXACT REFERENCE PALETTE: the untouched G_BAR_STRK blend, not the red only
-	-- variant. Same 2.5 thickness and -90 rotation as the reference search box.
-	hohoStroke(self.SearchBar, 2.5, G_BAR_STRK, -90)
+	hohoStroke(self.SearchBar, 2.5, G_BAR_STRK_RED, -90)
 
 	-- BLACK LINE *UNDER* THE SEARCH BAR, in the empty space between the bar and
 	-- the first tab row (LAYOUT.GAP + LAYOUT.SearchGap = 32px of room).
@@ -3650,10 +3604,8 @@ function Library:_buildTabsPage()
 		ZIndex = 2,
 		Parent = area,
 	}, {
-		-- ROOM FOR THE OUTLINE: the list clips its contents, so 3px on each side
-		-- was not enough for the 2px stroke and the outline looked cut at the left
-		-- and right edges. 8px on both sides leaves the whole outline visible.
-		padding(8, math.max(LAYOUT.TabScrollPad, 8), LAYOUT.TabRowGap, 8),
+		-- a few pixels on every side so no card outline gets clipped
+		padding(3, LAYOUT.TabScrollPad, LAYOUT.TabRowGap, 3),
 		vlist(LAYOUT.TabRowGap),
 	})
 
@@ -3774,10 +3726,14 @@ function Library:_addCard(ctx, info, isSection)
 	--   stroke(g, 2, G_PANEL_STRK, -57)  <- the reference MAIN_ page cards
 	-- thickness 2, white base color, Transparency 0, the untouched
 	-- G_PANEL_STRK blend, rotated -57 degrees.
-	-- EXACT REFERENCE CARD SHADING STRUCTURE: the reference `buildCard` creates a
-	-- child "Gradient" frame covering the card and hangs the G_PANEL fill ramp on
-	-- it at -57 degrees. The negative offsets cancel the card's TabPad padding so
-	-- the frame covers the full card, exactly like the reference frame does.
+	-- EXACT REFERENCE CARD SHADING STRUCTURE: the reference `buildCard` never
+	-- puts the outline on the slab itself. It creates a child "Gradient" frame
+	-- covering the card and hangs BOTH the G_PANEL fill ramp and the
+	-- G_PANEL_STRK outline on that frame, both at -57 degrees:
+	--   gradient(g, G_PANEL, -57)
+	--   stroke(g, 2, G_PANEL_STRK, -57)
+	-- The negative offsets cancel the card's TabPad padding so the frame covers
+	-- the full card, exactly like the reference frame does.
 	local grad = new("Frame", {
 		Name = "Gradient",
 		Position = UDim2.fromOffset(-LAYOUT.TabPad, -LAYOUT.TabPad),
@@ -3788,12 +3744,7 @@ function Library:_addCard(ctx, info, isSection)
 		Parent = card,
 	}, { new("UICorner", { CornerRadius = UDim.new(0.1, 0) }) })
 	hohoStops(grad, G_PANEL, -57)
-
-	-- OUTLINE VISIBILITY: the card has ClipsDescendants = true, so a stroke that
-	-- lives on a CHILD frame gets CUT OFF at the card edges. The stroke stays on
-	-- the CARD itself, where it draws outside the card bounds and is never
-	-- clipped, so the whole outline is visible on all four sides.
-	hohoStroke(card, 2, G_PANEL_STRK, -57)
+	hohoStroke(grad, 2, G_PANEL_STRK, -57)
 
 	-- HOVER + CLICK HIGHLIGHT
 	-- both layers sit BEHIND the text and the image, and inside the card, so the
@@ -4156,8 +4107,7 @@ function Library:_sectionList(tab)
 		ZIndex = 2,
 		Parent = self.TabArea,
 	}, {
-		-- same outline room as the root list, so section card outlines are not cut
-		padding(8, math.max(LAYOUT.TabScrollPad, 8), LAYOUT.TabRowGap, 8),
+		padding(3, LAYOUT.TabScrollPad, LAYOUT.TabRowGap, 3),
 		vlist(LAYOUT.TabRowGap),
 	})
 
@@ -4393,17 +4343,15 @@ function Library:_controlBox(card)
 		LayoutOrder = 9999, -- always the last thing in the list
 		Size = UDim2.new(1, 0, 0, LAYOUT.ControlBoxHeight),
 		BackgroundColor3 = THEME.Card,
-		-- NO BOX INSIDE A SECTION ANYMORE. The frame itself stays, because it
-		-- is what scrolls and what keeps the controls inside the visible area,
-		-- but it draws NOTHING now: no fill and no outline. Only the controls
-		-- themselves are visible.
-		BackgroundTransparency = 1,
+		-- SOLID: nothing behind it shows through anymore
+		BackgroundTransparency = 0,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		ZIndex = 2,
 		Parent = ctx.List,
 	}, {
 		corner(18),
+		softStroke(THEME.Accent, 1.3, 0.55, 0.45),
 	})
 
 	-- the scrolling part lives INSIDE the box, so the rounded frame and
@@ -4620,16 +4568,15 @@ function Library:_comboButton(parent, opt)
 
 	local shell = new("Frame", {
 		Name = "ComboButton",
-		-- EXACT PAGES TAB CARD FILL
-		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
-		BackgroundTransparency = 0.5,
+		BackgroundColor3 = THEME.TabCard,
+		BackgroundTransparency = 0,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		ZIndex = 2,
 		Parent = parent,
 	}, {
 		corner(10),
-		hohoBorder(2),
+		plainStroke(THEME.ControlAccent, 1.6, 0, false),
 	})
 
 	local glow = new("Frame", {
@@ -4844,16 +4791,15 @@ function Library:_addButton(card, info)
 	local shell = new("Frame", {
 		Name = "Button",
 		Size = UDim2.fromScale(1, 1),
-		-- EXACT PAGES TAB CARD FILL
-		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
-		BackgroundTransparency = 0.5,
+		BackgroundColor3 = THEME.TabCard,
+		BackgroundTransparency = 0,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		ZIndex = 2,
 		Parent = slot,
 	}, {
 		corner(12),
-		hohoBorder(2), -- exact pages tab card gradient outline
+		plainStroke(THEME.ControlAccent, 1.6, 0, false), -- button: solid outline, no fade
 	})
 
 	-- HOVER + CLICK HIGHLIGHT, exactly like a tab card.
@@ -4966,15 +4912,14 @@ function Library:_addToggle(card, info)
 	local shell = new("Frame", {
 		Name = "Switch",
 		Size = UDim2.fromScale(1, 1),
-		-- EXACT PAGES TAB CARD FILL
-		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
-		BackgroundTransparency = 0.5,
+		BackgroundColor3 = THEME.TabCard,
+		BackgroundTransparency = 0,
 		BorderSizePixel = 0,
 		ZIndex = 2,
 		Parent = slot,
 	}, {
 		corner(12),
-		hohoBorder(2),
+		plainStroke(THEME.ControlAccent, 1.6, 0),
 		padding(0, 14, 0, 14),
 	})
 
@@ -5007,7 +4952,7 @@ function Library:_addToggle(card, info)
 		Parent = shell,
 	}, {
 		corner(7),
-		hohoBorder(2),
+		plainStroke(THEME.ControlAccent, 1.8, 0),
 	})
 	controlPart(square, "BackgroundColor3")
 
@@ -5073,15 +5018,14 @@ function Library:_addSlider(card, info)
 	local shell = new("Frame", {
 		Name = "Slider",
 		Size = UDim2.fromScale(1, 1),
-		-- EXACT PAGES TAB CARD FILL
-		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
-		BackgroundTransparency = 0.5,
+		BackgroundColor3 = THEME.TabCard,
+		BackgroundTransparency = 0,
 		BorderSizePixel = 0,
 		ZIndex = 2,
 		Parent = slot,
 	}, {
 		corner(12),
-		hohoBorder(2),
+		plainStroke(THEME.ControlAccent, 1.6, 0),
 		padding(10, 14, 12, 14),
 	})
 
@@ -5127,7 +5071,7 @@ function Library:_addSlider(card, info)
 		Parent = shell,
 	}, {
 		new("UICorner", { CornerRadius = UDim.new(1, 0) }),
-		hohoBorder(1.6), -- exact pages tab card gradient outline
+		plainStroke(THEME.ControlAccent, 1.6, 0, false), -- slider track: solid, never faded
 	})
 
 	local fill = new("Frame", {
@@ -5315,15 +5259,14 @@ function Library:_addParagraph(card, info)
 	local shell = new("Frame", {
 		Name = "Paragraph",
 		Size = UDim2.fromScale(1, 1),
-		-- EXACT PAGES TAB CARD FILL
-		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
-		BackgroundTransparency = 0.5,
+		BackgroundColor3 = THEME.TabCard,
+		BackgroundTransparency = 0,
 		BorderSizePixel = 0,
 		ZIndex = 2,
 		Parent = frame,
 	}, {
 		corner(12),
-		hohoBorder(1.8),
+		plainStroke(THEME.ControlAccent, 1.4, 0),
 		padding(10, 14, 10, 14),
 	})
 
@@ -5427,15 +5370,14 @@ function Library:_addInput(card, info)
 	local shell = new("Frame", {
 		Name = "Input",
 		Size = UDim2.fromScale(1, 1),
-		-- EXACT PAGES TAB CARD FILL
-		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
-		BackgroundTransparency = 0.5,
+		BackgroundColor3 = THEME.TabCard,
+		BackgroundTransparency = 0,
 		BorderSizePixel = 0,
 		ZIndex = 2,
 		Parent = frame,
 	}, {
 		corner(12),
-		hohoBorder(2),
+		plainStroke(THEME.ControlAccent, 1.6, 0),
 		padding(8, 14, 10, 14),
 	})
 
@@ -5473,7 +5415,7 @@ function Library:_addInput(card, info)
 		Parent = shell,
 	}, {
 		corner(8),
-		hohoBorder(1.5),
+		plainStroke(THEME.ControlAccent, 1.2, 0, false),
 		padding(0, 10, 0, 10),
 	})
 	controlPart(field, "TextColor3")
@@ -5498,15 +5440,14 @@ function Library:_addKeybind(card, info)
 	local shell = new("Frame", {
 		Name = "Keybind",
 		Size = UDim2.fromScale(1, 1),
-		-- EXACT PAGES TAB CARD FILL
-		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
-		BackgroundTransparency = 0.5,
+		BackgroundColor3 = THEME.TabCard,
+		BackgroundTransparency = 0,
 		BorderSizePixel = 0,
 		ZIndex = 2,
 		Parent = slot,
 	}, {
 		corner(12),
-		hohoBorder(2),
+		plainStroke(THEME.ControlAccent, 1.6, 0),
 		padding(0, 12, 0, 14),
 	})
 
@@ -5547,7 +5488,7 @@ function Library:_addKeybind(card, info)
 		Parent = shell,
 	}, {
 		corner(8),
-		hohoBorder(1.5),
+		plainStroke(THEME.ControlAccent, 1.2, 0, false),
 	})
 	controlPart(keyBtn, "TextColor3")
 
@@ -5596,16 +5537,15 @@ function Library:_addDropdown(card, info)
 	local shell = new("Frame", {
 		Name = "Dropdown",
 		Size = UDim2.fromScale(1, 1),
-		-- EXACT PAGES TAB CARD FILL
-		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
-		BackgroundTransparency = 0.5,
+		BackgroundColor3 = THEME.TabCard,
+		BackgroundTransparency = 0,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		ZIndex = 2,
 		Parent = frame,
 	}, {
 		corner(12),
-		hohoBorder(2),
+		plainStroke(THEME.ControlAccent, 1.6, 0),
 	})
 
 	local label = new("TextLabel", {
@@ -5815,16 +5755,15 @@ function Library:_addColorPicker(card, info)
 	local shell = new("Frame", {
 		Name = "ColorPicker",
 		Size = UDim2.fromScale(1, 1),
-		-- EXACT PAGES TAB CARD FILL
-		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
-		BackgroundTransparency = 0.5,
+		BackgroundColor3 = THEME.TabCard,
+		BackgroundTransparency = 0,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		ZIndex = 2,
 		Parent = frame,
 	}, {
 		corner(12),
-		hohoBorder(2),
+		plainStroke(THEME.ControlAccent, 1.6, 0),
 	})
 
 	local label = new("TextLabel", {
@@ -5853,7 +5792,7 @@ function Library:_addColorPicker(card, info)
 		Parent = shell,
 	}, {
 		corner(8),
-		hohoBorder(1.5),
+		plainStroke(THEME.ControlAccent, 1.2, 0, false),
 	})
 
 	local open = false
@@ -5878,7 +5817,7 @@ function Library:_addColorPicker(card, info)
 			Parent = shell,
 		}, {
 			new("UICorner", { CornerRadius = UDim.new(1, 0) }),
-			hohoBorder(1.5),
+			plainStroke(THEME.ControlAccent, 1.2, 0, false),
 		})
 
 		local fill = new("Frame", {
