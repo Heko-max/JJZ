@@ -2971,6 +2971,35 @@ local function hohoStroke(parent, thickness, cols, rot)
 	return s
 end
 
+--=====================================================
+--  CONTROL SKIN
+--  The buttons / switches / sliders / dropdowns inside a section now use
+--  the EXACT same colors, shading and blending as the pages tab cards:
+--    fill    : Color3.fromRGB(20, 20, 20) at 0.5
+--    outline : G_PANEL_STRK gradient, white base, rotated -57
+--  hohoBorder returns the instance, so it drops straight into a children
+--  table right where the old flat accent stroke used to be.
+--=====================================================
+local function hohoSeq(cols)
+	local ks = {}
+	for _, c in ipairs(cols) do
+		ks[#ks + 1] = ColorSequenceKeypoint.new(c[1], Color3.fromRGB(c[2], c[3], c[4]))
+	end
+	return ColorSequence.new(ks)
+end
+
+local function hohoBorder(thickness, cols, rot)
+	local s = Instance.new("UIStroke")
+	s.Color = Color3.fromRGB(255, 255, 255)
+	s.Thickness = thickness or 2
+	s.Transparency = 0
+	local g = Instance.new("UIGradient")
+	g.Color = hohoSeq(cols or G_PANEL_STRK)
+	g.Rotation = rot or -57
+	g.Parent = s
+	return s
+end
+
 function Library:_buildHomePage()
 	local page = new("Frame", {
 		Name = "HomePage",
@@ -4367,15 +4396,17 @@ function Library:_controlBox(card)
 		LayoutOrder = 9999, -- always the last thing in the list
 		Size = UDim2.new(1, 0, 0, LAYOUT.ControlBoxHeight),
 		BackgroundColor3 = THEME.Card,
-		-- SOLID: nothing behind it shows through anymore
-		BackgroundTransparency = 0,
+		-- NO BOX INSIDE A SECTION ANYMORE. The frame itself stays, because it
+		-- is what scrolls and what keeps the controls inside the visible area,
+		-- but it draws NOTHING now: no fill and no outline. Only the controls
+		-- themselves are visible.
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		ZIndex = 2,
 		Parent = ctx.List,
 	}, {
 		corner(18),
-		softStroke(THEME.Accent, 1.3, 0.55, 0.45),
 	})
 
 	-- the scrolling part lives INSIDE the box, so the rounded frame and
@@ -4592,15 +4623,16 @@ function Library:_comboButton(parent, opt)
 
 	local shell = new("Frame", {
 		Name = "ComboButton",
-		BackgroundColor3 = THEME.TabCard,
-		BackgroundTransparency = 0,
+		-- EXACT PAGES TAB CARD FILL
+		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
+		BackgroundTransparency = 0.5,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		ZIndex = 2,
 		Parent = parent,
 	}, {
 		corner(10),
-		plainStroke(THEME.ControlAccent, 1.6, 0, false),
+		hohoBorder(2),
 	})
 
 	local glow = new("Frame", {
@@ -4815,15 +4847,16 @@ function Library:_addButton(card, info)
 	local shell = new("Frame", {
 		Name = "Button",
 		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = THEME.TabCard,
-		BackgroundTransparency = 0,
+		-- EXACT PAGES TAB CARD FILL
+		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
+		BackgroundTransparency = 0.5,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		ZIndex = 2,
 		Parent = slot,
 	}, {
 		corner(12),
-		plainStroke(THEME.ControlAccent, 1.6, 0, false), -- button: solid outline, no fade
+		hohoBorder(2), -- exact pages tab card gradient outline
 	})
 
 	-- HOVER + CLICK HIGHLIGHT, exactly like a tab card.
@@ -4936,14 +4969,15 @@ function Library:_addToggle(card, info)
 	local shell = new("Frame", {
 		Name = "Switch",
 		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = THEME.TabCard,
-		BackgroundTransparency = 0,
+		-- EXACT PAGES TAB CARD FILL
+		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
+		BackgroundTransparency = 0.5,
 		BorderSizePixel = 0,
 		ZIndex = 2,
 		Parent = slot,
 	}, {
 		corner(12),
-		plainStroke(THEME.ControlAccent, 1.6, 0),
+		hohoBorder(2),
 		padding(0, 14, 0, 14),
 	})
 
@@ -4976,7 +5010,7 @@ function Library:_addToggle(card, info)
 		Parent = shell,
 	}, {
 		corner(7),
-		plainStroke(THEME.ControlAccent, 1.8, 0),
+		hohoBorder(2),
 	})
 	controlPart(square, "BackgroundColor3")
 
@@ -5042,14 +5076,15 @@ function Library:_addSlider(card, info)
 	local shell = new("Frame", {
 		Name = "Slider",
 		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = THEME.TabCard,
-		BackgroundTransparency = 0,
+		-- EXACT PAGES TAB CARD FILL
+		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
+		BackgroundTransparency = 0.5,
 		BorderSizePixel = 0,
 		ZIndex = 2,
 		Parent = slot,
 	}, {
 		corner(12),
-		plainStroke(THEME.ControlAccent, 1.6, 0),
+		hohoBorder(2),
 		padding(10, 14, 12, 14),
 	})
 
@@ -5095,7 +5130,7 @@ function Library:_addSlider(card, info)
 		Parent = shell,
 	}, {
 		new("UICorner", { CornerRadius = UDim.new(1, 0) }),
-		plainStroke(THEME.ControlAccent, 1.6, 0, false), -- slider track: solid, never faded
+		hohoBorder(1.6), -- exact pages tab card gradient outline
 	})
 
 	local fill = new("Frame", {
@@ -5283,14 +5318,15 @@ function Library:_addParagraph(card, info)
 	local shell = new("Frame", {
 		Name = "Paragraph",
 		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = THEME.TabCard,
-		BackgroundTransparency = 0,
+		-- EXACT PAGES TAB CARD FILL
+		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
+		BackgroundTransparency = 0.5,
 		BorderSizePixel = 0,
 		ZIndex = 2,
 		Parent = frame,
 	}, {
 		corner(12),
-		plainStroke(THEME.ControlAccent, 1.4, 0),
+		hohoBorder(1.8),
 		padding(10, 14, 10, 14),
 	})
 
@@ -5394,14 +5430,15 @@ function Library:_addInput(card, info)
 	local shell = new("Frame", {
 		Name = "Input",
 		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = THEME.TabCard,
-		BackgroundTransparency = 0,
+		-- EXACT PAGES TAB CARD FILL
+		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
+		BackgroundTransparency = 0.5,
 		BorderSizePixel = 0,
 		ZIndex = 2,
 		Parent = frame,
 	}, {
 		corner(12),
-		plainStroke(THEME.ControlAccent, 1.6, 0),
+		hohoBorder(2),
 		padding(8, 14, 10, 14),
 	})
 
@@ -5439,7 +5476,7 @@ function Library:_addInput(card, info)
 		Parent = shell,
 	}, {
 		corner(8),
-		plainStroke(THEME.ControlAccent, 1.2, 0, false),
+		hohoBorder(1.5),
 		padding(0, 10, 0, 10),
 	})
 	controlPart(field, "TextColor3")
@@ -5464,14 +5501,15 @@ function Library:_addKeybind(card, info)
 	local shell = new("Frame", {
 		Name = "Keybind",
 		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = THEME.TabCard,
-		BackgroundTransparency = 0,
+		-- EXACT PAGES TAB CARD FILL
+		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
+		BackgroundTransparency = 0.5,
 		BorderSizePixel = 0,
 		ZIndex = 2,
 		Parent = slot,
 	}, {
 		corner(12),
-		plainStroke(THEME.ControlAccent, 1.6, 0),
+		hohoBorder(2),
 		padding(0, 12, 0, 14),
 	})
 
@@ -5512,7 +5550,7 @@ function Library:_addKeybind(card, info)
 		Parent = shell,
 	}, {
 		corner(8),
-		plainStroke(THEME.ControlAccent, 1.2, 0, false),
+		hohoBorder(1.5),
 	})
 	controlPart(keyBtn, "TextColor3")
 
@@ -5561,15 +5599,16 @@ function Library:_addDropdown(card, info)
 	local shell = new("Frame", {
 		Name = "Dropdown",
 		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = THEME.TabCard,
-		BackgroundTransparency = 0,
+		-- EXACT PAGES TAB CARD FILL
+		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
+		BackgroundTransparency = 0.5,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		ZIndex = 2,
 		Parent = frame,
 	}, {
 		corner(12),
-		plainStroke(THEME.ControlAccent, 1.6, 0),
+		hohoBorder(2),
 	})
 
 	local label = new("TextLabel", {
@@ -5779,15 +5818,16 @@ function Library:_addColorPicker(card, info)
 	local shell = new("Frame", {
 		Name = "ColorPicker",
 		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = THEME.TabCard,
-		BackgroundTransparency = 0,
+		-- EXACT PAGES TAB CARD FILL
+		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
+		BackgroundTransparency = 0.5,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		ZIndex = 2,
 		Parent = frame,
 	}, {
 		corner(12),
-		plainStroke(THEME.ControlAccent, 1.6, 0),
+		hohoBorder(2),
 	})
 
 	local label = new("TextLabel", {
@@ -5816,7 +5856,7 @@ function Library:_addColorPicker(card, info)
 		Parent = shell,
 	}, {
 		corner(8),
-		plainStroke(THEME.ControlAccent, 1.2, 0, false),
+		hohoBorder(1.5),
 	})
 
 	local open = false
@@ -5841,7 +5881,7 @@ function Library:_addColorPicker(card, info)
 			Parent = shell,
 		}, {
 			new("UICorner", { CornerRadius = UDim.new(1, 0) }),
-			plainStroke(THEME.ControlAccent, 1.2, 0, false),
+			hohoBorder(1.5),
 		})
 
 		local fill = new("Frame", {
