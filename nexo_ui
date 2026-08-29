@@ -41,7 +41,7 @@ local HttpService = game:GetService("HttpService")
 --=====================================================
 local IMAGES = {
 	Background  = "https://i.pinimg.com/736x/c8/4b/e4/c84be4379f644f75a76def418d9d2d48.jpg", -- fills the entire panel behind everything
-	Logo        = "116677845668287", -- "NEXO" logo, top-left
+	Logo        = "https://i.imgur.com/0RMdDLz.png", -- "NEXO" logo, top-left
 	Banner      = "132582095265277", -- big PREMIUM+ / V4.0 artwork on the Home page
 	Discord     = "16171891828",     -- social button 1 (Discord)
 	YouTube     = "16171897995",      -- social button 2 (YouTube)
@@ -2899,11 +2899,11 @@ local G_HOME_STRK = { {0, 157, 2, 31}, {0.29, 76, 22, 32}, {1, 24, 24, 24} }
 --   BOTTOM_EDGE_H     : line thickness in pixels
 --   BOTTOM_EDGE_INSET : how far it is pulled in on the left and the right
 --   BOTTOM_EDGE_FADE  : 0 = solid black, 1 = invisible
-local BOTTOM_EDGE_H     = 18
+local BOTTOM_EDGE_H     = 0
 -- how far the line sits BELOW the card / the search bar
 local BOTTOM_EDGE_GAP   = 4
 local BOTTOM_EDGE_INSET = 5
-local BOTTOM_EDGE_FADE  = 0.1
+local BOTTOM_EDGE_FADE  = 1
 
 local G_PANEL      = { {0, 157, 2, 31}, {0.53, 76, 22, 32}, {0.82, 40, 19, 23}, {1, 24, 18, 19} }
 local G_PANEL_STRK = { {0, 157, 2, 31}, {0.75, 76, 22, 32}, {1, 20, 19, 19} }
@@ -3275,7 +3275,7 @@ function Library:AddHomeTab(info)
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Parent = card,
 	}, {
-		new("UITextSizeConstraint", { MaxTextSize = 100, MinTextSize = 1 }),
+		new("UITextSizeConstraint", { MaxTextSize = 108, MinTextSize = 1 }),
 	})
 	hohoFont(title, "Bold")
 
@@ -3293,7 +3293,7 @@ function Library:AddHomeTab(info)
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Parent = card,
 	}, {
-		new("UITextSizeConstraint", { MaxTextSize = 100, MinTextSize = 1 }),
+		new("UITextSizeConstraint", { MaxTextSize = 112, MinTextSize = 1 }),
 	})
 	hohoFont(desc, "Regular")
 
@@ -3930,7 +3930,7 @@ function Library:_addCard(ctx, info, isSection)
 		TextYAlignment = Enum.TextYAlignment.Center,
 		Parent = textCol,
 	-- MAIN FONT: the tab title cap, raised from 28 so the text reads bigger
-	}, { clampText(34) })
+	}, { clampText(38) })
 	-- SAME TITLE FONT AS THE HOME PAGE CARDS
 	hohoFont(title, "Bold")
 
@@ -3965,7 +3965,7 @@ function Library:_addCard(ctx, info, isSection)
 		TextYAlignment = Enum.TextYAlignment.Center,
 		Parent = pill,
 	-- the description cap, raised from 14 to match the bigger title
-	}, { clampText(17) })
+	}, { clampText(22) })
 	-- SAME DESCRIPTION FONT AS THE HOME PAGE CARDS
 	hohoFont(desc, "Regular")
 
@@ -4197,7 +4197,7 @@ function Library:_repackLevel(ctx)
 		local card = item.Frame
 		-- the black line under a card follows that card: hidden when the search
 		-- filters the card out, shown and re-placed when it comes back
-		if item.Edge then item.Edge.Visible = (card ~= nil and card.Visible) end
+		if item.Edge then item.Edge.Visible = false end
 		if card and card.Visible then
 			shown = shown + 1
 			local col = ((shown - 1) % cols) + 1
