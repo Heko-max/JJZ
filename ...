@@ -2847,6 +2847,9 @@ function Library:_buildHeader()
 		-- feel too far apart.
 	}, { hlist(28, Enum.HorizontalAlignment.Right) })
 
+	self.NavButtons = self.NavButtons or {}
+	self.NavGlows = self.NavGlows or {}
+
 	for i, label in ipairs(TEXT.Nav) do
 		local btn = new("TextButton", {
 			Name = label,
@@ -2894,14 +2897,14 @@ function Library:SelectPage(name, back)
 		forward = order[name] >= order[self.CurrentPage]
 	end
 
-	for pageName, frame in pairs(self.PageFrames) do
+	for pageName, frame in pairs(self.PageFrames or {}) do
 		if pageName == name then
 			slideIn(frame, forward)
 		else
 			frame.Visible = false
 		end
 	end
-	for label, btn in pairs(self.NavButtons) do
+	for label, btn in pairs(self.NavButtons or {}) do
 		local selected = (label == name)
 		playTween(btn, tweenInfo(0.18), { TextColor3 = selected and THEME.Accent or THEME.NavIdle }, "navText" .. label)
 		local glow = self.NavGlows and self.NavGlows[label]
