@@ -41,8 +41,8 @@ local AssetService = game:GetService("AssetService")
 --  1) IMAGE IDS - REPLACE THESE WITH YOUR OWN
 --=====================================================
 local IMAGES = {
-	Background  = "https://i.imgur.com/M7NNo2s.png", -- fills the entire panel behind everything
-	Logo        = "https://i.imgur.com/0RMdDLz.png", -- "NEXO" logo, top-left
+	Background  = "https://i.imgur.com/lyJQbo7.png", -- fills the entire panel behind everything
+	Logo        = "87792659779690", -- "NEXO" logo, top-left
 	Banner      = "132582095265277", -- big PREMIUM+ / V4.0 artwork on the Home page
 	Discord     = "16171891828",     -- social button 1 (Discord)
 	YouTube     = "16171897995",      -- social button 2 (YouTube)
@@ -277,7 +277,7 @@ local LAYOUT = {
 
 	HeaderHeight   = 62,
 	-- the NEXO image top left. Lower both to shrink it, raise to grow it.
-	LogoWidth      = 210,
+	LogoWidth      = 300, -- wider logo horizontally
 	LogoHeight     = 86,
 
 	ArrowSize      = 36,  -- size of one >> arrow box
@@ -2860,10 +2860,19 @@ function Library:_buildHeader()
 			TextColor3 = THEME.NavIdle,
 			Parent = nav,
 		})
+		-- White text glow by default; selected nav tweens into red glow.
+		local glow = new("UIStroke", {
+			Color = Color3.fromRGB(255, 255, 255),
+			Thickness = 1.35,
+			Transparency = 0.28,
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
+			Parent = btn,
+		})
 		btn.MouseButton1Click:Connect(function()
 			self:SelectPage(label)
 		end)
 		self.NavButtons[label] = btn
+		self.NavGlows[label] = glow
 	end
 end
 
@@ -2892,7 +2901,15 @@ function Library:SelectPage(name, back)
 		end
 	end
 	for label, btn in pairs(self.NavButtons) do
-		btn.TextColor3 = (label == name) and THEME.Accent or THEME.NavIdle
+		local selected = (label == name)
+		playTween(btn, tweenInfo(0.18), { TextColor3 = selected and THEME.Accent or THEME.NavIdle }, "navText" .. label)
+		local glow = self.NavGlows and self.NavGlows[label]
+		if glow then
+			playTween(glow, tweenInfo(0.18), {
+				Color = selected and THEME.Accent or Color3.fromRGB(255, 255, 255),
+				Transparency = selected and 0.10 or 0.28,
+			}, "navGlow" .. label)
+		end
 	end
 	self.CurrentPage = name
 end
