@@ -42,7 +42,7 @@ local AssetService = game:GetService("AssetService")
 --=====================================================
 local IMAGES = {
 	Background  = "https://i.imgur.com/lyJQbo7.png", -- fills the entire panel behind everything
-	Logo        = "https://i.imgur.com/kySdbKt.png", -- "NEXO" logo, top-left
+	Logo        = "https://i.imgur.com/qt9icWV.png", -- "NEXO" logo, top-left
 	Banner      = "132582095265277", -- big PREMIUM+ / V4.0 artwork on the Home page
 	Discord     = "16171891828",     -- social button 1 (Discord)
 	YouTube     = "16171897995",      -- social button 2 (YouTube)
@@ -178,13 +178,6 @@ local SOCIAL_TINT  = false
 -- tab hover / click highlight
 local HOVER_ENABLED  = true
 local HOVER_SPEED    = 0.25 -- seconds of the smooth fade
--- NAV GLOW (Home / Pages / Credits). Same round glow as the social icons.
--- Lower numbers = stronger glow.
-local NAV_GLOW_SCALE_X  = 1.55 -- how wide the glow spreads around the word
-local NAV_GLOW_SCALE_Y  = 2.45 -- how tall the glow spreads around the word
-local NAV_GLOW_IDLE     = 0.55 -- WHITE glow strength when the page is NOT selected
-local NAV_GLOW_SELECTED = 0.22 -- RED glow strength when the page IS selected
-
 local HOVER_STRENGTH = 0.88 -- 1 = invisible, 0.80 = stronger glow
 local CLICK_SPEED    = 0.45 -- seconds of the click ripple
 
@@ -284,13 +277,13 @@ local LAYOUT = {
 
 	HeaderHeight   = 62,
 	-- the NEXO image top left. Lower both to shrink it, raise to grow it.
-	LogoWidth      = 300, -- wider logo horizontally
-	LogoHeight     = 86,
+	LogoWidth      = 250, -- wider logo horizontally
+	LogoHeight     = 72,
 
 	ArrowSize      = 36,  -- size of one >> arrow box
 	ArrowText      = 26,  -- font size of the >> arrows
 	ArrowGap       = 14,  -- space between the arrows
-	ArrowOffsetX   = 70,  -- push the whole arrow row to the right
+	ArrowOffsetX   = 0,   -- push the whole arrow row to the right
 
 	-- TOP LINE POSITION
 	--   HeaderOffsetY = push the WHOLE top row (logo, arrows, nav) DOWN.
@@ -2798,7 +2791,7 @@ function Library:_buildHeader()
 		Position = UDim2.fromOffset(LAYOUT.HeaderOffsetX, 0),
 		Size = UDim2.new(0.60, -LAYOUT.HeaderOffsetX, 1, 0),
 		BackgroundTransparency = 1,
-		ClipsDescendants = false, -- off so the round nav glow is never cut off
+		ClipsDescendants = false,
 		Parent = self.Header,
 	}, { hlist(LAYOUT.GAP * 2) })
 
@@ -2846,9 +2839,9 @@ function Library:_buildHeader()
 		-- pulled in from the right edge by LAYOUT.NavOffsetX
 		Position = UDim2.new(1, -LAYOUT.NavOffsetX, 0.5, 0),
 		-- wide enough that the bigger text is never clipped on the left
-		Size = UDim2.new(0.46, 0, 0, 36),
+		Size = UDim2.new(0.46, 0, 0, 44),
 		BackgroundTransparency = 1,
-		ClipsDescendants = true,
+		ClipsDescendants = false,
 		Parent = self.Header,
 		-- 28 = space between Home / Pages / Credits. Lower it if they ever
 		-- feel too far apart.
@@ -2871,25 +2864,12 @@ function Library:_buildHeader()
 			TextColor3 = THEME.NavIdle,
 			Parent = nav,
 		})
-		-- Round soft glow behind the word. This is the SAME glow image the
-		-- Discord / YouTube icons use, only tinted white. Turns red on select.
-		local glow = new("ImageLabel", {
-			Name = "NavGlow",
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.fromScale(NAV_GLOW_SCALE_X, NAV_GLOW_SCALE_Y),
-			BackgroundTransparency = 1,
-			Image = img("16171994145"),
-			ImageColor3 = Color3.fromRGB(255, 255, 255),
-			ImageTransparency = NAV_GLOW_IDLE,
-			ZIndex = 0,
-			Parent = btn,
-		})
+		-- No glow / stroke on the nav labels. Selecting a page only changes
+		-- the text colour (see SelectPage).
 		btn.MouseButton1Click:Connect(function()
 			self:SelectPage(label)
 		end)
 		self.NavButtons[label] = btn
-		self.NavGlows[label] = glow
 	end
 end
 
@@ -2920,13 +2900,6 @@ function Library:SelectPage(name, back)
 	for label, btn in pairs(self.NavButtons or {}) do
 		local selected = (label == name)
 		playTween(btn, tweenInfo(0.18), { TextColor3 = selected and THEME.Accent or THEME.NavIdle }, "navText" .. label)
-		local glow = self.NavGlows and self.NavGlows[label]
-		if glow then
-			playTween(glow, tweenInfo(0.18), {
-				ImageColor3 = selected and THEME.Accent or Color3.fromRGB(255, 255, 255),
-				ImageTransparency = selected and NAV_GLOW_SELECTED or NAV_GLOW_IDLE,
-			}, "navGlow" .. label)
-		end
 	end
 	self.CurrentPage = name
 end
