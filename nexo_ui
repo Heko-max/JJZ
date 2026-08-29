@@ -7765,8 +7765,13 @@ Library.AiCfg = {
 	UserAvatar  = "",
 	StatusIcon  = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSP9LONjMcIFJ8_wzRBBzp_as-H9UmOKHpvyndRpGkL8SHdgQhDyZV3GoY&s=10",
 	StatusName  = "Live Status",
-	LogoSize    = 48,
-	TitleX      = 78,
+	LogoSize    = 60,
+	TitleX      = 96,
+	LogoX       = 22,
+	LogoY       = 16,
+	Corner      = 16,
+	BotFallback = "rbxassetid://104118833894975",
+	BtnFallback = "rbxassetid://16276677105",
 	Avatar      = 36,
 	BtnGap      = 14,
 	Small       = 780,
@@ -8128,19 +8133,37 @@ function Library:AiAnswer(text)
 	return "Ehe~ I am not sure about that one yet. You can ask me where a feature is, or just chat with me about anything nice!"
 end
 
+function Library:_aiImage(inst, url, fallback)
+	if not inst then return end
+	if fallback and fallback ~= "" then
+		pcall(function() inst.Image = img(fallback) end)
+	end
+	local clean = tostring(url or "")
+	if clean == "" then return end
+	if not IMG.isUrl(clean) then
+		pcall(function() inst.Image = img(clean) end)
+		return
+	end
+	task.spawn(function()
+		pcall(function()
+			IMG.set(inst, "Image", clean, function(done)
+				if not done and fallback and fallback ~= "" then
+					pcall(function() inst.Image = img(fallback) end)
+				end
+			end)
+		end)
+	end)
+end
+
 function Library:_aiUserAvatar()
 	local CFG = Library.AiCfg
 	if CFG.UserAvatar and CFG.UserAvatar ~= "" then return CFG.UserAvatar end
+	if CFG.UserCache and CFG.UserCache ~= "" then return CFG.UserCache end
 	local players = game:GetService("Players")
 	local me = players.LocalPlayer
 	if not me then return "" end
-	local shot = ""
-	pcall(function()
-		shot = players:GetUserThumbnailAsync(me.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
-	end)
-	if shot == nil or shot == "" then
-		shot = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. tostring(me.UserId) .. "&width=150&height=150&format=png"
-	end
+	local shot = "rbxthumb://type=AvatarHeadShot&id=" .. tostring(me.UserId) .. "&w=150&h=150"
+	CFG.UserCache = shot
 	return shot
 end
 
@@ -8176,7 +8199,7 @@ function Library:_buildAiWindow()
 	Background.Parent = gui
 
 	local bgCorner = Instance.new("UICorner")
-	bgCorner.CornerRadius = UDim.new(0.055, 0)
+	bgCorner.CornerRadius = UDim.new(0, CFG.Corner)
 	bgCorner.Parent = Background
 
 	local bgAspect = Instance.new("UIAspectRatioConstraint")
@@ -8203,7 +8226,7 @@ function Library:_buildAiWindow()
 	gGrad.Parent = Gradient
 
 	local gCorner = Instance.new("UICorner")
-	gCorner.CornerRadius = UDim.new(0.055, 0)
+	gCorner.CornerRadius = UDim.new(0, CFG.Corner)
 	gCorner.Parent = Gradient
 
 	local Pattern = Instance.new("ImageLabel")
@@ -8219,26 +8242,25 @@ function Library:_buildAiWindow()
 	Pattern.Parent = Gradient
 
 	local pCorner = Instance.new("UICorner")
-	pCorner.CornerRadius = UDim.new(0.055, 0)
+	pCorner.CornerRadius = UDim.new(0, CFG.Corner)
 	pCorner.Parent = Pattern
 
 	local Logo = Instance.new("ImageLabel")
 	Logo.Name = "Logo"
 	Logo.Size = UDim2.new(0, CFG.LogoSize, 0, CFG.LogoSize)
-	Logo.Position = UDim2.new(0, 16, 0, 12)
+	Logo.Position = UDim2.new(0, CFG.LogoX, 0, CFG.LogoY)
 	Logo.BackgroundTransparency = 1
 	Logo.BorderSizePixel = 0
 	Logo.ZIndex = 3
 	Logo.ScaleType = Enum.ScaleType.Fit
+	Logo.ClipsDescendants = false
 	Logo.Parent = Background
 
 	local logoCorner = Instance.new("UICorner")
 	logoCorner.CornerRadius = UDim.new(1, 0)
 	logoCorner.Parent = Logo
 
-	pcall(function()
-		IMG.set(Logo, "Image", (CFG.Logo ~= "" and CFG.Logo) or IMAGES.Logo)
-	end)
+	self:_aiImage(Logo, (CFG.Logo ~= "" and CFG.Logo) or IMAGES.Logo, CFG.BtnFallback)
 
 	local Label = Instance.new("TextLabel")
 	Label.Name = "Label"
@@ -8358,7 +8380,7 @@ function Library:_buildAiWindow()
 	bAvatar.BackgroundColor3 = Color3.new(0.0705882, 0.0705882, 0.0705882)
 	bAvatar.BackgroundTransparency = 0.15
 	bAvatar.ScaleType = Enum.ScaleType.Crop
-	pcall(function() IMG.set(bAvatar, "Image", CFG.BotAvatar) end)
+	self:_aiImage(bAvatar, CFG.BotAvatar, CFG.BotFallback)
 	bAvatar.Parent = BotChatTemplate
 
 	local bAvCorner = Instance.new("UICorner")
@@ -8442,7 +8464,7 @@ function Library:_buildAiWindow()
 	uAvatar.BackgroundColor3 = Color3.new(0.0705882, 0.0705882, 0.0705882)
 	uAvatar.BackgroundTransparency = 0.15
 	uAvatar.ScaleType = Enum.ScaleType.Crop
-	pcall(function() IMG.set(uAvatar, "Image", self:_aiUserAvatar()) end)
+	self:_aiImage(uAvatar, self:_aiUserAvatar(), "")
 	uAvatar.Parent = UserChatTemplate
 
 	local uAvCorner = Instance.new("UICorner")
@@ -8661,7 +8683,7 @@ function Library:_buildAiWindow()
 		pic.ZIndex = 1002
 		pic.ScaleType = Enum.ScaleType.Crop
 		pic.Parent = btn
-		pcall(function() IMG.set(pic, "Image", image) end)
+		self:_aiImage(pic, image, CFG.BtnFallback)
 
 		local click = Instance.new("TextButton")
 		click.Name = "ClickArea"
@@ -8733,8 +8755,9 @@ function Library:_buildAiWindow()
 		uStreaming.TextSize = phone and 15 or 17
 		ChatBar.TextSize = phone and 15 or 16
 		Label.TextSize = phone and 17 or 20
-		Logo.Size = UDim2.fromOffset(phone and 38 or CFG.LogoSize, phone and 38 or CFG.LogoSize)
-		Label.Position = UDim2.new(0, phone and 64 or CFG.TitleX, 0, 22)
+		Logo.Size = UDim2.fromOffset(phone and 46 or CFG.LogoSize, phone and 46 or CFG.LogoSize)
+		Logo.Position = UDim2.new(0, phone and 16 or CFG.LogoX, 0, phone and 12 or CFG.LogoY)
+		Label.Position = UDim2.new(0, phone and 74 or CFG.TitleX, 0, 24)
 		local px, py = Background.AbsolutePosition.X, Background.AbsolutePosition.Y
 		if px < -20 or py < 0 or px > vp.X - 60 or py > vp.Y - 60 then
 			Background.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -8921,6 +8944,15 @@ function Library:_aiBubble(who, text)
 	bubble.LayoutOrder = state.Order
 	bubble.Content.Streaming.Text = tostring(text or "")
 	bubble.Parent = state.History
+
+	local face = bubble:FindFirstChild("Avatar")
+	if face then
+		if who == "user" then
+			self:_aiImage(face, self:_aiUserAvatar(), "")
+		else
+			self:_aiImage(face, Library.AiCfg.BotAvatar, Library.AiCfg.BotFallback)
+		end
+	end
 	state.Decor.Visible = false
 	if state.Scroll then state.Scroll() end
 
