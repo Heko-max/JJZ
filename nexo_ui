@@ -51,7 +51,7 @@ Card3Icon   = "87628150067132", -- Home card 3
 TabIcon     = "87628150067132", -- default icon for a tab with no image set
 SearchIcon  = "118685771787843", -- the magnifier icon inside the search bar
 BackIcon    = "72257591594286",  -- the GO BACK button on the right of the search bar
-MiniIcon    = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcREM5xgvAFSChM_PafOuqxM8_Hx_AZ6qgAiHxyEvilG4K05Lbhp9oRVMSI&s=10", -- the round HIDE / OPEN icon floating on the left of the screen
+MiniIcon    = "https://i.imgur.com/w5tnAXh.png", -- the round HIDE / OPEN icon floating on the left of the screen
 CloseIcon   = "",               -- X button of the info popup. leave empty to use a text X
 NotifyIcon  = "",               -- leave empty -> every notification uses the LOGO above
 }
