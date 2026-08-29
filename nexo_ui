@@ -238,6 +238,9 @@ local LAYOUT = {
 	TabTextGap     = 26,
 
 	TabTitleLines  = 2,
+	TabTitleMin    = 24,
+	TabTitleStep   = 0.86,
+	TabTitleLine   = 1.25,
 	TabDivider     = 0,
 	TabScrollPad   = 10,
 
@@ -3608,12 +3611,62 @@ function Library:_addCard(ctx, info, isSection)
 	title.TextSize = TAB_TITLE_SIZE
 	title.TextWrapped = true
 
+	local titleCap = new("UISizeConstraint", {
+		MaxSize = Vector2.new(math.huge, math.ceil(TAB_TITLE_SIZE * (LAYOUT.TabTitleLine or 1.25) * math.max(1, LAYOUT.TabTitleLines or 2))),
+		Parent = title,
+	})
+
 	do
-		local lines = math.max(1, LAYOUT.TabTitleLines or 2)
-		new("UISizeConstraint", {
-			MaxSize = Vector2.new(math.huge, math.ceil(TAB_TITLE_SIZE * 1.25 * lines)),
-			Parent = title,
-		})
+		local baseSize = TAB_TITLE_SIZE
+		local minSize  = math.min(baseSize, LAYOUT.TabTitleMin or 24)
+		local stepDown = LAYOUT.TabTitleStep or 0.86
+		local lineMul  = LAYOUT.TabTitleLine or 1.25
+		local maxLines = math.max(1, LAYOUT.TabTitleLines or 2)
+		local busy = false
+
+		local function fitTitle()
+			if busy then return end
+			if title.AbsoluteSize.X <= 0 then return end
+			busy = true
+
+			local size = baseSize
+			title.TextSize = size
+
+			for _ = 1, 60 do
+				local high = title.TextBounds.Y
+				local rows = math.max(1, math.floor(high / math.max(1, size * lineMul) + 0.5))
+				local want = math.max(minSize, math.floor(baseSize * (stepDown ^ (rows - 1)) + 0.5))
+
+				if size > want then
+					size = want
+				elseif rows > maxLines or high > math.ceil(size * lineMul * maxLines) then
+					size = size - 1
+				else
+					break
+				end
+
+				if size <= minSize then
+					size = minSize
+					title.TextSize = size
+					break
+				end
+
+				title.TextSize = size
+			end
+
+			titleCap.MaxSize = Vector2.new(math.huge, math.ceil(size * lineMul * maxLines))
+			busy = false
+		end
+
+		local function fitSoon()
+			if busy then return end
+			task.defer(fitTitle)
+		end
+
+		title:GetPropertyChangedSignal("Text"):Connect(fitSoon)
+		title:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitSoon)
+		textCol:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitSoon)
+		task.defer(fitTitle)
 	end
 
 	local pill = new("Frame", {
@@ -3740,6 +3793,11 @@ function Library:_addCard(ctx, info, isSection)
 				return refuse(name,
 					"controls live INSIDE a section. Do:  local s = tab:AddSection({ title = \"...\" })  then  s:" .. name .. "({ ... })")
 			end
+			if type(o) == "table" then
+				pcall(function()
+					self.Library:_aiRegister(self, o.text or o.title or o.name, (name:gsub("^Add", "")))
+				end)
+			end
 			return fn(self, o, ...)
 		end
 	end
@@ -3750,7 +3808,9 @@ function Library:_addCard(ctx, info, isSection)
 				"a section cannot hold another section. Put your controls in this section instead.")
 		end
 		local lib = self.Library
-		return lib:_addCard(lib:_sectionList(self), sectionInfo, true)
+		local sec = lib:_addCard(lib:_sectionList(self), sectionInfo, true)
+		sec.ParentTab = self
+		return sec
 	end
 
 	function tab:Open() self.Library:OpenSection(self) end
@@ -7379,7 +7439,7 @@ end
 Library.StatusCfg = {
 
 	Title      = '<font color="#FFFFFF">NeXo Hub</font> <font color="#000000">Status</font>',
-	WidthScale = 0.212776005,
+	WidthScale = 0.192,
 	Height     = 274,
 	PosXScale  = 0.137630999,
 	PosXOffset = 166,
@@ -7659,6 +7719,1174 @@ function Library:ClearStatus()
 	return self
 end
 
+Library.AiCfg = {
+	Enabled     = true,
+	Root        = "Pages",
+	Name        = "NeXo Ai Assistant",
+	Title       = '>> AI <font color="#f8042e">Assistant</font>',
+	DecorText   = "NeXo <br />Assistant",
+	Placeholder = "How can i help you today?",
+	Greeting    = "Hiya~ I am NeXo, your hub assistant. How may I help you today?",
+	RepliesUrl  = "https://raw.githubusercontent.com/heko7080-creator/Loder/refs/heads/main/Ai_reply?token=GHSAT0AAAAAAEGYARRQUYO6PZYJD74GZXNU2UTFPSQ",
+	Logo        = "",
+	DecorImage  = "rbxassetid://124670495450647",
+	BotAvatar   = "rbxassetid://104118833894975",
+	UserAvatar  = "rbxassetid://18579810685",
+	Pattern     = "rbxassetid://2151741365",
+	SendIcon    = "rbxassetid://109589211515011",
+	RunIcon     = "rbxassetid://81609402165762",
+	Gif         = "https://media.tenor.com/pS56yk3qPgsAAAAj/genshin-impact-columbina-and-sandrone.gif",
+	Red         = Color3.new(0.972549, 0.0156863, 0.180392),
+	BtnSize     = 46,
+	BtnY        = 6,
+	BtnCorner   = 12,
+	BtnGrow     = 1.14,
+	BtnBob      = 0.9,
+	OpenTime    = 0.38,
+	CloseTime   = 0.28,
+	LockTime    = 0.45,
+	ThinkMin    = 1.0,
+	ThinkMax    = 2.0,
+	TypeSpeed   = 0.055,
+	MinScore    = 0.34,
+	AskScore    = 0.5,
+}
+
+Library.AiStop = {
+	["where"] = true, ["wheres"] = true, ["is"] = true, ["are"] = true, ["the"] = true,
+	["a"] = true, ["an"] = true, ["i"] = true, ["can"] = true, ["you"] = true,
+	["find"] = true, ["me"] = true, ["my"] = true, ["to"] = true, ["in"] = true,
+	["on"] = true, ["at"] = true, ["of"] = true, ["please"] = true, ["how"] = true,
+	["get"] = true, ["got"] = true, ["open"] = true, ["tell"] = true, ["show"] = true,
+	["what"] = true, ["whats"] = true, ["does"] = true, ["do"] = true, ["it"] = true,
+	["there"] = true, ["which"] = true, ["page"] = true, ["tab"] = true, ["button"] = true,
+	["option"] = true, ["feature"] = true, ["futer"] = true, ["hub"] = true, ["nexo"] = true,
+}
+
+Library.AiFind = {
+	["where"] = true, ["wheres"] = true, ["find"] = true, ["locate"] = true,
+	["which"] = true, ["open"] = true, ["path"] = true, ["located"] = true,
+}
+
+Library.AiBad = {
+	"nsfw", "porn", "pornhub", "hentai", "sex", "sexy", "sexual", "nude", "nudes", "naked",
+	"boob", "boobs", "tits", "titty", "nipple", "ass", "booty", "butt", "dick", "cock",
+	"penis", "vagina", "pussy", "cum", "orgasm", "horny", "masturbate", "jerk off",
+	"blowjob", "handjob", "anal", "fetish", "kink", "bdsm", "onlyfans", "r34", "rule34",
+	"lewd", "ecchi", "strip", "stripper", "escort", "prostitute", "rape", "molest",
+	"loli", "lolicon", "shota", "shotacon", "cp", "child porn", "underage", "minor",
+	"pedo", "pedophile", "grooming", "jailbait", "12 year old", "13 year old",
+	"14 year old", "15 year old", "16 year old", "17 year old", "kid nude", "teen nude",
+}
+
+Library.AiRefuse = {
+	"Ah, sorry~ I really cannot talk about that kind of thing. Let us keep it friendly and stick to the hub, okay?",
+	"Mm, that one is off limits for me. I would much rather help you with the script or just chat about something nice~",
+	"I am going to politely skip that one. Ask me about a feature or anything wholesome and I am all yours~",
+	"Sorry, I do not do that topic at all. But I can find any feature in the hub for you in a second!",
+}
+
+Library.AiLead = {
+	"Of course~ here it is:",
+	"Found it for you~",
+	"Yes! I know that one:",
+	"Here you go, I hope this helps~",
+	"Got it! Follow this path:",
+}
+
+Library.AiTail = {
+	"Do tell me if you need anything else~",
+	"Ask me again anytime, I do not mind at all!",
+	"I hope that makes it easy for you~",
+	"Happy to help you, always.",
+	"Let me know if you get lost again~",
+}
+
+Library.AiTalk = {
+	{ words = { "hi", "hii", "hiii", "hello", "helo", "hey", "heyy", "yo", "hola", "sup", "hiya" },
+	  reply = "Hiya~ I am NeXo, your hub assistant. How may I help you today?" },
+	{ words = { "good morning", "good evening", "good night", "good afternoon" },
+	  reply = "Aww, that is sweet of you~ I hope your day is going lovely. What can I do for you?" },
+	{ words = { "how are you", "how r u", "how you doing", "hows it going" },
+	  reply = "I am doing wonderfully, thank you for asking~ How about you? Anything you want me to find?" },
+	{ words = { "who are you", "who r u", "your name", "whats your name" },
+	  reply = "I am NeXo, the little assistant of NeXo Hub~ I know every tab, section and feature in here." },
+	{ words = { "what can you do", "what you do", "help", "help me" },
+	  reply = "I can point you to any feature~ Just ask like: where is auto level. And I love a bit of chatting too!" },
+	{ words = { "thanks", "thank you", "ty", "tysm", "thx", "arigato" },
+	  reply = "Ehe~ you are very welcome. It makes me happy to be useful for you." },
+	{ words = { "bye", "cya", "goodbye", "see you", "gtg" },
+	  reply = "Bye bye~ take care of yourself. I will be waiting in the top bar whenever you come back!" },
+	{ words = { "love you", "i like you", "youre cute", "you are cute" },
+	  reply = "Aah, thank you so much~ that is very kind. I like helping you too!" },
+	{ words = { "who made you", "who made this", "owner", "developer" },
+	  reply = "NeXo Hub is made by NeXo~ I am the assistant that comes with it." },
+	{ words = { "bored", "im bored", "time pass", "talk to me", "lets chat" },
+	  reply = "Then let us chat~ Tell me what you are grinding today, or ask me anything about the hub!" },
+}
+
+Library.AiMiss = {
+	"Hmm~ I could not find that one. Could you try the exact name, like: where is auto farm?",
+	"Sorry, I do not see anything with that name yet. Maybe try a shorter word from the title~",
+	"I looked through every tab and section but nothing matched. Try spelling it a little differently~",
+}
+
+function Library:_aiNorm(text)
+	local s = tostring(text or ""):lower()
+	s = s:gsub("<[^>]->", " ")
+	s = s:gsub("[^%w]+", " ")
+	s = " " .. s .. " "
+	s = s:gsub(" lvl ", " level ")
+	s = s:gsub(" lvls ", " level ")
+	s = s:gsub(" lv ", " level ")
+	s = s:gsub(" autofarm ", " auto farm ")
+	return (s:gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+function Library:_aiClean(text)
+	local out = {}
+	for word in tostring(text or ""):gmatch("%S+") do
+		if not Library.AiStop[word] then out[#out + 1] = word end
+	end
+	return table.concat(out, " ")
+end
+
+function Library:_aiGrams(text)
+	local g = {}
+	local s = tostring(text or ""):gsub("%s+", "")
+	for i = 1, #s - 1 do
+		local key = s:sub(i, i + 1)
+		g[key] = (g[key] or 0) + 1
+	end
+	return g
+end
+
+function Library:_aiScore(query, name)
+	if query == "" or name == "" then return 0 end
+	if query == name then return 1 end
+
+	local direct = 0
+	if name:find(query, 1, true) or query:find(name, 1, true) then direct = 0.8 end
+
+	local a = self:_aiGrams(query)
+	local b = self:_aiGrams(name)
+	local total, hit = 0, 0
+	for _, v in pairs(a) do total = total + v end
+	for key, v in pairs(b) do
+		total = total + v
+		local av = a[key]
+		if av then hit = hit + math.min(av, v) end
+	end
+	local dice = 0
+	if total > 0 then dice = (2 * hit) / total end
+
+	local count, words = 0, 0
+	local padded = " " .. name .. " "
+	for word in query:gmatch("%S+") do
+		count = count + 1
+		if padded:find(" " .. word, 1, true) then words = words + 1 end
+	end
+	local wordScore = 0
+	if count > 0 then wordScore = words / count end
+
+	local mix = dice * 0.55 + wordScore * 0.6
+	if mix > 1 then mix = 1 end
+	if direct > mix then return direct end
+	return mix
+end
+
+function Library:_aiPick(list)
+	if not list or #list == 0 then return "" end
+	return list[math.random(1, #list)]
+end
+
+function Library:_aiRegister(card, name, kind)
+	if not card or not name then return end
+	local text = tostring(name)
+	if text == "" then return end
+	card.AiItems = card.AiItems or {}
+	card.AiItems[#card.AiItems + 1] = { name = text, kind = kind or "Control" }
+end
+
+function Library:_aiEntries()
+	local out = {}
+	local root = Library.AiCfg.Root or "Pages"
+
+	for _, tab in ipairs(self.Tabs or {}) do
+		local tname = "Tab"
+		pcall(function() tname = tab.Title.Text end)
+		local tpath = root .. " \u{2192} " .. tname .. " (Tab)"
+		out[#out + 1] = { name = tname, kind = "Tab", path = tpath }
+
+		for _, sec in ipairs(tab.Sections or {}) do
+			local sname = "Section"
+			pcall(function() sname = sec.Title.Text end)
+			local spath = tpath .. " \u{2192} " .. sname .. " (Section)"
+			out[#out + 1] = { name = sname, kind = "Section", path = spath }
+
+			for _, item in ipairs(sec.AiItems or {}) do
+				out[#out + 1] = {
+					name = item.name,
+					kind = item.kind,
+					path = spath .. " \u{2192} " .. item.name,
+				}
+			end
+		end
+	end
+
+	return out
+end
+
+function Library:_aiBlocked(query)
+	local padded = " " .. query .. " "
+	for _, word in ipairs(Library.AiBad) do
+		if padded:find(" " .. word .. " ", 1, true) then return true end
+	end
+	return false
+end
+
+function Library:LoadAiReplies(url)
+	url = tostring(url or Library.AiCfg.RepliesUrl or "")
+	if url == "" then return false, "no url" end
+
+	local body
+	local ok = pcall(function()
+		local fetch = (syn and syn.request) or (http and http.request) or request or http_request
+		if fetch then
+			local res = fetch({ Url = url, Method = "GET" })
+			body = res and (res.Body or res.body)
+		else
+			body = game:HttpGet(url)
+		end
+	end)
+	if not ok or not body or body == "" then return false, "download failed" end
+
+	local data
+	if body:sub(1, 1) == "{" or body:sub(1, 1) == "[" then
+		pcall(function()
+			data = game:GetService("HttpService"):JSONDecode(body)
+		end)
+	else
+		local loader = loadstring or load
+		if loader then
+			local fn = loader(body)
+			if fn then pcall(function() data = fn() end) end
+		end
+	end
+
+	local entries = data and (data.entries or data) or nil
+	if type(entries) ~= "table" or #entries == 0 then return false, "bad file" end
+
+	local pack = { list = entries, map = {}, index = {} }
+	for i, item in ipairs(entries) do
+		local question = item.q or item.question or item[1]
+		local answer = item.a or item.answer or item[2]
+		if question and answer then
+			local key = self:_aiNorm(question)
+			pack.map[key] = answer
+			for word in key:gmatch("%S+") do
+				if not Library.AiStop[word] then
+					local bucket = pack.index[word]
+					if not bucket then
+						bucket = {}
+						pack.index[word] = bucket
+					end
+					if #bucket < 500 then bucket[#bucket + 1] = i end
+				end
+			end
+		end
+	end
+
+	self.AiPack = pack
+	return true, #entries
+end
+
+function Library:_aiPackReply(query)
+	local pack = self.AiPack
+	if not pack then return nil end
+
+	local direct = pack.map[query]
+	if direct then return direct end
+
+	local seen, best, bestScore = {}, nil, 0
+	for word in query:gmatch("%S+") do
+		local bucket = pack.index[word]
+		if bucket then
+			for _, idx in ipairs(bucket) do
+				if not seen[idx] then
+					seen[idx] = true
+					local item = pack.list[idx]
+					local question = item.q or item.question or item[1]
+					local score = self:_aiScore(query, self:_aiNorm(question))
+					if score > bestScore then
+						bestScore = score
+						best = item.a or item.answer or item[2]
+					end
+				end
+			end
+		end
+	end
+
+	if best and bestScore >= 0.45 then return best end
+	return nil
+end
+
+function Library:AiAnswer(text)
+	local q = self:_aiNorm(text)
+	if q == "" then
+		return "Mm? Type something for me and I will do my best~"
+	end
+
+	if self:_aiBlocked(q) then
+		return self:_aiPick(Library.AiRefuse)
+	end
+
+	local padded = " " .. q .. " "
+	for _, talk in ipairs(Library.AiTalk) do
+		for _, word in ipairs(talk.words) do
+			if padded:find(" " .. word .. " ", 1, true) then
+				return talk.reply
+			end
+		end
+	end
+
+	local wantsPath = false
+	for word in q:gmatch("%S+") do
+		if Library.AiFind[word] then wantsPath = true end
+	end
+
+	local clean = self:_aiClean(q)
+	if clean == "" then clean = q end
+
+	local list = {}
+	for _, entry in ipairs(self:_aiEntries()) do
+		list[#list + 1] = { entry = entry, score = self:_aiScore(clean, self:_aiNorm(entry.name)) }
+	end
+	table.sort(list, function(a, b) return a.score > b.score end)
+
+	local top = list[1]
+	local need = wantsPath and (Library.AiCfg.MinScore or 0.34) or (Library.AiCfg.AskScore or 0.5)
+
+	if top and top.score >= need then
+		local reply = self:_aiPick(Library.AiLead) .. "\n" .. top.entry.path
+		local extra = {}
+		for i = 2, math.min(4, #list) do
+			local item = list[i]
+			if item.score >= (Library.AiCfg.MinScore or 0.34) and item.score >= top.score - 0.18 then
+				extra[#extra + 1] = item.entry.path
+			end
+		end
+		if #extra > 0 then
+			reply = reply .. "\n\nThese are close too:\n" .. table.concat(extra, "\n")
+		end
+		return reply .. "\n\n" .. self:_aiPick(Library.AiTail)
+	end
+
+	local packReply = self:_aiPackReply(q)
+	if packReply then return packReply end
+
+	if wantsPath then return self:_aiPick(Library.AiMiss) end
+
+	return "Ehe~ I am not sure about that one yet. You can ask me where a feature is, or just chat with me about anything nice!"
+end
+
+function Library:_buildAiWindow()
+	local CFG = Library.AiCfg
+	if not CFG.Enabled then return nil end
+	if self.Ai and self.Ai.Root and self.Ai.Root.Parent then return self.Ai end
+
+	local host = (gethui and gethui()) or (game:GetService("Players").LocalPlayer:FindFirstChildOfClass("PlayerGui"))
+	if not host then return nil end
+
+	local old = host:FindFirstChild("NEXO_AI")
+	if old then old:Destroy() end
+
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "NEXO_AI"
+	gui.DisplayOrder = 9998
+	gui.IgnoreGuiInset = true
+	gui.ResetOnSpawn = false
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	gui.Parent = host
+
+	local Background = Instance.new("CanvasGroup")
+	Background.Name = "Background"
+	Background.Size = UDim2.new(0.4400, 0, 0.5200, 0)
+	Background.Position = UDim2.new(0.5, 0, 0.5, 0)
+	Background.AnchorPoint = Vector2.new(0.5, 0.5)
+	Background.BackgroundColor3 = Color3.new(0.117647, 0.117647, 0.117647)
+	Background.BorderSizePixel = 0
+	Background.ClipsDescendants = true
+	Background.GroupTransparency = 0
+	Background.ZIndex = 1
+	Background.Parent = gui
+
+	local bgCorner = Instance.new("UICorner")
+	bgCorner.CornerRadius = UDim.new(0.055, 0)
+	bgCorner.Parent = Background
+
+	local bgAspect = Instance.new("UIAspectRatioConstraint")
+	bgAspect.AspectRatio = 1.35
+	bgAspect.DominantAxis = Enum.DominantAxis.Width
+	bgAspect.AspectType = Enum.AspectType.FitWithinMaxSize
+	bgAspect.Parent = Background
+
+	local Gradient = Instance.new("Frame")
+	Gradient.Name = "Gradient"
+	Gradient.Size = UDim2.new(1, 0, 1, 0)
+	Gradient.BackgroundColor3 = Color3.new(1, 1, 1)
+	Gradient.BorderSizePixel = 0
+	Gradient.ZIndex = 1
+	Gradient.Parent = Background
+
+	local gGrad = Instance.new("UIGradient")
+	gGrad.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0.000, Color3.new(0.156863, 0.000000, 0.031373)),
+		ColorSequenceKeypoint.new(0.703, Color3.new(0, 0, 0)),
+		ColorSequenceKeypoint.new(1.000, Color3.new(0, 0, 0)),
+	})
+	gGrad.Rotation = 90
+	gGrad.Parent = Gradient
+
+	local gCorner = Instance.new("UICorner")
+	gCorner.CornerRadius = UDim.new(0.055, 0)
+	gCorner.Parent = Gradient
+
+	local Pattern = Instance.new("ImageLabel")
+	Pattern.Name = "Pattern"
+	Pattern.Size = UDim2.new(1, 0, 1, 0)
+	Pattern.BackgroundTransparency = 1
+	Pattern.BorderSizePixel = 0
+	Pattern.ZIndex = 0
+	Pattern.Image = CFG.Pattern
+	Pattern.ImageTransparency = 0.6
+	Pattern.ScaleType = Enum.ScaleType.Tile
+	Pattern.TileSize = UDim2.new(0, 250, 0, 250)
+	Pattern.Parent = Gradient
+
+	local pCorner = Instance.new("UICorner")
+	pCorner.CornerRadius = UDim.new(0.055, 0)
+	pCorner.Parent = Pattern
+
+	local Logo = Instance.new("ImageLabel")
+	Logo.Name = "Logo"
+	Logo.Size = UDim2.new(0, 34, 0, 34)
+	Logo.Position = UDim2.new(0, 16, 0, 14)
+	Logo.BackgroundTransparency = 1
+	Logo.BorderSizePixel = 0
+	Logo.ZIndex = 3
+	Logo.ScaleType = Enum.ScaleType.Fit
+	Logo.Parent = Background
+
+	local logoCorner = Instance.new("UICorner")
+	logoCorner.CornerRadius = UDim.new(1, 0)
+	logoCorner.Parent = Logo
+
+	pcall(function()
+		IMG.set(Logo, "Image", (CFG.Logo ~= "" and CFG.Logo) or IMAGES.Logo)
+	end)
+
+	local Label = Instance.new("TextLabel")
+	Label.Name = "Label"
+	Label.Size = UDim2.new(0.5, 0, 0, 22)
+	Label.Position = UDim2.new(0, 58, 0, 20)
+	Label.BackgroundTransparency = 1
+	Label.BorderSizePixel = 0
+	Label.ZIndex = 3
+	Label.RichText = true
+	Label.Text = CFG.Title
+	Label.TextColor3 = Color3.new(1, 1, 1)
+	Label.TextSize = 18
+	Label.Font = Enum.Font.SourceSansBold
+	Label.TextXAlignment = Enum.TextXAlignment.Left
+	Label.TextYAlignment = Enum.TextYAlignment.Center
+	Label.Parent = Background
+
+	local ChatHolder = Instance.new("Frame")
+	ChatHolder.Name = "ChatHolder"
+	ChatHolder.Size = UDim2.new(0.92, 0, 0.78, 0)
+	ChatHolder.Position = UDim2.new(0.5, 0, 0.58, 0)
+	ChatHolder.AnchorPoint = Vector2.new(0.5, 0.5)
+	ChatHolder.BackgroundTransparency = 1
+	ChatHolder.BorderSizePixel = 0
+	ChatHolder.ZIndex = 222
+	ChatHolder.Parent = Background
+
+	local DecorPattern = Instance.new("CanvasGroup")
+	DecorPattern.Name = "DecorPattern"
+	DecorPattern.Size = UDim2.new(1, 0, 1, 0)
+	DecorPattern.Position = UDim2.new(0.5, 0, 0.45, 0)
+	DecorPattern.AnchorPoint = Vector2.new(0.5, 0.5)
+	DecorPattern.BackgroundTransparency = 1
+	DecorPattern.BorderSizePixel = 0
+	DecorPattern.ClipsDescendants = true
+	DecorPattern.GroupTransparency = 0
+	DecorPattern.ZIndex = 1
+	DecorPattern.Parent = ChatHolder
+
+	local dList = Instance.new("UIListLayout")
+	dList.FillDirection = Enum.FillDirection.Horizontal
+	dList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	dList.VerticalAlignment = Enum.VerticalAlignment.Center
+	dList.SortOrder = Enum.SortOrder.LayoutOrder
+	dList.Padding = UDim.new(0, 5)
+	dList.Parent = DecorPattern
+
+	local dImage = Instance.new("ImageLabel")
+	dImage.Name = "IMAGE"
+	dImage.Size = UDim2.new(0.22, 0, 0.24, 0)
+	dImage.BackgroundTransparency = 1
+	dImage.BorderSizePixel = 0
+	dImage.Image = CFG.DecorImage
+	dImage.ImageTransparency = 0.8
+	dImage.ScaleType = Enum.ScaleType.Fit
+	dImage.Parent = DecorPattern
+
+	local dText = Instance.new("TextLabel")
+	dText.Name = "TEXT"
+	dText.Size = UDim2.new(0.34, 0, 0.24, 0)
+	dText.BackgroundTransparency = 1
+	dText.BorderSizePixel = 0
+	dText.RichText = true
+	dText.Text = CFG.DecorText
+	dText.TextColor3 = Color3.new(1, 1, 1)
+	dText.TextTransparency = 0.8
+	dText.TextScaled = true
+	dText.TextWrapped = true
+	dText.Font = Enum.Font.SourceSansBold
+	dText.TextXAlignment = Enum.TextXAlignment.Left
+	dText.TextYAlignment = Enum.TextYAlignment.Center
+	dText.Parent = DecorPattern
+
+	local ChatHistory = Instance.new("ScrollingFrame")
+	ChatHistory.Name = "ChatHistory"
+	ChatHistory.Size = UDim2.new(1, 0, 0.88, 0)
+	ChatHistory.Position = UDim2.new(0, 0, 0, 0)
+	ChatHistory.BackgroundTransparency = 1
+	ChatHistory.BorderSizePixel = 0
+	ChatHistory.ZIndex = 222
+	ChatHistory.ClipsDescendants = true
+	ChatHistory.CanvasSize = UDim2.new(0, 0, 0, 0)
+	ChatHistory.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	ChatHistory.ScrollBarThickness = 0
+	ChatHistory.ScrollingDirection = Enum.ScrollingDirection.Y
+	ChatHistory.ElasticBehavior = Enum.ElasticBehavior.Always
+	ChatHistory.VerticalScrollBarInset = Enum.ScrollBarInset.None
+	ChatHistory.Parent = ChatHolder
+
+	local hList = Instance.new("UIListLayout")
+	hList.FillDirection = Enum.FillDirection.Vertical
+	hList.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	hList.VerticalAlignment = Enum.VerticalAlignment.Top
+	hList.SortOrder = Enum.SortOrder.LayoutOrder
+	hList.Padding = UDim.new(0, 14)
+	hList.Parent = ChatHistory
+
+	local Templates = Instance.new("Configuration")
+	Templates.Name = "Templates"
+	Templates.Parent = ChatHistory
+
+	local BotChatTemplate = Instance.new("Frame")
+	BotChatTemplate.Name = "BotChatTemplate"
+	BotChatTemplate.Size = UDim2.new(1, 0, 0, 0)
+	BotChatTemplate.BackgroundTransparency = 1
+	BotChatTemplate.BorderSizePixel = 0
+	BotChatTemplate.AutomaticSize = Enum.AutomaticSize.Y
+	BotChatTemplate.LayoutOrder = 2
+	BotChatTemplate.Parent = Templates
+
+	local bAvatar = Instance.new("ImageLabel")
+	bAvatar.Name = "Avatar"
+	bAvatar.Size = UDim2.new(0, 30, 0, 30)
+	bAvatar.Position = UDim2.new(0, 0, 0, 6)
+	bAvatar.BackgroundTransparency = 1
+	bAvatar.BorderSizePixel = 0
+	bAvatar.Image = CFG.BotAvatar
+	bAvatar.ScaleType = Enum.ScaleType.Fit
+	bAvatar.Parent = BotChatTemplate
+
+	local bAvCorner = Instance.new("UICorner")
+	bAvCorner.CornerRadius = UDim.new(1, 0)
+	bAvCorner.Parent = bAvatar
+
+	local bContent = Instance.new("Frame")
+	bContent.Name = "Content"
+	bContent.Size = UDim2.new(0, 0, 0, 0)
+	bContent.Position = UDim2.new(0, 40, 0, 0)
+	bContent.BackgroundColor3 = Color3.new(0, 0, 0)
+	bContent.BackgroundTransparency = 0.25
+	bContent.BorderSizePixel = 0
+	bContent.AutomaticSize = Enum.AutomaticSize.XY
+	bContent.Parent = BotChatTemplate
+
+	local bStreaming = Instance.new("TextLabel")
+	bStreaming.Name = "Streaming"
+	bStreaming.Size = UDim2.new(0, 0, 0, 0)
+	bStreaming.BackgroundTransparency = 1
+	bStreaming.BorderSizePixel = 0
+	bStreaming.AutomaticSize = Enum.AutomaticSize.XY
+	bStreaming.LayoutOrder = 1
+	bStreaming.Text = ""
+	bStreaming.TextColor3 = Color3.new(1, 1, 1)
+	bStreaming.TextSize = 17
+	bStreaming.Font = Enum.Font.SourceSansSemibold
+	bStreaming.RichText = false
+	bStreaming.TextWrapped = true
+	bStreaming.TextXAlignment = Enum.TextXAlignment.Left
+	bStreaming.TextYAlignment = Enum.TextYAlignment.Top
+	bStreaming.Parent = bContent
+
+	local bPad = Instance.new("UIPadding")
+	bPad.PaddingTop = UDim.new(0, 10)
+	bPad.PaddingBottom = UDim.new(0, 10)
+	bPad.PaddingLeft = UDim.new(0, 12)
+	bPad.PaddingRight = UDim.new(0, 12)
+	bPad.Parent = bStreaming
+
+	local bSize = Instance.new("UISizeConstraint")
+	bSize.MaxSize = Vector2.new(330, math.huge)
+	bSize.Parent = bContent
+
+	local bCorner = Instance.new("UICorner")
+	bCorner.CornerRadius = UDim.new(0, 10)
+	bCorner.Parent = bContent
+
+	local bGrad = Instance.new("UIGradient")
+	bGrad.Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.new(1, 1, 1))
+	bGrad.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.467581, 0.125),
+		NumberSequenceKeypoint.new(1, 0.4625),
+	})
+	bGrad.Rotation = 90
+	bGrad.Parent = bContent
+
+	local bStroke = Instance.new("UIStroke")
+	bStroke.Color = Color3.new(0.231373, 0.231373, 0.231373)
+	bStroke.Transparency = 0.6
+	bStroke.Thickness = 1
+	bStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	bStroke.Parent = bContent
+
+	local UserChatTemplate = Instance.new("Frame")
+	UserChatTemplate.Name = "UserChatTemplate"
+	UserChatTemplate.Size = UDim2.new(1, 0, 0, 0)
+	UserChatTemplate.BackgroundTransparency = 1
+	UserChatTemplate.BorderSizePixel = 0
+	UserChatTemplate.AutomaticSize = Enum.AutomaticSize.Y
+	UserChatTemplate.LayoutOrder = 1
+	UserChatTemplate.Parent = Templates
+
+	local uAvatar = Instance.new("ImageLabel")
+	uAvatar.Name = "Avatar"
+	uAvatar.Size = UDim2.new(0, 30, 0, 30)
+	uAvatar.Position = UDim2.new(1, -30, 0, 6)
+	uAvatar.BackgroundTransparency = 1
+	uAvatar.BorderSizePixel = 0
+	uAvatar.Image = CFG.UserAvatar
+	uAvatar.ScaleType = Enum.ScaleType.Fit
+	uAvatar.Parent = UserChatTemplate
+
+	local uAvCorner = Instance.new("UICorner")
+	uAvCorner.CornerRadius = UDim.new(1, 0)
+	uAvCorner.Parent = uAvatar
+
+	local uContent = Instance.new("Frame")
+	uContent.Name = "Content"
+	uContent.Size = UDim2.new(0, 0, 0, 0)
+	uContent.Position = UDim2.new(1, -40, 0, 0)
+	uContent.AnchorPoint = Vector2.new(1, 0)
+	uContent.BackgroundColor3 = Color3.new(0.0941176, 0.0941176, 0.0941176)
+	uContent.BackgroundTransparency = 0.45
+	uContent.BorderSizePixel = 0
+	uContent.AutomaticSize = Enum.AutomaticSize.XY
+	uContent.Parent = UserChatTemplate
+
+	local uStreaming = Instance.new("TextLabel")
+	uStreaming.Name = "Streaming"
+	uStreaming.Size = UDim2.new(0, 0, 0, 0)
+	uStreaming.BackgroundTransparency = 1
+	uStreaming.BorderSizePixel = 0
+	uStreaming.AutomaticSize = Enum.AutomaticSize.XY
+	uStreaming.LayoutOrder = 1
+	uStreaming.Text = ""
+	uStreaming.TextColor3 = Color3.new(1, 1, 1)
+	uStreaming.TextSize = 17
+	uStreaming.Font = Enum.Font.SourceSansSemibold
+	uStreaming.RichText = false
+	uStreaming.TextWrapped = true
+	uStreaming.TextXAlignment = Enum.TextXAlignment.Left
+	uStreaming.TextYAlignment = Enum.TextYAlignment.Top
+	uStreaming.Parent = uContent
+
+	local uPad = Instance.new("UIPadding")
+	uPad.PaddingTop = UDim.new(0, 10)
+	uPad.PaddingBottom = UDim.new(0, 10)
+	uPad.PaddingLeft = UDim.new(0, 12)
+	uPad.PaddingRight = UDim.new(0, 12)
+	uPad.Parent = uStreaming
+
+	local uCorner = Instance.new("UICorner")
+	uCorner.CornerRadius = UDim.new(0, 10)
+	uCorner.Parent = uContent
+
+	local uStroke = Instance.new("UIStroke")
+	uStroke.Color = Color3.new(0.231373, 0.231373, 0.231373)
+	uStroke.Transparency = 0.5
+	uStroke.Thickness = 1
+	uStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	uStroke.Parent = uContent
+
+	local uSize = Instance.new("UISizeConstraint")
+	uSize.MaxSize = Vector2.new(290, math.huge)
+	uSize.Parent = uContent
+
+	local PromptHolder = Instance.new("Frame")
+	PromptHolder.Name = "PromptHolder"
+	PromptHolder.Size = UDim2.new(1, 0, 0, 34)
+	PromptHolder.Position = UDim2.new(0.5, 0, 1, 0)
+	PromptHolder.AnchorPoint = Vector2.new(0.5, 1)
+	PromptHolder.BackgroundTransparency = 1
+	PromptHolder.BorderSizePixel = 0
+	PromptHolder.ZIndex = 223
+	PromptHolder.Parent = ChatHolder
+
+	local ChatBarContainer = Instance.new("Frame")
+	ChatBarContainer.Name = "ChatBarContainer"
+	ChatBarContainer.Size = UDim2.new(1, -44, 1, 0)
+	ChatBarContainer.Position = UDim2.new(0, 0, 0, 0)
+	ChatBarContainer.BackgroundColor3 = Color3.new(0.0941176, 0.0941176, 0.0941176)
+	ChatBarContainer.BackgroundTransparency = 0.45
+	ChatBarContainer.BorderSizePixel = 0
+	ChatBarContainer.ZIndex = 222
+	ChatBarContainer.ClipsDescendants = true
+	ChatBarContainer.Active = true
+	ChatBarContainer.Parent = PromptHolder
+
+	local cbCorner = Instance.new("UICorner")
+	cbCorner.CornerRadius = UDim.new(0, 10)
+	cbCorner.Parent = ChatBarContainer
+
+	local cbPad = Instance.new("UIPadding")
+	cbPad.PaddingLeft = UDim.new(0, 12)
+	cbPad.PaddingRight = UDim.new(0, 12)
+	cbPad.Parent = ChatBarContainer
+
+	local cbStroke = Instance.new("UIStroke")
+	cbStroke.Color = Color3.new(0.231373, 0.231373, 0.231373)
+	cbStroke.Transparency = 0.25
+	cbStroke.Thickness = 1
+	cbStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	cbStroke.Parent = ChatBarContainer
+
+	local ChatBar = Instance.new("TextBox")
+	ChatBar.Name = "ChatBar"
+	ChatBar.Size = UDim2.new(1, 0, 1, 0)
+	ChatBar.BackgroundTransparency = 1
+	ChatBar.BorderSizePixel = 0
+	ChatBar.Text = ""
+	ChatBar.TextColor3 = Color3.new(1, 1, 1)
+	ChatBar.TextSize = 16
+	ChatBar.Font = Enum.Font.SourceSans
+	ChatBar.TextXAlignment = Enum.TextXAlignment.Left
+	ChatBar.TextYAlignment = Enum.TextYAlignment.Center
+	ChatBar.PlaceholderText = CFG.Placeholder
+	ChatBar.PlaceholderColor3 = Color3.new(0.5, 0.5, 0.5)
+	ChatBar.ClearTextOnFocus = false
+	ChatBar.Active = true
+	ChatBar.ZIndex = 223
+	ChatBar.Parent = ChatBarContainer
+
+	local Submit = Instance.new("TextButton")
+	Submit.Name = "Submit"
+	Submit.Size = UDim2.new(0, 34, 0, 34)
+	Submit.Position = UDim2.new(1, 0, 0.5, 0)
+	Submit.AnchorPoint = Vector2.new(1, 0.5)
+	Submit.BackgroundColor3 = CFG.Red
+	Submit.BorderSizePixel = 0
+	Submit.ZIndex = 224
+	Submit.Text = ""
+	Submit.AutoButtonColor = false
+	Submit.Parent = PromptHolder
+
+	local sCorner = Instance.new("UICorner")
+	sCorner.CornerRadius = UDim.new(0, 10)
+	sCorner.Parent = Submit
+
+	local sRunning = Instance.new("ImageLabel")
+	sRunning.Name = "Running"
+	sRunning.Size = UDim2.new(0.6, 0, 0.6, 0)
+	sRunning.Position = UDim2.new(0.5, 0, 0.5, 0)
+	sRunning.AnchorPoint = Vector2.new(0.5, 0.5)
+	sRunning.BackgroundTransparency = 1
+	sRunning.BorderSizePixel = 0
+	sRunning.Visible = false
+	sRunning.Image = CFG.RunIcon
+	sRunning.ScaleType = Enum.ScaleType.Fit
+	sRunning.ZIndex = 225
+	sRunning.Parent = Submit
+
+	local sUp = Instance.new("ImageLabel")
+	sUp.Name = "Up"
+	sUp.Size = UDim2.new(0.7, 0, 0.7, 0)
+	sUp.Position = UDim2.new(0.5, 0, 0.5, 0)
+	sUp.AnchorPoint = Vector2.new(0.5, 0.5)
+	sUp.BackgroundTransparency = 1
+	sUp.BorderSizePixel = 0
+	sUp.Image = CFG.SendIcon
+	sUp.ScaleType = Enum.ScaleType.Fit
+	sUp.Rotation = -90
+	sUp.ZIndex = 225
+	sUp.Parent = Submit
+
+	local DragBar = Instance.new("Frame")
+	DragBar.Name = "DragBar"
+	DragBar.Size = UDim2.new(1, 0, 0, 56)
+	DragBar.Position = UDim2.new(0, 0, 0, 0)
+	DragBar.BackgroundTransparency = 1
+	DragBar.BorderSizePixel = 0
+	DragBar.ZIndex = 500
+	DragBar.Active = true
+	DragBar.Parent = Background
+
+	local winScale = Instance.new("UIScale")
+	winScale.Scale = 0.9
+	winScale.Parent = Background
+
+	Background.Visible = false
+	Background.GroupTransparency = 1
+
+	local Dock = Instance.new("Frame")
+	Dock.Name = "AI_DOCK"
+	Dock.Size = UDim2.fromOffset(CFG.BtnSize + 60, CFG.BtnSize + 26)
+	Dock.Position = UDim2.new(0.5, 0, 0, CFG.BtnY)
+	Dock.AnchorPoint = Vector2.new(0.5, 0)
+	Dock.BackgroundTransparency = 1
+	Dock.ZIndex = 1000
+	Dock.Parent = gui
+
+	local Toggle = Instance.new("CanvasGroup")
+	Toggle.Name = "AI_TOGGLE"
+	Toggle.Size = UDim2.fromOffset(CFG.BtnSize, CFG.BtnSize)
+	Toggle.Position = UDim2.new(0.5, 0, 0, 0)
+	Toggle.AnchorPoint = Vector2.new(0.5, 0)
+	Toggle.BackgroundColor3 = Color3.new(0.0705882, 0.0705882, 0.0705882)
+	Toggle.BackgroundTransparency = 0.1
+	Toggle.BorderSizePixel = 0
+	Toggle.ClipsDescendants = true
+	Toggle.ZIndex = 1001
+	Toggle.GroupTransparency = 0
+	Toggle.Parent = Dock
+
+	local tCorner = Instance.new("UICorner")
+	tCorner.CornerRadius = UDim.new(0, CFG.BtnCorner)
+	tCorner.Parent = Toggle
+
+	local tStroke = Instance.new("UIStroke")
+	tStroke.Color = CFG.Red
+	tStroke.Thickness = 1.4
+	tStroke.Transparency = 0.25
+	tStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	tStroke.Parent = Toggle
+
+	local tGif = Instance.new("ImageLabel")
+	tGif.Name = "Gif"
+	tGif.Size = UDim2.new(1, 0, 1, 0)
+	tGif.BackgroundTransparency = 1
+	tGif.BorderSizePixel = 0
+	tGif.ZIndex = 1002
+	tGif.ScaleType = Enum.ScaleType.Crop
+	tGif.Parent = Toggle
+
+	pcall(function() IMG.set(tGif, "Image", CFG.Gif) end)
+
+	local tClick = Instance.new("TextButton")
+	tClick.Name = "ClickArea"
+	tClick.Size = UDim2.new(1, 0, 1, 0)
+	tClick.BackgroundTransparency = 1
+	tClick.BorderSizePixel = 0
+	tClick.ZIndex = 1004
+	tClick.Text = ""
+	tClick.AutoButtonColor = false
+	tClick.Parent = Toggle
+
+	local tScale = Instance.new("UIScale")
+	tScale.Scale = 1
+	tScale.Parent = Toggle
+
+	local tLabel = Instance.new("TextLabel")
+	tLabel.Name = "HoverLabel"
+	tLabel.Size = UDim2.new(1, 0, 0, 18)
+	tLabel.Position = UDim2.new(0.5, 0, 0, CFG.BtnSize + 6)
+	tLabel.AnchorPoint = Vector2.new(0.5, 0)
+	tLabel.BackgroundTransparency = 1
+	tLabel.BorderSizePixel = 0
+	tLabel.ZIndex = 1005
+	tLabel.Text = CFG.Name
+	tLabel.TextColor3 = Color3.new(1, 1, 1)
+	tLabel.TextSize = 14
+	tLabel.Font = Enum.Font.SourceSansBold
+	tLabel.TextTransparency = 1
+	tLabel.Parent = Dock
+
+	local tLabelStroke = Instance.new("UIStroke")
+	tLabelStroke.Color = Color3.new(0, 0, 0)
+	tLabelStroke.Thickness = 2
+	tLabelStroke.Transparency = 1
+	tLabelStroke.Parent = tLabel
+
+	self.Ai = {
+		Gui      = gui,
+		Root     = Background,
+		Scale    = winScale,
+		Holder   = ChatHolder,
+		History  = ChatHistory,
+		Decor    = DecorPattern,
+		Bar      = ChatBar,
+		Submit   = Submit,
+		Running  = sRunning,
+		SendIcon = sUp,
+		Dock     = Dock,
+		Toggle   = Toggle,
+		Hover    = tLabel,
+		BotTpl   = BotChatTemplate,
+		UserTpl  = UserChatTemplate,
+		Open     = false,
+		Busy     = false,
+		Locked   = false,
+		Order    = 0,
+	}
+
+	local TS = game:GetService("TweenService")
+	local openInfo  = TweenInfo.new(CFG.OpenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+	local closeInfo = TweenInfo.new(CFG.CloseTime, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+	local hoverInfo = TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+	local bobInfo   = TweenInfo.new(CFG.BtnBob, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+
+	local bob
+	tClick.MouseEnter:Connect(function()
+		TS:Create(tScale, hoverInfo, { Scale = CFG.BtnGrow }):Play()
+		TS:Create(tLabel, TweenInfo.new(0.18), { TextTransparency = 0 }):Play()
+		TS:Create(tLabelStroke, TweenInfo.new(0.18), { Transparency = 0.2 }):Play()
+		if bob then bob:Cancel() end
+		Toggle.Position = UDim2.new(0.5, 0, 0, 0)
+		bob = TS:Create(Toggle, bobInfo, { Position = UDim2.new(0.5, 0, 0, 7) })
+		bob:Play()
+	end)
+
+	tClick.MouseLeave:Connect(function()
+		TS:Create(tScale, TweenInfo.new(0.2), { Scale = 1 }):Play()
+		TS:Create(tLabel, TweenInfo.new(0.18), { TextTransparency = 1 }):Play()
+		TS:Create(tLabelStroke, TweenInfo.new(0.18), { Transparency = 1 }):Play()
+		if bob then bob:Cancel() end
+		TS:Create(Toggle, TweenInfo.new(0.22, Enum.EasingStyle.Sine), { Position = UDim2.new(0.5, 0, 0, 0) }):Play()
+	end)
+
+	local function scrollDown()
+		task.defer(function()
+			if ChatHistory.Parent then
+				ChatHistory.CanvasPosition = Vector2.new(0, ChatHistory.AbsoluteCanvasSize.Y)
+			end
+		end)
+	end
+	self.Ai.Scroll = scrollDown
+
+	local function send()
+		local state = self.Ai
+		if not state or state.Busy then return end
+		local text = ChatBar.Text
+		if text:gsub("%s+", "") == "" then return end
+
+		ChatBar.Text = ""
+		state.Busy = true
+		sRunning.Visible = true
+		sUp.Visible = false
+
+		self:AiSay("user", text)
+
+		task.spawn(function()
+			local label = self:_aiBubble("bot", "Thinking .")
+			local thinking = true
+
+			task.spawn(function()
+				local dots = 1
+				while thinking and label.Parent do
+					label.Text = "Thinking " .. string.rep(". ", dots)
+					dots = dots + 1
+					if dots > 3 then dots = 1 end
+					task.wait(0.32)
+				end
+			end)
+
+			task.wait(CFG.ThinkMin + math.random() * math.max(0, CFG.ThinkMax - CFG.ThinkMin))
+			thinking = false
+
+			local reply = "Sorry, something went wrong on my side~"
+			pcall(function() reply = self:AiAnswer(text) end)
+
+			self:_aiType(label, reply)
+
+			state.Busy = false
+			sRunning.Visible = false
+			sUp.Visible = true
+		end)
+	end
+
+	Submit.MouseButton1Click:Connect(send)
+	ChatBar.FocusLost:Connect(function(enter)
+		if enter then send() end
+	end)
+
+	local function openUI()
+		Background.Visible = true
+		Background.GroupTransparency = 1
+		winScale.Scale = 0.9
+		TS:Create(Background, openInfo, { GroupTransparency = 0 }):Play()
+		TS:Create(winScale, openInfo, { Scale = 1 }):Play()
+		if self.Ai.Order == 0 then
+			self:AiSay("bot", CFG.Greeting)
+		end
+		scrollDown()
+	end
+
+	local function closeUI()
+		local fade = TS:Create(Background, closeInfo, { GroupTransparency = 1 })
+		TS:Create(winScale, closeInfo, { Scale = 0.9 }):Play()
+		fade:Play()
+		fade.Completed:Connect(function()
+			if self.Ai and not self.Ai.Open then Background.Visible = false end
+		end)
+	end
+
+	self.Ai.OpenFn = openUI
+	self.Ai.CloseFn = closeUI
+
+	tClick.MouseButton1Click:Connect(function()
+		local state = self.Ai
+		if state.Locked then return end
+		state.Locked = true
+
+		TS:Create(tScale, TweenInfo.new(0.12), { Scale = 0.92 }):Play()
+
+		state.Open = not state.Open
+		if state.Open then openUI() else closeUI() end
+
+		task.delay(CFG.LockTime, function()
+			if not self.Ai then return end
+			self.Ai.Locked = false
+			TS:Create(tScale, TweenInfo.new(0.15), { Scale = 1 }):Play()
+		end)
+	end)
+
+	self.AiDrag = makeDraggable(Background, DragBar)
+
+	if CFG.RepliesUrl ~= "" then
+		task.spawn(function() self:LoadAiReplies(CFG.RepliesUrl) end)
+	end
+
+	return self.Ai
+end
+
+function Library:_aiBubble(who, text)
+	local state = self:_buildAiWindow()
+	if not state then return nil end
+
+	local tpl = (who == "user") and state.UserTpl or state.BotTpl
+	local bubble = tpl:Clone()
+	bubble.Name = (who == "user") and "UserChat" or "BotChat"
+	state.Order = state.Order + 1
+	bubble.LayoutOrder = state.Order
+	bubble.Content.Streaming.Text = tostring(text or "")
+	bubble.Parent = state.History
+	state.Decor.Visible = false
+	if state.Scroll then state.Scroll() end
+
+	return bubble.Content.Streaming
+end
+
+function Library:_aiType(label, text)
+	if not label or not label.Parent then return end
+	local words = {}
+	for word in tostring(text):gmatch("%S+") do words[#words + 1] = word end
+
+	label.Text = ""
+	local shown = ""
+	local source = tostring(text)
+	local at = 1
+
+	for _, word in ipairs(words) do
+		local from, to = source:find(word, at, true)
+		local gap = ""
+		if from and from > at then gap = source:sub(at, from - 1) end
+		if from then at = to + 1 end
+		shown = shown .. gap .. word
+		if label.Parent then
+			label.Text = shown
+			if self.Ai and self.Ai.Scroll then self.Ai.Scroll() end
+		else
+			return
+		end
+		task.wait(Library.AiCfg.TypeSpeed)
+	end
+
+	if label.Parent then label.Text = source end
+end
+
+function Library:AiSay(who, text, instant)
+	local label = self:_aiBubble(who, "")
+	if not label then return self end
+
+	if who == "user" or instant then
+		label.Text = tostring(text)
+	else
+		task.spawn(function() self:_aiType(label, tostring(text)) end)
+	end
+
+	return self
+end
+
+function Library:AiAsk(text)
+	local reply = self:AiAnswer(text)
+	self:AiSay("user", tostring(text))
+	self:AiSay("bot", reply)
+	return reply
+end
+
+function Library:ShowAi(state)
+	local ai = self:_buildAiWindow()
+	if not ai then return self end
+	local want = (state ~= false)
+	if want == ai.Open then return self end
+	ai.Open = want
+	if want then ai.OpenFn() else ai.CloseFn() end
+	return self
+end
+
+function Library:ToggleAi()
+	local ai = self:_buildAiWindow()
+	if not ai then return self end
+	return self:ShowAi(not ai.Open)
+end
+
+function Library:ClearAi()
+	local ai = self.Ai
+	if not ai then return self end
+	for _, child in ipairs(ai.History:GetChildren()) do
+		if child:IsA("Frame") then child:Destroy() end
+	end
+	ai.Order = 0
+	ai.Decor.Visible = true
+	return self
+end
+
+function Library:SetAiReplies(url)
+	Library.AiCfg.RepliesUrl = tostring(url or "")
+	if Library.AiCfg.RepliesUrl ~= "" then
+		task.spawn(function() self:LoadAiReplies(Library.AiCfg.RepliesUrl) end)
+	end
+	return self
+end
+
 local NexoHub = {}
 NexoHub.Library = Library
 NexoHub.Version = "1.0"
@@ -7689,6 +8917,13 @@ function NexoHub:CreateWindow(opts)
 	else
 		if opts.statusTitle then Library.StatusCfg.Title = tostring(opts.statusTitle) end
 		pcall(function() ui:_buildStatusWindow() end)
+	end
+
+	if opts.ai == false then
+		Library.AiCfg.Enabled = false
+	else
+		if opts.aiRoot then Library.AiCfg.Root = tostring(opts.aiRoot) end
+		pcall(function() ui:_buildAiWindow() end)
 	end
 
 	if opts.autoload then
