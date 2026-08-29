@@ -41,7 +41,7 @@ local AssetService = game:GetService("AssetService")
 --  1) IMAGE IDS - REPLACE THESE WITH YOUR OWN
 --=====================================================
 local IMAGES = {
-	Background  = "https://img.magnific.com/premium-photo/witch-standing-hillside-crescent-moon_605022-195637.jpg?w=360", -- fills the entire panel behind everything
+	Background  = "https://i.imgur.com/lyJQbo7.png", -- fills the entire panel behind everything
 	Logo        = "https://i.imgur.com/yck4043.png", -- "NEXO" logo, top-left
 	Banner      = "132582095265277", -- big PREMIUM+ / V4.0 artwork on the Home page
 	Discord     = "16171891828",     -- social button 1 (Discord)
@@ -186,6 +186,11 @@ local HOVER_STRENGTH = 0.88 -- 1 = invisible, 0.80 = stronger glow
 
 -- TAB / SECTION CARD TEXT SIZE (Pages). These are max caps: the text scales
 -- down to fit the card, but never renders bigger than this.
+-- BUILD STAMP: printed to the console on load. If the number you see in
+-- game is not this one, the copy running is NOT this file.
+local NEXO_BUILD = "tabtext-3"
+print("[NEXO HUB] UI library build: " .. NEXO_BUILD)
+
 local TAB_TITLE_SIZE = 26 -- "NORMAL FARM" line
 local TAB_DESC_SIZE  = 16 -- "Auto farm levels, bosses, items ..." line
 
@@ -1357,8 +1362,14 @@ end
 local function new(class, props, children)
 	local inst = Instance.new(class)
 	local deferred = nil
+	-- ORDER MATTERS: pairs() order is undefined, and in Roblox TextScaled
+	-- overwrites TextSize. If TextScaled happened to be applied AFTER
+	-- TextSize, the explicit size was silently thrown away. Apply it first.
+	if props and props.TextScaled ~= nil then
+		pcall(function() inst.TextScaled = props.TextScaled end)
+	end
 	for k, v in pairs(props or {}) do
-		if k ~= "Parent" then
+		if k ~= "Parent" and k ~= "TextScaled" then
 			-- a website link cannot be applied instantly: leave the property
 			-- blank now and fill it in when the download finishes
 			if IMG.isPendingToken(v) then
@@ -3995,6 +4006,10 @@ function Library:_addCard(ctx, info, isSection)
 	})
 	-- SAME TITLE FONT AS THE HOME PAGE CARDS
 	hohoFont(title, "Bold")
+	-- BELT AND BRACES: force the size after the font swap, so nothing that
+	-- runs later can put auto-scaling back on this label.
+	title.TextScaled = false
+	title.TextSize = TAB_TITLE_SIZE
 
 	-- the description sits on its own rounded background pill
 	local pill = new("Frame", {
@@ -4032,6 +4047,8 @@ function Library:_addCard(ctx, info, isSection)
 	})
 	-- SAME DESCRIPTION FONT AS THE HOME PAGE CARDS
 	hohoFont(desc, "Regular")
+	desc.TextScaled = false
+	desc.TextSize = TAB_DESC_SIZE
 
 	local slot = new("Frame", {
 		Name = "IconSlot",
