@@ -41,7 +41,7 @@ local AssetService = game:GetService("AssetService")
 --  1) IMAGE IDS - REPLACE THESE WITH YOUR OWN
 --=====================================================
 local IMAGES = {
-	Background  = "2151741365", -- fills the entire panel behind everything
+	Background  = "https://i.imgur.com/lyJQbo7.png", -- fills the entire panel behind everything
 	Logo        = "https://i.imgur.com/yck4043.png", -- "NEXO" logo, top-left
 	Banner      = "132582095265277", -- big PREMIUM+ / V4.0 artwork on the Home page
 	Discord     = "16171891828",     -- social button 1 (Discord)
@@ -188,11 +188,11 @@ local HOVER_STRENGTH = 0.88 -- 1 = invisible, 0.80 = stronger glow
 -- down to fit the card, but never renders bigger than this.
 -- BUILD STAMP: printed to the console on load. If the number you see in
 -- game is not this one, the copy running is NOT this file.
-local NEXO_BUILD = "tabtext-5"
+local NEXO_BUILD = "status-3"
 print("[NEXO HUB] UI library build: " .. NEXO_BUILD)
 
-local TAB_TITLE_SIZE = 42 -- "NORMAL FARM" line (bigger text)
-local TAB_DESC_SIZE  = 26 -- "Auto farm levels, bosses, items ..." line (bigger text)
+local TAB_TITLE_SIZE = 42 -- "NORMAL FARM" line
+local TAB_DESC_SIZE  = 26 -- "Auto farm levels, bosses, items ..." line
 
 -- TAB / SECTION HOVER: strength of the red gradient wash on mouse over.
 -- 1 = invisible, 0 = fully solid. Lower = stronger red.
@@ -343,7 +343,7 @@ local LAYOUT = {
 
 	-- Pages page (the tab list)
 	TabColumns     = 2,   -- tabs per row  ->  Tab | Tab
-	TabHeight      = 164, -- height of one tab card (raised only so the bigger text fits)
+	TabHeight      = 164, -- height of one tab card
 	TabGap         = 16,  -- space between tab cards (LEFT / RIGHT gap only)
 	TabRowGap      = 28,  -- VERTICAL space between tab ROWS. The black line now
 	                      -- lives in this space, UNDER each card, so raise this
@@ -1180,7 +1180,7 @@ function Gif.attach(target, url, hooks)
 			if player.onState then player.onState(player) end
 			return
 		end
-		-- INFINITE LOOP: 0 = play for ever, whatever the file asked for
+		-- INFINITE LOOP: wipe the loop count baked into the file
 		pcall(function() data.loops = 0 end)
 		player.data = data
 		player.editable = editable
@@ -1217,10 +1217,10 @@ RunService.Heartbeat:Connect(function(step)
 				player.clock = player.clock - current.delay
 				local nextIndex = player.frame + 1
 				if nextIndex > count then
-					-- INFINITE LOOP: the loop count written inside the GIF file is
-					-- ignored on purpose. The animation restarts from frame 1 for
-					-- ever and is never stopped.
 					player.loopsDone = player.loopsDone + 1
+					-- INFINITE LOOP: the loop count written inside the GIF file is
+					-- ignored on purpose, so every GIF replays forever instead of
+					-- freezing on its last frame.
 					nextIndex = 1
 					advance = advance + 1
 				end
@@ -5136,9 +5136,8 @@ function Library:_addToggle(card, info)
 			playTween(square, fade, { Size = UDim2.fromOffset(box, box) }, "toggleSize")
 		end
 
-		-- NEXO HUB STATUS: the left hand window lists this switch while it is
-		-- ON and drops the line again when it is turned OFF.
-		-- Pass status = false in the switch options to keep it out of the list.
+		-- STATUS WINDOW: the line appears while the switch is ON and
+		-- disappears the moment it goes OFF. status = false skips it.
 		if info.status ~= false then
 			pcall(function() self:StatusSet(info.statusText or info.text or "SWITCH", state) end)
 		end
@@ -8095,22 +8094,37 @@ function Library:_buildUiTab()
 end
 
 --=====================================================
---  NEXO HUB STATUS  -  small window on the LEFT of the screen
---  It lists every FEATURE YOU TURNED ON. A line appears the moment a
---  switch goes ON and disappears the moment it goes OFF.
+--  NEXO HUB STATUS  -  the small window on the LEFT of the screen
+--  EXACT CLONE of the reference status window:
+--    black rounded panel (CanvasGroup), red top bar with the tiled
+--    pattern image, the red fade bleeding down over the rows,
+--    invisible scrollbar, and a draggable top bar.
+--  It lists every FEATURE YOU TURNED ON: one line per switch, with the
+--  round red icon in front of it. A line appears the moment a switch
+--  goes ON and disappears the moment it goes OFF.
 --  EDIT EVERY SIZE / POSITION / TEXT HERE:
 --=====================================================
 Library.StatusCfg = {
-	Title     = "NeXo Hub Status", -- header text
-	Width     = 300,   -- window width
-	OffsetX   = 24,    -- gap from the LEFT edge of the screen
-	AnchorY   = 0.42,  -- 0 = top of the screen, 0.5 = middle, 1 = bottom
-	HeaderH   = 36,    -- height of the red title bar
-	RowH      = 26,    -- height of one line
-	TitleSize = 17,    -- header font size
-	RowSize   = 15,    -- line font size
-	Empty     = "Nothing turned on yet",
-	Enabled   = true,  -- false = never build the status window
+	-- RichText title, exactly like the reference (white + black word)
+	Title      = '<font color="#FFFFFF">NeXo Hub</font> <font color="#000000">Status</font>',
+	WidthScale = 0.212776005, -- panel width, as a slice of the screen
+	Height     = 274,         -- panel height in pixels
+	PosXScale  = 0.137630999, -- exact reference position
+	PosXOffset = 166,
+	PosYScale  = 0.607138991,
+	PosYOffset = -35,
+	BarHeight  = 30,   -- height of the red top bar
+	TitleSize  = 18,   -- title font size
+	RowSize    = 16,   -- line font size
+	RowGap     = 5,    -- space between two lines
+	Icon       = "rbxassetid://16282494512", -- the little round icon
+	IconColor  = Color3.new(1, 0.2, 0.2),
+	Pattern    = "rbxassetid://2151741365",  -- tiled pattern on the red bar
+	PatternFade = 0.6, -- 0 = pattern at full strength, 1 = invisible
+	BarColor   = Color3.new(0.972549, 0.0156863, 0.180392),
+	PanelFade  = 0.25, -- 0 = solid black panel, 1 = invisible
+	Empty      = "Nothing turned on yet",
+	Enabled    = true, -- false = never build the status window
 }
 
 function Library:_buildStatusWindow()
@@ -8118,189 +8132,201 @@ function Library:_buildStatusWindow()
 	if not CFG.Enabled then return nil end
 	if self.Status and self.Status.Root and self.Status.Root.Parent then return self.Status end
 
-	local root = new("Frame", {
-		Name = "StatusWindow",
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, CFG.OffsetX, CFG.AnchorY, 0),
-		Size = UDim2.fromOffset(CFG.Width, CFG.HeaderH),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		BackgroundColor3 = Color3.fromRGB(8, 8, 8),
-		BackgroundTransparency = 0.08,
+	-- the reference panel is a CanvasGroup. Executors that cannot make one
+	-- quietly fall back to a plain Frame, everything else is identical.
+	local CLASS = "Frame"
+	local okCg, probe = pcall(Instance.new, "CanvasGroup")
+	if okCg and probe then
+		CLASS = "CanvasGroup"
+		pcall(function() probe:Destroy() end)
+	end
+
+	local F = new(CLASS, {
+		Name = "STATUS_FRAME",
+		Size = UDim2.new(CFG.WidthScale, 0, 0, CFG.Height),
+		Position = UDim2.new(CFG.PosXScale, CFG.PosXOffset, CFG.PosYScale, CFG.PosYOffset),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundColor3 = Color3.new(0, 0, 0),
+		BackgroundTransparency = CFG.PanelFade,
 		BorderSizePixel = 0,
+		ClipsDescendants = true,
 		Active = true,
-		ZIndex = 900,
+		ZIndex = 1000,
+		LayoutOrder = 1,
 		Parent = self.Gui,
 	}, {
 		corner(10),
-		stroke(THEME.Accent, 2, 0.25),
-		vlist(0),
+	})
+	pcall(function() F.GroupTransparency = 0 end)
+
+	-- BODY: scrolls, with the scrollbar hidden completely
+	local scroll = new("ScrollingFrame", {
+		Name = "Body",
+		Size = UDim2.new(1, 0, 1, -(CFG.BarHeight + 5)),
+		Position = UDim2.new(0, 0, 0, CFG.BarHeight + 5),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ClipsDescendants = true,
+		ZIndex = 1,
+		ScrollBarThickness = 0,
+		ScrollBarImageTransparency = 1,
+		VerticalScrollBarInset = Enum.ScrollBarInset.None,
+		CanvasSize = UDim2.new(0, 0, 0, 0),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollingDirection = Enum.ScrollingDirection.Y,
+		ElasticBehavior = Enum.ElasticBehavior.WhenScrollable,
+		Active = true,
+		Parent = F,
+	}, {
+		-- the icon lives inside the left padding, exactly like the reference
+		padding(2, 8, 8, 26),
+		vlist(CFG.RowGap),
 	})
 
-	local header = new("Frame", {
-		Name = "Header",
-		LayoutOrder = 1,
-		Size = UDim2.new(1, 0, 0, CFG.HeaderH),
-		BackgroundColor3 = THEME.Accent,
+	-- RED TOP BAR
+	local bar = new("Frame", {
+		Name = "TopBar",
+		Size = UDim2.new(1, 0, 0, CFG.BarHeight),
+		Position = UDim2.new(0.5, 0, 0, math.floor(CFG.BarHeight / 2)),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundColor3 = CFG.BarColor,
+		BackgroundTransparency = 0,
 		BorderSizePixel = 0,
-		ZIndex = 901,
-		Parent = root,
-	}, {
-		corner(10),
-		gradient(Color3.fromRGB(255, 46, 46), Color3.fromRGB(120, 0, 0), 90),
-		padding(0, 8, 0, 12),
+		ZIndex = 2,
+		Active = true,
+		Parent = F,
+	})
+
+	-- RED EFFECT: the gradient frame that bleeds down over the rows
+	local fade = new("Frame", {
+		Name = "Fade",
+		Size = UDim2.new(1, 0, -2.30872011, 0),
+		Position = UDim2.new(-3.22450013e-08, 0, 3.10873008, 0),
+		BackgroundColor3 = Color3.new(1, 1, 1),
+		BackgroundTransparency = 0,
+		BorderSizePixel = 0,
+		ZIndex = 2,
+		Parent = bar,
+	})
+	new("UIGradient", {
+		Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, CFG.BarColor),
+			ColorSequenceKeypoint.new(1, CFG.BarColor),
+		}),
+		Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.464407, 0.907104),
+			NumberSequenceKeypoint.new(1, 0.73224),
+		}),
+		Rotation = -90,
+		Offset = Vector2.new(0, 0),
+		Parent = fade,
+	})
+
+	-- TILED PATTERN on the red bar only
+	local pattern = new("ImageLabel", {
+		Name = "Pattern",
+		Size = UDim2.new(1, 0, 0, CFG.BarHeight - 1),
+		Position = UDim2.new(0, 0, 0, 0),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Image = CFG.Pattern,
+		ImageColor3 = Color3.new(1, 1, 1),
+		ImageTransparency = CFG.PatternFade,
+		ScaleType = Enum.ScaleType.Tile,
+		TileSize = UDim2.new(0, 250, 0, 250),
+		ZIndex = 3,
+		Parent = bar,
 	})
 
 	local titleLbl = new("TextLabel", {
 		Name = "Title",
-		Size = UDim2.new(1, -86, 1, 0),
+		Size = UDim2.new(1, -24, 1, -6),
+		Position = UDim2.new(0, 12, 0.5, 0),
+		AnchorPoint = Vector2.new(0, 0.5),
 		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamBold,
+		BorderSizePixel = 0,
+		ClipsDescendants = true,
+		ZIndex = 4,
+		RichText = true,
 		Text = CFG.Title,
+		TextColor3 = Color3.new(1, 1, 1),
 		TextSize = CFG.TitleSize,
-		TextColor3 = Color3.fromRGB(255, 255, 255),
+		Font = Enum.Font.SourceSansBold,
 		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Center,
+		TextWrapped = false,
 		TextTruncate = Enum.TextTruncate.AtEnd,
-		ZIndex = 902,
-		Parent = header,
-	})
-	hohoFont(titleLbl, "Bold")
-
-	-- DETAILS button: folds the list away and opens it again
-	local details = new("TextButton", {
-		Name = "Details",
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, 0, 0.5, 0),
-		Size = UDim2.fromOffset(74, 22),
-		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
-		BackgroundTransparency = 0.15,
-		AutoButtonColor = false,
-		Text = "Details",
-		Font = Enum.Font.GothamBold,
-		TextSize = 13,
-		TextColor3 = Color3.fromRGB(255, 255, 255),
-		ZIndex = 903,
-		Parent = header,
-	}, {
-		corner(6),
-		stroke(Color3.fromRGB(90, 0, 0), 1, 0.2),
-	})
-	hohoFont(details, "Bold")
-
-	local body = new("Frame", {
-		Name = "Body",
-		LayoutOrder = 2,
-		Size = UDim2.new(1, 0, 0, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		BackgroundTransparency = 1,
-		ZIndex = 901,
-		Parent = root,
-	}, {
-		padding(8, 12, 10, 12),
-		vlist(6),
+		Parent = bar,
 	})
 
+	-- the "nothing on yet" line: a normal row with no icon
 	local empty = new("TextLabel", {
 		Name = "Empty",
 		LayoutOrder = 9999,
-		Size = UDim2.new(1, 0, 0, CFG.RowH),
+		Size = UDim2.new(1, 0, 0, CFG.RowSize + 4),
+		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
-		Font = Enum.Font.Gotham,
+		BorderSizePixel = 0,
 		Text = CFG.Empty,
+		TextColor3 = Color3.new(1, 1, 1),
+		TextTransparency = 0.35,
 		TextSize = CFG.RowSize,
-		TextColor3 = THEME.SubText,
+		Font = Enum.Font.SourceSansSemibold,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		ZIndex = 902,
-		Parent = body,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		TextWrapped = true,
+		Parent = scroll,
 	})
-	hohoFont(empty, "Regular")
 
-	details.MouseButton1Click:Connect(function()
-		local st = self.Status
-		if not st then return end
-		st.Open = not st.Open
-		body.Visible = st.Open
-		details.Text = st.Open and "Details" or "Show"
-	end)
-
-	-- DRAG: hold the red title bar to move the window anywhere
-	local dragging, dragStart, startPos = false, nil, nil
-	header.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1
-			or input.UserInputType == Enum.UserInputType.Touch then
-			dragging = true
-			dragStart = input.Position
-			startPos = root.Position
-			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then dragging = false end
-			end)
-		end
-	end)
-	UserInputService.InputChanged:Connect(function(input)
-		if not dragging or not root.Parent then return end
-		if input.UserInputType == Enum.UserInputType.MouseMovement
-			or input.UserInputType == Enum.UserInputType.Touch then
-			local delta = input.Position - dragStart
-			root.Position = UDim2.new(
-				startPos.X.Scale, startPos.X.Offset + delta.X,
-				startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-		end
-	end)
+	-- SMOOTH DRAG on the top bar: the window glides after your cursor with a
+	-- soft delay instead of snapping. Speed knob: DRAG_SMOOTH at the top.
+	self.StatusDrag = makeDraggable(F, bar)
 
 	self.Status = {
-		Root = root, Header = header, Title = titleLbl, Details = details,
-		Body = body, Empty = empty, Rows = {}, Order = {}, Open = true,
+		Root = F, Bar = bar, Fade = fade, Pattern = pattern, Title = titleLbl,
+		Body = scroll, Empty = empty, Rows = {}, Order = {},
 	}
 	return self.Status
 end
 
--- one line: red round tick + the feature name, exactly like the reference
+-- one line: the round red icon + the feature name
 function Library:_statusRow(text)
 	local CFG = Library.StatusCfg
 	local st = self.Status
 
-	local row = new("Frame", {
-		Name = "Row",
-		Size = UDim2.new(1, 0, 0, CFG.RowH),
+	local item = new("TextLabel", {
+		Name = "Item",
+		-- width fills the padded area, height grows when the text wraps
+		Size = UDim2.new(1, 0, 0, CFG.RowSize + 4),
+		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
-		ZIndex = 902,
+		BorderSizePixel = 0,
+		Text = text,
+		TextColor3 = Color3.new(1, 1, 1),
+		TextSize = CFG.RowSize,
+		Font = Enum.Font.SourceSansSemibold,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		TextWrapped = true, -- never runs past the right edge
+		RichText = false,
 		Parent = st.Body,
 	})
 
-	local mark = new("TextLabel", {
-		Name = "Mark",
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 0, 0.5, 0),
-		Size = UDim2.fromOffset(18, 18),
+	new("ImageLabel", {
+		Name = "ImageLabel",
+		Size = UDim2.new(0, 16, 0, 16),
+		Position = UDim2.new(0, -20, 0, 1),
+		AnchorPoint = Vector2.new(0, 0),
 		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamBold,
-		Text = "\226\156\147", -- tick
-		TextSize = 12,
-		TextColor3 = THEME.Accent,
-		ZIndex = 903,
-		Parent = row,
-	}, {
-		corner(9),
-		stroke(THEME.Accent, 2, 0),
+		BorderSizePixel = 0,
+		Image = CFG.Icon,
+		ImageColor3 = CFG.IconColor,
+		ScaleType = Enum.ScaleType.Fit,
+		Parent = item,
 	})
-	hohoFont(mark, "Bold")
 
-	local label = new("TextLabel", {
-		Name = "Label",
-		Position = UDim2.new(0, 26, 0, 0),
-		Size = UDim2.new(1, -26, 1, 0),
-		BackgroundTransparency = 1,
-		Font = Enum.Font.GothamBold,
-		Text = text,
-		TextSize = CFG.RowSize,
-		TextColor3 = Color3.fromRGB(255, 255, 255),
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextTruncate = Enum.TextTruncate.AtEnd,
-		ZIndex = 903,
-		Parent = row,
-	})
-	hohoFont(label, "Bold")
-
-	return row, label
+	return item, item
 end
 
 -- ui:StatusSet("AUTO FARM", true / false)  -> add or remove a line.
@@ -8312,9 +8338,9 @@ function Library:StatusSet(text, on)
 
 	local key = string.upper(text)
 	if on then
-		local item = st.Rows[key]
-		if item and item.Frame and item.Frame.Parent then
-			item.Label.Text = text
+		local have = st.Rows[key]
+		if have and have.Frame and have.Frame.Parent then
+			have.Label.Text = text
 		else
 			local row, label = self:_statusRow(text)
 			st.Order[#st.Order + 1] = key
@@ -8322,9 +8348,9 @@ function Library:StatusSet(text, on)
 			st.Rows[key] = { Frame = row, Label = label }
 		end
 	else
-		local item = st.Rows[key]
-		if item then
-			if item.Frame then item.Frame:Destroy() end
+		local have = st.Rows[key]
+		if have then
+			if have.Frame then have.Frame:Destroy() end
 			st.Rows[key] = nil
 			for i, k in ipairs(st.Order) do
 				if k == key then
@@ -8342,7 +8368,7 @@ end
 function Library:StatusAdd(text)    return self:StatusSet(text, true)  end
 function Library:StatusRemove(text) return self:StatusSet(text, false) end
 
--- ui:SetStatusTitle("MY HUB STATUS")
+-- ui:SetStatusTitle("...") - plain text or RichText, both work
 function Library:SetStatusTitle(text)
 	Library.StatusCfg.Title = tostring(text or Library.StatusCfg.Title)
 	local st = self:_buildStatusWindow()
@@ -8409,8 +8435,8 @@ function NexoHub:CreateWindow(opts)
 
 	ui:SetToggleKey(opts.toggleKey or "RightShift")
 
-	-- STATUS WINDOW on the LEFT of the screen.
-	-- CreateWindow({ status = false }) turns it off,
+	-- STATUS WINDOW on the left of the screen.
+	-- CreateWindow({ status = false }) turns it off completely,
 	-- CreateWindow({ statusTitle = "..." }) renames it.
 	if opts.status == false then
 		Library.StatusCfg.Enabled = false
