@@ -41,7 +41,7 @@ local AssetService = game:GetService("AssetService")
 --  1) IMAGE IDS - REPLACE THESE WITH YOUR OWN
 --=====================================================
 local IMAGES = {
-	Background  = "https://i.imgur.com/lyJQbo7.png", -- fills the entire panel behind everything
+	Background  = "2151741365", -- fills the entire panel behind everything
 	Logo        = "https://i.imgur.com/yck4043.png", -- "NEXO" logo, top-left
 	Banner      = "132582095265277", -- big PREMIUM+ / V4.0 artwork on the Home page
 	Discord     = "16171891828",     -- social button 1 (Discord)
@@ -178,8 +178,8 @@ local SOCIAL_TINT  = false
 -- tab hover / click highlight
 local HOVER_ENABLED  = true
 local HOVER_SPEED    = 0.25 -- seconds of the smooth fade
--- RED EFFECT on the Pages / Section icons (same gradient as the home cards).
--- 0 = FULL red effect, 1 = off completely.
+-- RED EFFECT on the Pages TAB icons only (same gradient as the home cards).
+-- Section icons never get it. 0 = FULL red effect, 1 = off completely.
 local TAB_TINT_OVERLAY = 0
 
 local HOVER_STRENGTH = 0.88 -- 1 = invisible, 0.80 = stronger glow
@@ -279,10 +279,10 @@ local LAYOUT = {
 	PanelPadding   = 12,
 	PanelPaddingX  = 16,
 
-	HeaderHeight   = 74,
+	HeaderHeight   = 78,
 	-- the NEXO image top left. Lower both to shrink it, raise to grow it.
-	LogoWidth      = 185, -- wider logo horizontally
-	LogoHeight     = 52,
+	LogoWidth      = 220, -- wider logo horizontally
+	LogoHeight     = 62,
 
 	ArrowSize      = 36,  -- size of one >> arrow box
 	ArrowText      = 26,  -- font size of the >> arrows
@@ -298,7 +298,7 @@ local LAYOUT = {
 	NavOffsetX     = 72,
 	--   HeaderOffsetX = push the logo and the >> arrows to the RIGHT.
 	--                  bigger = further right. 0 = hard against the edge.
-	HeaderOffsetX  = 76,
+	HeaderOffsetX  = 30,
 
 	HeroHeight     = 330,
 	HeroLeftWidth  = 0.40,
@@ -4031,11 +4031,14 @@ function Library:_addCard(ctx, info, isSection)
 	-- image = "" or image = false hides the icon completely
 	slot.Visible = (slot.Icon.Image ~= "")
 
-	-- RED EFFECT ON TOP OF THE TAB / SECTION IMAGE: the exact same G_LOGO
-	-- gradient the Home page card icons use, laid over the icon.
+	-- RED EFFECT ON TOP OF THE TAB IMAGE: the exact same G_LOGO gradient the
+	-- Home page card icons use, laid over the icon.
+	-- TABS ONLY. Section icons are left with their own real colors.
 	-- TAB_TINT_OVERLAY at the top of the file controls the strength
-	-- (0 = full red, 1 = off). Delete this line for the raw icon colors.
-	hohoStops(slot.Icon, G_LOGO, -144, TAB_TINT_OVERLAY)
+	-- (0 = full red, 1 = off).
+	if not isSection then
+		hohoStops(slot.Icon, G_LOGO, -144, TAB_TINT_OVERLAY)
+	end
 
 	-- IMAGE LINK SUPPORT: same as the home cards - a link is downloaded in the
 	-- background, so the visibility is decided when the download finishes.
