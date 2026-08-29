@@ -7449,8 +7449,12 @@ Library.StatusCfg = {
 	TitleSize  = 18,
 	RowSize    = 16,
 	RowGap     = 5,
-	Icon       = "rbxassetid://16282494512",
-	IconColor  = Color3.new(1, 0.2, 0.2),
+	Icon       = "https://i.pinimg.com/736x/d3/19/d4/d319d4b087d849a94f6da32483086cab.jpg",
+	IconColor  = Color3.new(1, 1, 1),
+	IconSize   = 18,
+	IconX      = -26,
+	RowPadLeft = 38,
+	TitleX     = 24,
 	Pattern    = "rbxassetid://2151741365",
 	PatternFade = 0.6,
 	BarColor   = Color3.new(0.972549, 0.0156863, 0.180392),
@@ -7489,6 +7493,31 @@ function Library:_buildStatusWindow()
 	})
 	pcall(function() F.GroupTransparency = 0 end)
 
+	local statusFit = Instance.new("UISizeConstraint")
+	statusFit.MinSize = Vector2.new(165, 0)
+	statusFit.MaxSize = Vector2.new(340, math.huge)
+	statusFit.Parent = F
+
+	local function fitStatus()
+		local cam = workspace.CurrentCamera
+		if not cam then return end
+		local vp = cam.ViewportSize
+		local phone = vp.X < 780
+		local h = math.clamp(math.floor(vp.Y * (phone and 0.46 or 0.36)), 150, CFG.Height)
+		F.Size = UDim2.new(phone and 0.40 or CFG.WidthScale, 0, 0, h)
+		statusFit.MaxSize = Vector2.new(phone and 250 or 340, math.huge)
+		local px, py = F.AbsolutePosition.X, F.AbsolutePosition.Y
+		if px < -10 or py < 0 or px > vp.X - 50 or py > vp.Y - 50 then
+			F.Position = UDim2.new(0, math.floor(F.AbsoluteSize.X * 0.5) + 14, 0.5, 0)
+		end
+	end
+
+	self.StatusFit = fitStatus
+	task.defer(fitStatus)
+	pcall(function()
+		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fitStatus)
+	end)
+
 	local scroll = new("ScrollingFrame", {
 		Name = "Body",
 		Size = UDim2.new(1, 0, 1, -(CFG.BarHeight + 5)),
@@ -7508,7 +7537,7 @@ function Library:_buildStatusWindow()
 		Parent = F,
 	}, {
 
-		padding(2, 8, 8, 26),
+		padding(2, 8, 8, CFG.RowPadLeft),
 		vlist(CFG.RowGap),
 	})
 
@@ -7567,8 +7596,8 @@ function Library:_buildStatusWindow()
 
 	local titleLbl = new("TextLabel", {
 		Name = "Title",
-		Size = UDim2.new(1, -24, 1, -6),
-		Position = UDim2.new(0, 12, 0.5, 0),
+		Size = UDim2.new(1, -(CFG.TitleX + 12), 1, -6),
+		Position = UDim2.new(0, CFG.TitleX, 0.5, 0),
 		AnchorPoint = Vector2.new(0, 0.5),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
@@ -7635,18 +7664,20 @@ function Library:_statusRow(text)
 		Parent = st.Body,
 	})
 
-	new("ImageLabel", {
+	local mark = new("ImageLabel", {
 		Name = "ImageLabel",
-		Size = UDim2.new(0, 16, 0, 16),
-		Position = UDim2.new(0, -20, 0, 1),
+		Size = UDim2.new(0, CFG.IconSize, 0, CFG.IconSize),
+		Position = UDim2.new(0, CFG.IconX, 0, 1),
 		AnchorPoint = Vector2.new(0, 0),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Image = CFG.Icon,
 		ImageColor3 = CFG.IconColor,
 		ScaleType = Enum.ScaleType.Fit,
 		Parent = item,
+	}, {
+		corner(4),
 	})
+	pcall(function() IMG.set(mark, "Image", CFG.Icon) end)
 
 	return item, item
 end
@@ -7727,11 +7758,18 @@ Library.AiCfg = {
 	DecorText   = "NeXo <br />Assistant",
 	Placeholder = "How can i help you today?",
 	Greeting    = "Hiya~ I am NeXo, your hub assistant. How may I help you today?",
-	RepliesUrl  = "https://raw.githubusercontent.com/heko7080-creator/Loder/refs/heads/main/Ai_reply?token=GHSAT0AAAAAAEGYARRQUYO6PZYJD74GZXNU2UTFPSQ",
+	RepliesUrl  = "",
 	Logo        = "",
 	DecorImage  = "rbxassetid://124670495450647",
-	BotAvatar   = "rbxassetid://104118833894975",
-	UserAvatar  = "rbxassetid://18579810685",
+	BotAvatar   = "https://media.tenor.com/XUsHKOqQYwMAAAAj/columbina.gif",
+	UserAvatar  = "",
+	StatusIcon  = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSP9LONjMcIFJ8_wzRBBzp_as-H9UmOKHpvyndRpGkL8SHdgQhDyZV3GoY&s=10",
+	StatusName  = "Live Status",
+	LogoSize    = 48,
+	TitleX      = 78,
+	Avatar      = 36,
+	BtnGap      = 14,
+	Small       = 780,
 	Pattern     = "rbxassetid://2151741365",
 	SendIcon    = "rbxassetid://109589211515011",
 	RunIcon     = "rbxassetid://81609402165762",
@@ -8090,6 +8128,22 @@ function Library:AiAnswer(text)
 	return "Ehe~ I am not sure about that one yet. You can ask me where a feature is, or just chat with me about anything nice!"
 end
 
+function Library:_aiUserAvatar()
+	local CFG = Library.AiCfg
+	if CFG.UserAvatar and CFG.UserAvatar ~= "" then return CFG.UserAvatar end
+	local players = game:GetService("Players")
+	local me = players.LocalPlayer
+	if not me then return "" end
+	local shot = ""
+	pcall(function()
+		shot = players:GetUserThumbnailAsync(me.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+	end)
+	if shot == nil or shot == "" then
+		shot = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. tostring(me.UserId) .. "&width=150&height=150&format=png"
+	end
+	return shot
+end
+
 function Library:_buildAiWindow()
 	local CFG = Library.AiCfg
 	if not CFG.Enabled then return nil end
@@ -8170,8 +8224,8 @@ function Library:_buildAiWindow()
 
 	local Logo = Instance.new("ImageLabel")
 	Logo.Name = "Logo"
-	Logo.Size = UDim2.new(0, 34, 0, 34)
-	Logo.Position = UDim2.new(0, 16, 0, 14)
+	Logo.Size = UDim2.new(0, CFG.LogoSize, 0, CFG.LogoSize)
+	Logo.Position = UDim2.new(0, 16, 0, 12)
 	Logo.BackgroundTransparency = 1
 	Logo.BorderSizePixel = 0
 	Logo.ZIndex = 3
@@ -8188,15 +8242,15 @@ function Library:_buildAiWindow()
 
 	local Label = Instance.new("TextLabel")
 	Label.Name = "Label"
-	Label.Size = UDim2.new(0.5, 0, 0, 22)
-	Label.Position = UDim2.new(0, 58, 0, 20)
+	Label.Size = UDim2.new(0.6, 0, 0, 28)
+	Label.Position = UDim2.new(0, CFG.TitleX, 0, 22)
 	Label.BackgroundTransparency = 1
 	Label.BorderSizePixel = 0
 	Label.ZIndex = 3
 	Label.RichText = true
 	Label.Text = CFG.Title
 	Label.TextColor3 = Color3.new(1, 1, 1)
-	Label.TextSize = 18
+	Label.TextSize = 20
 	Label.Font = Enum.Font.SourceSansBold
 	Label.TextXAlignment = Enum.TextXAlignment.Left
 	Label.TextYAlignment = Enum.TextYAlignment.Center
@@ -8297,12 +8351,14 @@ function Library:_buildAiWindow()
 
 	local bAvatar = Instance.new("ImageLabel")
 	bAvatar.Name = "Avatar"
-	bAvatar.Size = UDim2.new(0, 30, 0, 30)
-	bAvatar.Position = UDim2.new(0, 0, 0, 6)
+	bAvatar.Size = UDim2.new(0, CFG.Avatar, 0, CFG.Avatar)
+	bAvatar.Position = UDim2.new(0, 0, 0, 4)
 	bAvatar.BackgroundTransparency = 1
 	bAvatar.BorderSizePixel = 0
-	bAvatar.Image = CFG.BotAvatar
-	bAvatar.ScaleType = Enum.ScaleType.Fit
+	bAvatar.BackgroundColor3 = Color3.new(0.0705882, 0.0705882, 0.0705882)
+	bAvatar.BackgroundTransparency = 0.15
+	bAvatar.ScaleType = Enum.ScaleType.Crop
+	pcall(function() IMG.set(bAvatar, "Image", CFG.BotAvatar) end)
 	bAvatar.Parent = BotChatTemplate
 
 	local bAvCorner = Instance.new("UICorner")
@@ -8312,7 +8368,7 @@ function Library:_buildAiWindow()
 	local bContent = Instance.new("Frame")
 	bContent.Name = "Content"
 	bContent.Size = UDim2.new(0, 0, 0, 0)
-	bContent.Position = UDim2.new(0, 40, 0, 0)
+	bContent.Position = UDim2.new(0, CFG.Avatar + 10, 0, 0)
 	bContent.BackgroundColor3 = Color3.new(0, 0, 0)
 	bContent.BackgroundTransparency = 0.25
 	bContent.BorderSizePixel = 0
@@ -8379,12 +8435,14 @@ function Library:_buildAiWindow()
 
 	local uAvatar = Instance.new("ImageLabel")
 	uAvatar.Name = "Avatar"
-	uAvatar.Size = UDim2.new(0, 30, 0, 30)
-	uAvatar.Position = UDim2.new(1, -30, 0, 6)
+	uAvatar.Size = UDim2.new(0, CFG.Avatar, 0, CFG.Avatar)
+	uAvatar.Position = UDim2.new(1, -CFG.Avatar, 0, 4)
 	uAvatar.BackgroundTransparency = 1
 	uAvatar.BorderSizePixel = 0
-	uAvatar.Image = CFG.UserAvatar
-	uAvatar.ScaleType = Enum.ScaleType.Fit
+	uAvatar.BackgroundColor3 = Color3.new(0.0705882, 0.0705882, 0.0705882)
+	uAvatar.BackgroundTransparency = 0.15
+	uAvatar.ScaleType = Enum.ScaleType.Crop
+	pcall(function() IMG.set(uAvatar, "Image", self:_aiUserAvatar()) end)
 	uAvatar.Parent = UserChatTemplate
 
 	local uAvCorner = Instance.new("UICorner")
@@ -8394,7 +8452,7 @@ function Library:_buildAiWindow()
 	local uContent = Instance.new("Frame")
 	uContent.Name = "Content"
 	uContent.Size = UDim2.new(0, 0, 0, 0)
-	uContent.Position = UDim2.new(1, -40, 0, 0)
+	uContent.Position = UDim2.new(1, -(CFG.Avatar + 10), 0, 0)
 	uContent.AnchorPoint = Vector2.new(1, 0)
 	uContent.BackgroundColor3 = Color3.new(0.0941176, 0.0941176, 0.0941176)
 	uContent.BackgroundTransparency = 0.45
@@ -8558,82 +8616,136 @@ function Library:_buildAiWindow()
 
 	local Dock = Instance.new("Frame")
 	Dock.Name = "AI_DOCK"
-	Dock.Size = UDim2.fromOffset(CFG.BtnSize + 60, CFG.BtnSize + 26)
+	Dock.Size = UDim2.fromOffset(CFG.BtnSize * 2 + CFG.BtnGap, CFG.BtnSize + 26)
 	Dock.Position = UDim2.new(0.5, 0, 0, CFG.BtnY)
 	Dock.AnchorPoint = Vector2.new(0.5, 0)
 	Dock.BackgroundTransparency = 1
 	Dock.ZIndex = 1000
 	Dock.Parent = gui
 
-	local Toggle = Instance.new("CanvasGroup")
-	Toggle.Name = "AI_TOGGLE"
-	Toggle.Size = UDim2.fromOffset(CFG.BtnSize, CFG.BtnSize)
-	Toggle.Position = UDim2.new(0.5, 0, 0, 0)
-	Toggle.AnchorPoint = Vector2.new(0.5, 0)
-	Toggle.BackgroundColor3 = Color3.new(0.0705882, 0.0705882, 0.0705882)
-	Toggle.BackgroundTransparency = 0.1
-	Toggle.BorderSizePixel = 0
-	Toggle.ClipsDescendants = true
-	Toggle.ZIndex = 1001
-	Toggle.GroupTransparency = 0
-	Toggle.Parent = Dock
+	local dockScale = Instance.new("UIScale")
+	dockScale.Scale = 1
+	dockScale.Parent = Dock
 
-	local tCorner = Instance.new("UICorner")
-	tCorner.CornerRadius = UDim.new(0, CFG.BtnCorner)
-	tCorner.Parent = Toggle
+	local buttons = {}
 
-	local tStroke = Instance.new("UIStroke")
-	tStroke.Color = CFG.Red
-	tStroke.Thickness = 1.4
-	tStroke.Transparency = 0.25
-	tStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	tStroke.Parent = Toggle
+	local function makeDockButton(slot, image, caption)
+		local btn = Instance.new("CanvasGroup")
+		btn.Name = "DockButton"
+		btn.Size = UDim2.fromOffset(CFG.BtnSize, CFG.BtnSize)
+		btn.Position = UDim2.new(0, slot * (CFG.BtnSize + CFG.BtnGap), 0, 0)
+		btn.BackgroundColor3 = Color3.new(0.0705882, 0.0705882, 0.0705882)
+		btn.BackgroundTransparency = 0.1
+		btn.BorderSizePixel = 0
+		btn.ClipsDescendants = true
+		btn.ZIndex = 1001
+		btn.GroupTransparency = 0
+		btn.Parent = Dock
 
-	local tGif = Instance.new("ImageLabel")
-	tGif.Name = "Gif"
-	tGif.Size = UDim2.new(1, 0, 1, 0)
-	tGif.BackgroundTransparency = 1
-	tGif.BorderSizePixel = 0
-	tGif.ZIndex = 1002
-	tGif.ScaleType = Enum.ScaleType.Crop
-	tGif.Parent = Toggle
+		local bCorner = Instance.new("UICorner")
+		bCorner.CornerRadius = UDim.new(0, CFG.BtnCorner)
+		bCorner.Parent = btn
 
-	pcall(function() IMG.set(tGif, "Image", CFG.Gif) end)
+		local bLine = Instance.new("UIStroke")
+		bLine.Color = CFG.Red
+		bLine.Thickness = 1.4
+		bLine.Transparency = 0.25
+		bLine.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		bLine.Parent = btn
 
-	local tClick = Instance.new("TextButton")
-	tClick.Name = "ClickArea"
-	tClick.Size = UDim2.new(1, 0, 1, 0)
-	tClick.BackgroundTransparency = 1
-	tClick.BorderSizePixel = 0
-	tClick.ZIndex = 1004
-	tClick.Text = ""
-	tClick.AutoButtonColor = false
-	tClick.Parent = Toggle
+		local pic = Instance.new("ImageLabel")
+		pic.Name = "Icon"
+		pic.Size = UDim2.new(1, 0, 1, 0)
+		pic.BackgroundTransparency = 1
+		pic.BorderSizePixel = 0
+		pic.ZIndex = 1002
+		pic.ScaleType = Enum.ScaleType.Crop
+		pic.Parent = btn
+		pcall(function() IMG.set(pic, "Image", image) end)
 
-	local tScale = Instance.new("UIScale")
-	tScale.Scale = 1
-	tScale.Parent = Toggle
+		local click = Instance.new("TextButton")
+		click.Name = "ClickArea"
+		click.Size = UDim2.new(1, 0, 1, 0)
+		click.BackgroundTransparency = 1
+		click.BorderSizePixel = 0
+		click.ZIndex = 1004
+		click.Text = ""
+		click.AutoButtonColor = false
+		click.Parent = btn
 
-	local tLabel = Instance.new("TextLabel")
-	tLabel.Name = "HoverLabel"
-	tLabel.Size = UDim2.new(1, 0, 0, 18)
-	tLabel.Position = UDim2.new(0.5, 0, 0, CFG.BtnSize + 6)
-	tLabel.AnchorPoint = Vector2.new(0.5, 0)
-	tLabel.BackgroundTransparency = 1
-	tLabel.BorderSizePixel = 0
-	tLabel.ZIndex = 1005
-	tLabel.Text = CFG.Name
-	tLabel.TextColor3 = Color3.new(1, 1, 1)
-	tLabel.TextSize = 14
-	tLabel.Font = Enum.Font.SourceSansBold
-	tLabel.TextTransparency = 1
-	tLabel.Parent = Dock
+		local scale = Instance.new("UIScale")
+		scale.Scale = 1
+		scale.Parent = btn
 
-	local tLabelStroke = Instance.new("UIStroke")
-	tLabelStroke.Color = Color3.new(0, 0, 0)
-	tLabelStroke.Thickness = 2
-	tLabelStroke.Transparency = 1
-	tLabelStroke.Parent = tLabel
+		local lab = Instance.new("TextLabel")
+		lab.Name = "HoverLabel"
+		lab.Size = UDim2.fromOffset(CFG.BtnSize + 80, 18)
+		lab.Position = UDim2.new(0, slot * (CFG.BtnSize + CFG.BtnGap) + math.floor(CFG.BtnSize / 2), 0, CFG.BtnSize + 6)
+		lab.AnchorPoint = Vector2.new(0.5, 0)
+		lab.BackgroundTransparency = 1
+		lab.BorderSizePixel = 0
+		lab.ZIndex = 1005
+		lab.Text = caption
+		lab.TextColor3 = Color3.new(1, 1, 1)
+		lab.TextSize = 14
+		lab.Font = Enum.Font.SourceSansBold
+		lab.TextTransparency = 1
+		lab.Parent = Dock
+
+		local labLine = Instance.new("UIStroke")
+		labLine.Color = Color3.new(0, 0, 0)
+		labLine.Thickness = 2
+		labLine.Transparency = 1
+		labLine.Parent = lab
+
+		local item = {
+			Root = btn,
+			Scale = scale,
+			Label = lab,
+			Stroke = labLine,
+			Click = click,
+			Icon = pic,
+			Base = btn.Position,
+		}
+		buttons[#buttons + 1] = item
+		return item
+	end
+
+	local aiBtn = makeDockButton(0, CFG.Gif, CFG.Name)
+	local statusBtn = makeDockButton(1, CFG.StatusIcon, CFG.StatusName)
+
+	local Toggle = aiBtn.Root
+	local tScale = aiBtn.Scale
+	local tClick = aiBtn.Click
+	local tLabel = aiBtn.Label
+
+	local function fitAi()
+		local cam = workspace.CurrentCamera
+		if not cam then return end
+		local vp = cam.ViewportSize
+		local phone = vp.X < CFG.Small
+		bgAspect.AspectRatio = phone and 1.55 or 1.35
+		Background.Size = phone and UDim2.new(0.92, 0, 0.62, 0) or UDim2.new(0.44, 0, 0.52, 0)
+		dockScale.Scale = phone and 0.82 or 1
+		bSize.MaxSize = Vector2.new(math.clamp(vp.X * 0.52, 190, 360), math.huge)
+		uSize.MaxSize = Vector2.new(math.clamp(vp.X * 0.46, 170, 320), math.huge)
+		bStreaming.TextSize = phone and 15 or 17
+		uStreaming.TextSize = phone and 15 or 17
+		ChatBar.TextSize = phone and 15 or 16
+		Label.TextSize = phone and 17 or 20
+		Logo.Size = UDim2.fromOffset(phone and 38 or CFG.LogoSize, phone and 38 or CFG.LogoSize)
+		Label.Position = UDim2.new(0, phone and 64 or CFG.TitleX, 0, 22)
+		local px, py = Background.AbsolutePosition.X, Background.AbsolutePosition.Y
+		if px < -20 or py < 0 or px > vp.X - 60 or py > vp.Y - 60 then
+			Background.Position = UDim2.new(0.5, 0, 0.5, 0)
+		end
+	end
+
+	self.AiFit = fitAi
+	task.defer(fitAi)
+	pcall(function()
+		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fitAi)
+	end)
 
 	self.Ai = {
 		Gui      = gui,
@@ -8648,6 +8760,8 @@ function Library:_buildAiWindow()
 		SendIcon = sUp,
 		Dock     = Dock,
 		Toggle   = Toggle,
+		StatusBtn = statusBtn,
+		Buttons  = buttons,
 		Hover    = tLabel,
 		BotTpl   = BotChatTemplate,
 		UserTpl  = UserChatTemplate,
@@ -8663,23 +8777,32 @@ function Library:_buildAiWindow()
 	local hoverInfo = TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
 	local bobInfo   = TweenInfo.new(CFG.BtnBob, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
 
-	local bob
-	tClick.MouseEnter:Connect(function()
-		TS:Create(tScale, hoverInfo, { Scale = CFG.BtnGrow }):Play()
-		TS:Create(tLabel, TweenInfo.new(0.18), { TextTransparency = 0 }):Play()
-		TS:Create(tLabelStroke, TweenInfo.new(0.18), { Transparency = 0.2 }):Play()
-		if bob then bob:Cancel() end
-		Toggle.Position = UDim2.new(0.5, 0, 0, 0)
-		bob = TS:Create(Toggle, bobInfo, { Position = UDim2.new(0.5, 0, 0, 7) })
-		bob:Play()
-	end)
+	for _, item in ipairs(buttons) do
+		item.Click.MouseEnter:Connect(function()
+			TS:Create(item.Scale, hoverInfo, { Scale = CFG.BtnGrow }):Play()
+			TS:Create(item.Label, TweenInfo.new(0.18), { TextTransparency = 0 }):Play()
+			TS:Create(item.Stroke, TweenInfo.new(0.18), { Transparency = 0.2 }):Play()
+			if item.Bob then item.Bob:Cancel() end
+			item.Root.Position = item.Base
+			item.Bob = TS:Create(item.Root, bobInfo, { Position = item.Base + UDim2.fromOffset(0, 7) })
+			item.Bob:Play()
+		end)
 
-	tClick.MouseLeave:Connect(function()
-		TS:Create(tScale, TweenInfo.new(0.2), { Scale = 1 }):Play()
-		TS:Create(tLabel, TweenInfo.new(0.18), { TextTransparency = 1 }):Play()
-		TS:Create(tLabelStroke, TweenInfo.new(0.18), { Transparency = 1 }):Play()
-		if bob then bob:Cancel() end
-		TS:Create(Toggle, TweenInfo.new(0.22, Enum.EasingStyle.Sine), { Position = UDim2.new(0.5, 0, 0, 0) }):Play()
+		item.Click.MouseLeave:Connect(function()
+			TS:Create(item.Scale, TweenInfo.new(0.2), { Scale = 1 }):Play()
+			TS:Create(item.Label, TweenInfo.new(0.18), { TextTransparency = 1 }):Play()
+			TS:Create(item.Stroke, TweenInfo.new(0.18), { Transparency = 1 }):Play()
+			if item.Bob then item.Bob:Cancel() end
+			TS:Create(item.Root, TweenInfo.new(0.22, Enum.EasingStyle.Sine), { Position = item.Base }):Play()
+		end)
+	end
+
+	statusBtn.Click.MouseButton1Click:Connect(function()
+		TS:Create(statusBtn.Scale, TweenInfo.new(0.12), { Scale = 0.92 }):Play()
+		pcall(function() self:ToggleStatus() end)
+		task.delay(0.16, function()
+			TS:Create(statusBtn.Scale, TweenInfo.new(0.16), { Scale = 1 }):Play()
+		end)
 	end)
 
 	local function scrollDown()
