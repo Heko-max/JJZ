@@ -42,7 +42,7 @@ local AssetService = game:GetService("AssetService")
 --=====================================================
 local IMAGES = {
 	Background  = "https://i.imgur.com/lyJQbo7.png", -- fills the entire panel behind everything
-	Logo        = "https://i.imgur.com/0RMdDLz.png", -- "NEXO" logo, top-left
+	Logo        = "https://i.imgur.com/kySdbKt.png", -- "NEXO" logo, top-left
 	Banner      = "132582095265277", -- big PREMIUM+ / V4.0 artwork on the Home page
 	Discord     = "16171891828",     -- social button 1 (Discord)
 	YouTube     = "16171897995",      -- social button 2 (YouTube)
@@ -178,6 +178,13 @@ local SOCIAL_TINT  = false
 -- tab hover / click highlight
 local HOVER_ENABLED  = true
 local HOVER_SPEED    = 0.25 -- seconds of the smooth fade
+-- NAV GLOW (Home / Pages / Credits). Same round glow as the social icons.
+-- Lower numbers = stronger glow.
+local NAV_GLOW_SCALE_X  = 1.55 -- how wide the glow spreads around the word
+local NAV_GLOW_SCALE_Y  = 2.45 -- how tall the glow spreads around the word
+local NAV_GLOW_IDLE     = 0.55 -- WHITE glow strength when the page is NOT selected
+local NAV_GLOW_SELECTED = 0.22 -- RED glow strength when the page IS selected
+
 local HOVER_STRENGTH = 0.88 -- 1 = invisible, 0.80 = stronger glow
 local CLICK_SPEED    = 0.45 -- seconds of the click ripple
 
@@ -2791,7 +2798,7 @@ function Library:_buildHeader()
 		Position = UDim2.fromOffset(LAYOUT.HeaderOffsetX, 0),
 		Size = UDim2.new(0.60, -LAYOUT.HeaderOffsetX, 1, 0),
 		BackgroundTransparency = 1,
-		ClipsDescendants = true,
+		ClipsDescendants = false, -- off so the round nav glow is never cut off
 		Parent = self.Header,
 	}, { hlist(LAYOUT.GAP * 2) })
 
@@ -2864,12 +2871,18 @@ function Library:_buildHeader()
 			TextColor3 = THEME.NavIdle,
 			Parent = nav,
 		})
-		-- White text glow by default; selected nav tweens into red glow.
-		local glow = new("UIStroke", {
-			Color = Color3.fromRGB(255, 255, 255),
-			Thickness = 1.35,
-			Transparency = 0.28,
-			ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
+		-- Round soft glow behind the word. This is the SAME glow image the
+		-- Discord / YouTube icons use, only tinted white. Turns red on select.
+		local glow = new("ImageLabel", {
+			Name = "NavGlow",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromScale(NAV_GLOW_SCALE_X, NAV_GLOW_SCALE_Y),
+			BackgroundTransparency = 1,
+			Image = img("16171994145"),
+			ImageColor3 = Color3.fromRGB(255, 255, 255),
+			ImageTransparency = NAV_GLOW_IDLE,
+			ZIndex = 0,
 			Parent = btn,
 		})
 		btn.MouseButton1Click:Connect(function()
@@ -2910,8 +2923,8 @@ function Library:SelectPage(name, back)
 		local glow = self.NavGlows and self.NavGlows[label]
 		if glow then
 			playTween(glow, tweenInfo(0.18), {
-				Color = selected and THEME.Accent or Color3.fromRGB(255, 255, 255),
-				Transparency = selected and 0.10 or 0.28,
+				ImageColor3 = selected and THEME.Accent or Color3.fromRGB(255, 255, 255),
+				ImageTransparency = selected and NAV_GLOW_SELECTED or NAV_GLOW_IDLE,
 			}, "navGlow" .. label)
 		end
 	end
