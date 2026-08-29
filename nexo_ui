@@ -35,6 +35,7 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
+local AssetService = game:GetService("AssetService")
 
 --=====================================================
 --  1) IMAGE IDS - REPLACE THESE WITH YOUR OWN
@@ -477,338 +478,300 @@ end
 -- Roblox ids never need any of that and keep working on every executor.
 
 local IMG = {}
-local GIF -- animated GIF engine, built further down
+-- Image / GIF logic copied from the provided script (logic only)
+local APP = APP or { cacheDir = "nexohub_images", concurrency = 3 }
+local Loader = { fileReady = false, assets = {}, bodies = {}, queue = {}, active = 0 }
+local getAsset = getcustomasset or getsynasset or (syn and syn.getcustomasset)
+local httpRequest = (syn and syn.request) or request or http_request
+	or (fluxus and fluxus.request) or (krnl and krnl.request)
+Loader.fileReady = (writefile and isfile and getAsset) and true or false
+if Loader.fileReady and makefolder and not (isfolder and isfolder(APP.cacheDir)) then pcall(makefolder, APP.cacheDir) end
+local IMAGE_EXT = { "png", "jpg", "gif", "webp", "bmp", "ico" }
 
-IMG.CACHE_DIR   = "nexohub_images"
-IMG.MIN_BYTES   = 64
-IMG.MAX_RETRIES = 2
-IMG.VALID_EXT   = { png = true, jpg = true, jpeg = true, bmp = true, tga = true, gif = true }
-IMG.gifBodies   = {}   -- url -> raw gif bytes, kept for the GIF engine
-IMG.memory      = {}   -- input string -> resolved content id
-IMG.pending     = {}   -- token number  -> input string
-IMG.pendingN    = 0
-
--- executor shims -----------------------------------------------------------
-IMG.getasset =
-	getcustomasset
-	or getsynasset
-	or (syn and syn.getcustomasset)
-	or (fluxus and fluxus.get_custom_asset)
-	or (syn and syn.get_custom_asset)
-	or (fluxus and fluxus.getcustomasset)
-	or getcustomassetfile
-	or (getgenv and getgenv().getcustomasset)
-
-IMG.writefile  = writefile
-IMG.isfile     = isfile
-IMG.isfolder   = isfolder
-IMG.makefolder = makefolder
-IMG.listfiles  = listfiles
-IMG.delfile    = delfile
-
-function IMG.httpGet(url)
-	-- every download function this executor might have, tried one by one.
-	-- some of them throw instead of returning, so each one is wrapped.
-	local reqs = {}
-	local function add(f)
-		if type(f) == "function" then reqs[#reqs + 1] = f end
+local function httpGet(url)
+	if httpRequest then
+		local ok, response = pcall(httpRequest, { Url = url, Method = "GET", Headers = {
+				["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+			}, })
+		if ok and type(response) == "table" and response.Body then return response.Body end
 	end
-	add(syn and syn.request)
-	add(request)
-	add(http_request)
-	add(http and http.request)
-	add(fluxus and fluxus.request)
-	add(getgenv and getgenv().request)
-
-	for _, fn in ipairs(reqs) do
-		local ok, res = pcall(fn, { Url = url, Method = "GET" })
-		if ok and type(res) == "table" then
-			local body = res.Body or res.body
-			if type(body) == "string" and #body > 0 then return body end
-		end
-	end
-
 	local ok, body = pcall(function() return game:HttpGet(url, true) end)
-	if ok and type(body) == "string" and #body > 0 then return body end
-
-	ok, body = pcall(function() return game:HttpGetAsync(url) end)
-	if ok and type(body) == "string" and #body > 0 then return body end
-
+	if ok then return body end
 	return nil
 end
 
--- true when this executor can download website images
-IMG.canDownload = (IMG.writefile and IMG.getasset) and true or false
-
-local function ensureFolder()
-	if IMG.makefolder and not (IMG.isfolder and IMG.isfolder(IMG.CACHE_DIR)) then
-		pcall(IMG.makefolder, IMG.CACHE_DIR)
-	end
-end
-ensureFolder()
-
-function IMG.hash(s)
-	local h = 5381
-	for i = 1, #s do h = (h * 33 + s:byte(i)) % 4294967296 end
-	return tostring(h)
-end
-
-function IMG.extOf(url, fallback)
-	local e = url:match("%.(%w%w%w%w?)%f[%W]")
-	if e then e = e:lower() end
-	return (e and IMG.VALID_EXT[e]) and e or (fallback or "png")
-end
-
--- read the real file type from the first bytes
-function IMG.sniff(body)
-	if #body < 12 then return nil end
-	if body:sub(1, 8) == "\137PNG\r\n\26\n" then return "png" end
-	if body:sub(1, 3) == "\255\216\255" then return "jpg" end
-	if body:sub(1, 2) == "BM" then return "bmp" end
-	if body:sub(1, 6) == "GIF89a" or body:sub(1, 6) == "GIF87a" then return "gif" end
-	if body:sub(1, 4) == "RIFF" and body:sub(9, 12) == "WEBP" then return "webp" end
+local function rangeGet(url, span)
+	if not httpRequest then return nil end
+	local ok, response = pcall(httpRequest, { Url = url, Method = "GET", Headers = {
+			["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+			["Range"] = "bytes=0-" .. span,
+		}, })
+	if ok and type(response) == "table" and type(response.Body) == "string" then return response.Body end
 	return nil
 end
 
--- classify(input) -> "id" | "http" | "file" | nil, value/reason
-function IMG.classify(input)
-	if input == nil or input == false or input == "" then return nil, "empty" end
-	if type(input) == "number" then
-		return "id", "rbxassetid://" .. tostring(math.floor(input))
-	end
-
-	local s = tostring(input):gsub("%s", "")
-	-- Accept Markdown links pasted from chat, like [https://i.imgur.com/a.png](https://i.imgur.com/a.png)
-	-- and keep only the real URL so image loading does not fail.
-	s = s:match("^%[[^%]]+%]%((https?://[^%)]+)%)$") or s
-	if s == "" then return nil, "empty" end
-
-	local filePath = s:match("^file:(.+)$")
-	if filePath then return "file", filePath end
-
-	if s:match("^%d+$") then return "id", "rbxassetid://" .. s end
-	if s:lower():match("^rbx") then return "id", s end
-
-	local host = s:match("^https?://([^/]+)")
-	if host and host:lower():find("roblox%.com") then
-		local id =
-			s:match("[/?&][iI][dD]=(%d+)")
-			or s:match("[/?&]assetId=(%d+)")
-			or s:match("[/?&]assetid=(%d+)")
-			or s:match("/library/(%d+)")
-			or s:match("/catalog/(%d+)")
-			or s:match("/asset[s]?/(%d+)")
-			or s:match("(%d%d%d%d%d+)")
-		if id then return "id", "rbxassetid://" .. id end
-		return nil, "roblox link has no asset id"
-	end
-
-	-- Imgur page links often fail as images; convert them to direct image links.
-	local imgurId = s:match("^https?://imgur%.com/([%w]+)$") or s:match("^https?://www%.imgur%.com/([%w]+)$")
-	if imgurId then s = "https://i.imgur.com/" .. imgurId .. ".png" end
-	if s:match("^https?://") then return "http", s end
-	if s:match("^[%w%.%-]+%.%a%a+/") then return "http", "https://" .. s end
-
-	return "id", s
+local function digest(text)
+	local value = 5381
+	for index = 1, #text do value = (value * 33 + text:byte(index)) % 4294967296 end
+	return tostring(value)
 end
 
-function IMG.isUrl(input)
-	local kind = IMG.classify(input)
-	return kind == "http" or kind == "file"
+local function sniff(body)
+	if not body or #body < 12 then return nil, "File is too small to be an image" end
+	local head = body:sub(1, 16)
+	if head:sub(1, 8) == "\137PNG\r\n\26\n" then return "png" end
+	if head:sub(1, 3) == "\255\216\255" then return "jpg" end
+	if head:sub(1, 6) == "GIF89a" or head:sub(1, 6) == "GIF87a" then return "gif" end
+	if head:sub(1, 4) == "RIFF" and head:sub(9, 12) == "WEBP" then return "webp" end
+	if head:sub(1, 2) == "BM" then return "bmp" end
+	if head:sub(1, 4) == "\0\0\1\0" then return "ico" end
+	if head:sub(1, 4) == "\26\69\223\163" then return nil, "WebM video is not an image" end
+	if body:sub(5, 8) == "ftyp" then return nil, "MP4 video is not an image" end
+	return nil, "Unrecognized image format"
 end
 
-function IMG.fromFile(path)
-	if not IMG.getasset then return nil, "executor lacks getcustomasset" end
-	if IMG.isfile and not IMG.isfile(path) then return nil, "file not found" end
-	local ok, id = pcall(IMG.getasset, path)
-	if not ok or not id then return nil, "getcustomasset failed" end
-	return id
+local function toAsset(path)
+	local ok, id = pcall(getAsset, path)
+	if ok and id then return id end
+	ok, id = pcall(getAsset, path, true)
+	if ok and id then return id end
+	return nil
 end
 
--- download once, cache on disk, return a usable content id
-function IMG.download(url)
-	if not IMG.canDownload then
-		return nil, "executor cannot download images (needs writefile + getcustomasset)"
-	end
+local function normalize(url)
+	url = tostring(url or "")
+	url = url:gsub("^%s+", "")
+	url = url:gsub("%s+$", "")
+	url = url:gsub("^http://", "https://")
+	return url
+end
 
-	ensureFolder()
-	local base = IMG.CACHE_DIR .. "/" .. IMG.hash(url)
-	local path = base .. "." .. IMG.extOf(url, "png")
-	if IMG.isfile and IMG.isfile(path) then
-		local cachedId = IMG.fromFile(path)
-		if cachedId then return cachedId end
-	end
+local function directImage(url)
+	local path = url:match("^[^?#]+") or url
+	local ext = path:match("%.(%w+)$")
+	if not ext then return false end
+	ext = ext:lower()
+	return ext == "png" or ext == "jpg" or ext == "jpeg" or ext == "gif"
+		or ext == "webp" or ext == "bmp" or ext == "ico"
+end
+local VIDEO_EXT = { mp4 = true, m4v = true, mov = true, webm = true, mkv = true, avi = true, ogv = true, flv = true,
+	m3u8 = true, mpd = true, ts = true, wmv = true, mpg = true, mpeg = true, gifv = true, }
+local VIDEO_HOST = { "x%.com/[%w_%.]+/status/%d+", "twitter%.com/[%w_%.]+/status/%d+", "youtube%.com/watch",
+	"youtu%.be/", "youtube%.com/shorts", "vimeo%.com/%d+", "streamable%.com/", "tiktok%.com/", "dailymotion%.com/video",
+	"twitch%.tv/videos", "teachertube%.com/video", "facebook%.com/watch", "reddit%.com/r/[%w_]+/comments", }
 
-	local lastErr = "download failed"
-	for attempt = 1, IMG.MAX_RETRIES do
-		local ok, body = pcall(IMG.httpGet, url)
-		if ok and type(body) == "string" and #body >= IMG.MIN_BYTES then
-			local head = body:sub(1, 15):lower()
-			if head:find("<!doctype") or body:sub(1, 5):lower() == "<html" then
-				return nil, "got a web page, not an image (hotlink blocked)"
-			end
+local function videoLink(url)
+	local path = url:match("^[^?#]+") or url
+	local ext = path:match("%.(%w+)$")
+	if ext and VIDEO_EXT[ext:lower()] then return true end
+	local low = url:lower()
+	for _, pattern in ipairs(VIDEO_HOST) do if low:match(pattern) then return true end end
+	return false
+end
 
-			local kind = IMG.sniff(body)
-			if kind == "gif" then
-				-- Roblox cannot display a raw .gif, so the bytes are handed to the
-				-- GIF engine, which decodes the frames and animates them instead.
-				IMG.gifBodies[url] = body
-				return nil, "animated gif, handled by the GIF engine"
-			end
-			if kind == "webp" then
-				return nil, "roblox cannot show WEBP images"
-			end
-			if kind then path = base .. "." .. kind end
+local function directVideo(url)
+	local path = url:match("^[^?#]+") or url
+	local ext = path:match("%.(%w+)$")
+	if ext and VIDEO_EXT[ext:lower()] then return true end
+	return false
+end
 
-			if not pcall(IMG.writefile, path, body) then return nil, "writefile failed" end
-			return IMG.fromFile(path)
-		else
-			lastErr = ok and "response was not a file" or "http request failed"
-			if attempt < IMG.MAX_RETRIES then task.wait(0.35) end
+local function gifTwin(url)
+	local imgur = url:match("^https://i%.imgur%.com/([%w]+)%.%w+$") or url:match("^https://imgur%.com/([%w]+)%.gifv?$")
+	if imgur then return "https://i.imgur.com/" .. imgur .. ".gif" end
+	local giphy = url:match("giphy%.com/media/([%w_%-]+)/")
+	if giphy then return "https://media.giphy.com/media/" .. giphy .. "/giphy.gif" end
+	local tenor = url:match("^(https://media[%w%.%-]*%.tenor%.com/[%w_%-]+/[^/%.]+)%.%w+$")
+	if tenor then return tenor .. ".gif" end
+	return nil
+end
+
+local function stillFor(url)
+	local imgur = url:match("^https://i%.imgur%.com/([%w]+)%.%w+$") or url:match("^https://imgur%.com/([%w]+)%.gifv?$")
+	if imgur then return "https://i.imgur.com/" .. imgur .. ".jpg" end
+	local low = url:lower()
+	local tube = low:match("youtube%.com/watch%?v=([%w_%-]+)") or low:match("youtu%.be/([%w_%-]+)")
+		or low:match("youtube%.com/shorts/([%w_%-]+)")
+	if tube then return "https://i.ytimg.com/vi/" .. tube .. "/hqdefault.jpg" end
+	local streamable = low:match("streamable%.com/([%w]+)")
+	if streamable then return "https://cdn-cf-east.streamable.com/image/" .. streamable .. ".jpg" end
+	return nil
+end
+
+local function tweetPoster(url)
+	local low = url:lower()
+	local id = low:match("x%.com/[%w_%.]+/status/(%d+)") or low:match("twitter%.com/[%w_%.]+/status/(%d+)")
+	if not id then return nil end
+	local user = url:match("com/([%w_%.]+)/status/%d+") or "i"
+	local slash = string.char(92)
+	local probes = { "https://api.fxtwitter.com/" .. user .. "/status/" .. id,
+		"https://api.fxtwitter.com/status/" .. id, "https://api.vxtwitter.com/" .. user .. "/status/" .. id, }
+	for _, probe in ipairs(probes) do
+		local body = httpGet(probe)
+		if type(body) == "string" and #body > 40 then
+			local shot = body:match('"thumbnail_url"%s*:%s*"([^"]+)"')
+				or body:match('"poster"%s*:%s*"([^"]+)"')
+				or body:match('"preview_image"%s*:%s*"([^"]+)"')
+			if shot then return (shot:gsub(slash .. "/", "/")) end
 		end
 	end
-	return nil, lastErr
+	return nil
 end
 
--- BLOCKING resolve of any input -> content id. call inside task.spawn.
-function IMG.get(input)
-	local key = tostring(input)
-	if IMG.memory[key] then return IMG.memory[key] end
-
-	local kind, value = IMG.classify(input)
-	if not kind then return nil, value end
-
-	local id, err
-	if kind == "id" then
-		id = value
-	elseif kind == "file" then
-		id, err = IMG.fromFile(value)
-	else
-		id, err = IMG.download(value)
+local function pageImage(url)
+	local html = httpGet(url)
+	if type(html) ~= "string" or #html < 50 then return nil end
+	local found = html:match([==[<meta%s+property=["']og:image["']%s+content=["']([^"']+)["']]==])
+		or html:match([==[<meta%s+property=["']og:image:secure_url["']%s+content=["']([^"']+)["']]==])
+		or html:match([==[<meta%s+name=["']twitter:image["']%s+content=["']([^"']+)["']]==])
+		or html:match([==[<meta%s+content=["']([^"']+)["']%s+property=["']og:image["']]==])
+	if found then
+		local clean = found:gsub("&amp;", "&")
+		return clean
 	end
-
-	if id then
-		IMG.memory[key] = id
-		return id
-	end
-	return nil, err or "unknown error"
+	return nil
 end
 
--- after a link finishes loading, hide the "no image" placeholders that sit
--- next to it (the round button letter, the red X on close, ...)
-function IMG.hideFallbacks(inst)
-	pcall(function()
-		for _, name in ipairs({ "Fallback", "X" }) do
-			local a = inst:FindFirstChild(name)
-			if a then a.Visible = false end
-			if inst.Parent then
-				local b = inst.Parent:FindFirstChild(name)
-				if b then b.Visible = false end
+local function cachePaths(name, ext)
+	return { APP.cacheDir .. "/" .. name .. "." .. ext, name .. "." .. ext }
+end
+
+local function fetchImage(url)
+	if not Loader.fileReady then return nil, "No file access in this environment" end
+	local name = digest(url)
+	for _, ext in ipairs(IMAGE_EXT) do
+		for _, path in ipairs(cachePaths(name, ext)) do
+			if isfile(path) then
+				local id = toAsset(path)
+				if id then return id, ext end
 			end
 		end
-	end)
+	end
+	local body = httpGet(url)
+	if type(body) ~= "string" or #body < 32 then return nil, "Download failed or empty response" end
+	local head = body:sub(1, 200):lower()
+	if head:find("<!doctype") or head:find("<html") then return nil, "Host returned a web page, link is blocked" end
+	local ext, err = sniff(body)
+	if not ext then return nil, err end
+	if ext == "gif" then Loader.bodies[url] = body end
+	for _, path in ipairs(cachePaths(name, ext)) do
+		if pcall(writefile, path, body) then
+			local id = toAsset(path)
+			if id then return id, ext end
+		end
+	end
+	return nil, "Cache write was rejected"
+end
+Loader.posters = {}
+
+function Loader.resolve(rawUrl)
+	local url = normalize(rawUrl)
+	if url == "" then return nil, "No link provided" end
+	local native = url:match("^rbxvideo://(%d+)$") or url:match("^rbxassetid://(%d+)#video$") or url:match("^(%d+)#video$")
+	if native then
+		Loader.assets[url] = { "rbxassetid://" .. native, "video", url }
+		return "rbxassetid://" .. native, "video"
+	end
+	if videoLink(url) then
+		local cachedVideo = Loader.assets[url]
+		if cachedVideo then return cachedVideo[1], cachedVideo[2] end
+		local twin = gifTwin(url)
+		if twin then
+			local twinId, twinExt = fetchImage(twin)
+			if twinId and twinExt == "gif" then
+				Loader.assets[url] = { twinId, "gif", twin }
+				return twinId, "gif"
+			end
+		end
+		local poster = Loader.posters[url]
+		if poster == nil then
+			poster = stillFor(url) or tweetPoster(url)
+			if not poster and not directVideo(url) then poster = pageImage(url) end
+			Loader.posters[url] = poster or false
+		end
+		local shot = nil
+		if poster then shot = fetchImage(poster) end
+		Loader.assets[url] = { shot or "", "video", url }
+		return shot or "", "video"
+	end
+	if url:match("^rbxassetid://%d+$") or url:match("^rbxasset://") or url:match("^rbxthumb://") then return url, "rbx" end
+	if url:match("^%d+$") then return "rbxassetid://" .. url, "rbx" end
+	if not url:match("^https?://") then return nil, "Link must start with http or https" end
+	local cached = Loader.assets[url]
+	if cached then return cached[1], cached[2] end
+	local target = url
+	if not directImage(target) then
+		local found = pageImage(target)
+		if found then target = normalize(found) end
+	end
+	local id, info = fetchImage(target)
+	if not id then return nil, info end
+	Loader.assets[url] = { id, info, target }
+	return id, info
 end
 
--- IMG.set(instance, "Image", input, onDone)
--- ids apply instantly, links apply as soon as the download finishes
-function IMG.set(inst, prop, input, onDone)
-	if not inst then return end
-	prop = prop or "Image"
-
-	local kind, value = IMG.classify(input)
-	if not kind then
-		pcall(function() inst[prop] = "" end)
-		if onDone then onDone(false, "empty") end
-		return
+function Loader.bytes(url)
+	local key = normalize(url)
+	if Loader.bodies[key] then return Loader.bodies[key] end
+	local cached = Loader.assets[key]
+	local target = (cached and cached[3]) or key
+	if Loader.bodies[target] then return Loader.bodies[target] end
+	if isfile and readfile then
+		local name = digest(target)
+		for _, ext in ipairs(IMAGE_EXT) do
+			for _, path in ipairs(cachePaths(name, ext)) do
+				if isfile(path) then
+					local ok, body = pcall(readfile, path)
+					if ok and type(body) == "string" and #body > 32 then
+						Loader.bodies[key] = body
+						return body
+					end
+				end
+			end
+		end
 	end
+	local body = httpGet(target)
+	if type(body) == "string" and #body > 32 then
+		Loader.bodies[key] = body
+		return body
+	end
+	return nil
+end
 
-	if kind == "id" then
-		-- Roblox sometimes ignores a rapid same-frame image swap. Clearing first and
-		-- re-applying on the next frame makes logo/icon ids load more reliably.
-		pcall(function() inst[prop] = "" end)
-		task.defer(function()
-			if inst and inst.Parent ~= nil then pcall(function() inst[prop] = value end) end
+local function pump()
+	while Loader.active < APP.concurrency and #Loader.queue > 0 do
+		local job = table.remove(Loader.queue, 1)
+		Loader.active = Loader.active + 1
+		task.spawn(function()
+			local id, info = Loader.resolve(job.url)
+			Loader.active = Loader.active - 1
+			task.spawn(job.done, id, info)
+			pump()
 		end)
-		IMG.hideFallbacks(inst)
-		if onDone then onDone(true, value) end
-		return
 	end
-
-	-- ANIMATED GIF: any link that points at a .gif (or an imgur / giphy /
-	-- tenor page that has one behind it) is played frame by frame on this
-	-- very same ImageLabel. Everything else carries on as a still image.
-	if kind == "http" and prop == "Image" and GIF and GIF.ready and GIF.looksGif(value) then
-		GIF.attach(inst, value, onDone)
-		return
-	end
-
-	local cached = IMG.memory[tostring(input)]
-	if cached then
-		pcall(function() inst[prop] = cached end)
-		IMG.hideFallbacks(inst)
-		if onDone then onDone(true, cached) end
-		return
-	end
-
-	pcall(function() inst[prop] = "" end)
-	task.spawn(function()
-		local id, err = IMG.get(input)
-		if id and inst and inst.Parent ~= nil then
-			pcall(function() inst[prop] = id end)
-			IMG.hideFallbacks(inst)
-		end
-		if onDone then onDone(id and true or false, id or err) end
-	end)
 end
 
--- download a list of links up front so they pop in instantly later
-function IMG.preload(list, onDone)
-	task.spawn(function()
-		local done = 0
-		for _, item in ipairs(list or {}) do
-			if IMG.get(item) then done = done + 1 end
-		end
-		if onDone then onDone(done) end
-	end)
+function Loader.request(url, done)
+	table.insert(Loader.queue, { url = url, done = done })
+	pump()
 end
 
-function IMG.clearCache()
-	IMG.memory = {}
-	if not (IMG.listfiles and IMG.delfile) then return 0 end
-	local removed = 0
-	local ok, files = pcall(IMG.listfiles, IMG.CACHE_DIR)
-	if ok and type(files) == "table" then
-		for _, f in ipairs(files) do
-			if pcall(IMG.delfile, f) then removed = removed + 1 end
-		end
+function Loader.forget(url)
+	local key = normalize(url)
+	Loader.assets[key] = nil
+	if not (isfile and delfile) then return false end
+	local name = digest(key)
+	local removed = false
+	for _, ext in ipairs(IMAGE_EXT) do
+		for _, path in ipairs(cachePaths(name, ext)) do if isfile(path) and pcall(delfile, path) then removed = true end end
 	end
 	return removed
 end
-
---=====================================================
---  ANIMATED GIF ENGINE
---  Decodes a .gif and plays its frames on a normal ImageLabel using an
---  EditableImage. Any image field in this library (Background, Logo,
---  Banner, MiniIcon, social icons, notification icons, card icons)
---  accepts a gif link now - nothing else about them changed.
---  Falls back silently to a still image when the executor or client
---  cannot do EditableImage.
---=====================================================
-local GIF_ASSETS = select(2, pcall(function() return game:GetService("AssetService") end))
-local GIF_RUN    = select(2, pcall(function() return game:GetService("RunService") end))
-
-GIF = {
-	ready     = false,
-	cache     = {},   -- url -> { pending, waiting, data, fault }
-	players   = {},   -- player -> true
-	budget    = 26 * 1024 * 1024,
-	maxFrames = 300,
-}
-
-local GIF_BUFFER_OK = type(buffer) == "table" and type(buffer.create) == "function"
-if GIF_BUFFER_OK and GIF_ASSETS and Content ~= nil then
-	GIF.ready = pcall(function()
-		local probe = GIF_ASSETS:CreateEditableImage({ Size = Vector2.new(2, 2) })
+local Gif = { ready = false, cache = {}, players = {}, budget = 26 * 1024 * 1024, maxFrames = 300 }
+local bufferOk = type(buffer) == "table" and type(buffer.create) == "function"
+if bufferOk and Content ~= nil then
+	Gif.ready = pcall(function()
+		local probe = AssetService:CreateEditableImage({ Size = Vector2.new(2, 2) })
 		probe:WritePixelsBuffer(Vector2.zero, Vector2.new(2, 2), buffer.create(16))
 		return Content.fromObject(probe)
 	end)
@@ -1056,7 +1019,7 @@ local function gifDecode(bytes)
 				dirtyT = math.min(dirtyT, math.max(0, top))
 				dirtyR = math.max(dirtyR, math.min(screenW, left + fw))
 				dirtyB = math.max(dirtyB, math.min(screenH, top + fh))
-				if #frames > 0 and (total + frameBytes > GIF.budget or #frames >= GIF.maxFrames) then
+				if #frames > 0 and (total + frameBytes > Gif.budget or #frames >= Gif.maxFrames) then
 					frames[#frames].delay = frames[#frames].delay + ms
 				else
 					local snapshot = buffer.create(frameBytes)
@@ -1083,11 +1046,57 @@ local function gifDecode(bytes)
 	return { width = screenW, height = screenH, frames = frames, loops = loops, bytes = total }
 end
 
+function Gif.count()
+	local total = 0
+	for _ in pairs(Gif.players) do total = total + 1 end
+	return total
+end
+
+function Gif.forget(url)
+	Gif.cache[normalize(url)] = nil
+end
+
+function Gif.load(url, done)
+	local key = normalize(url)
+	local entry = Gif.cache[key]
+	if entry then
+		if entry.pending then
+			table.insert(entry.waiting, done)
+		else
+			task.spawn(done, entry.data, entry.fault)
+		end
+		return
+	end
+	entry = { pending = true, waiting = { done } }
+	Gif.cache[key] = entry
+	task.spawn(function()
+		local bytes = Loader.bytes(key)
+		local data, fault
+		if type(bytes) == "string" then
+			local ok, result, problem = pcall(gifDecode, bytes)
+			if ok then
+				data, fault = result, problem
+			else
+				fault = "The GIF decoder stopped early"
+			end
+		else
+			fault = "Could not read the GIF data"
+		end
+		Loader.bodies[key] = nil
+		entry.pending = false
+		entry.data = data
+		entry.fault = fault
+		local waiting = entry.waiting
+		entry.waiting = {}
+		for _, callback in ipairs(waiting) do task.spawn(callback, data, fault) end
+	end)
+end
+
 local function writePixels(editable, position, size, pixels)
 	editable:WritePixelsBuffer(position, size, pixels)
 end
 
-function GIF.push(player, full)
+function Gif.push(player, full)
 	local data = player.data
 	local editable = player.editable
 	if not data or not editable then return end
@@ -1112,9 +1121,9 @@ function GIF.push(player, full)
 	end
 end
 
-function GIF.detach(player, restore)
+function Gif.detach(player, restore)
 	if not player then return end
-	GIF.players[player] = nil
+	Gif.players[player] = nil
 	player.playing = false
 	local target = player.target
 	if target and target.Parent then
@@ -1126,170 +1135,110 @@ function GIF.detach(player, restore)
 	player.scratchBytes = nil
 end
 
--- imgur / giphy / tenor pages -> the real .gif file behind them
-function GIF.twin(url)
-	local imgur = url:match("^https://i%.imgur%.com/([%w]+)%.%w+$")
-		or url:match("^https://imgur%.com/([%w]+)%.gifv?$")
-	if imgur then return "https://i.imgur.com/" .. imgur .. ".gif" end
-	local giphy = url:match("giphy%.com/media/([%w_%-]+)/")
-	if giphy then return "https://media.giphy.com/media/" .. giphy .. "/giphy.gif" end
-	local tenor = url:match("^(https://media[%w%.%-]*%.tenor%.com/[%w_%-]+/[^/%.]+)%.%w+$")
-	if tenor then return tenor .. ".gif" end
-	return nil
-end
-
-function GIF.looksGif(url)
-	if type(url) ~= "string" then return false end
-	local path = url:match("^[^?#]+") or url
-	local ext = path:match("%.(%w+)$")
-	if ext and ext:lower() == "gif" then return true end
-	return GIF.twin(url) ~= nil
-end
-
--- the raw bytes, either kept by IMG.download or fetched now
-function GIF.bytes(url)
-	local body = IMG.gifBodies[url]
-	if type(body) == "string" and body:sub(1, 3) == "GIF" then return body end
-	body = IMG.httpGet(url)
-	if type(body) ~= "string" or body:sub(1, 3) ~= "GIF" then
-		local twin = GIF.twin(url)
-		if twin and twin ~= url then body = IMG.httpGet(twin) end
-	end
-	if type(body) == "string" and body:sub(1, 3) == "GIF" then return body end
-	return nil
-end
-
--- decode once per link, everyone else waits on the same job
-function GIF.load(url, done)
-	local entry = GIF.cache[url]
-	if entry then
-		if entry.pending then
-			table.insert(entry.waiting, done)
-		else
-			task.spawn(done, entry.data, entry.fault)
-		end
-		return
-	end
-
-	entry = { pending = true, waiting = { done } }
-	GIF.cache[url] = entry
-
-	task.spawn(function()
-		local bytes = GIF.bytes(url)
-		local data, fault
-		if type(bytes) == "string" then
-			local ok, result, problem = pcall(gifDecode, bytes)
-			if ok then
-				data, fault = result, problem
-			else
-				fault = "the gif decoder stopped early"
-			end
-		else
-			fault = "could not download the gif"
-		end
-		IMG.gifBodies[url] = nil
-		entry.pending = false
-		entry.data    = data
-		entry.fault   = fault
-		local waiting = entry.waiting
-		entry.waiting = {}
-		for _, callback in ipairs(waiting) do task.spawn(callback, data, fault) end
-	end)
-end
-
--- play a gif on an existing ImageLabel / ImageButton
-function GIF.attach(target, url, onDone)
-	if not GIF.ready or not target then
-		if onDone then onDone(false, "this client cannot animate gifs") end
-		return nil
-	end
-
-	local player = {
-		target = target, url = url, frame = 1, clock = 0,
-		speed = 1, playing = true, ready = false, loopsDone = 0,
-	}
-	GIF.players[player] = true
-	pcall(function() target.Image = "" end)
-
-	GIF.load(url, function(data, fault)
-		if not GIF.players[player] then return end
+function Gif.attach(target, url, hooks)
+	if not Gif.ready then return nil end
+	hooks = hooks or {}
+	local player = { target = target, url = url, frame = 1, clock = 0, speed = 1, playing = true, ready = false,
+		loopsDone = 0, onFrame = hooks.onFrame, onState = hooks.onState, }
+	Gif.players[player] = true
+	Gif.load(url, function(data, fault)
+		if not Gif.players[player] then return end
 		if not data then
-			GIF.players[player] = nil
-			if onDone then onDone(false, fault or "this gif could not be decoded") end
+			player.fault = fault or "This GIF could not be decoded"
+			Gif.players[player] = nil
+			if player.onState then player.onState(player) end
 			return
 		end
-
 		local ok, editable = pcall(function()
-			return GIF_ASSETS:CreateEditableImage({ Size = Vector2.new(data.width, data.height) })
+			return AssetService:CreateEditableImage({ Size = Vector2.new(data.width, data.height) })
 		end)
 		if not ok or not editable then
-			GIF.players[player] = nil
-			if onDone then onDone(false, "this client cannot draw gif frames") end
+			player.fault = "This client cannot draw GIF frames"
+			Gif.players[player] = nil
+			if player.onState then player.onState(player) end
 			return
 		end
-
-		player.data     = data
+		player.data = data
 		player.editable = editable
-		player.size     = Vector2.new(data.width, data.height)
-
-		if not pcall(function() target.ImageContent = Content.fromObject(editable) end) then
-			GIF.players[player] = nil
-			if onDone then onDone(false, "this client cannot draw gif frames") end
+		player.size = Vector2.new(data.width, data.height)
+		local applied = pcall(function() target.ImageContent = Content.fromObject(editable) end)
+		if not applied then
+			player.fault = "This client cannot draw GIF frames"
+			Gif.players[player] = nil
+			if player.onState then player.onState(player) end
 			return
 		end
-
-		player.ready   = true
+		player.ready = true
 		player.playing = #data.frames > 1
-		GIF.push(player, true)
-		IMG.hideFallbacks(target)
-		if onDone then onDone(true, url) end
+		Gif.push(player, true)
+		if player.onState then player.onState(player) end
 	end)
-
 	return player
 end
 
--- one heartbeat drives every gif on screen
-if GIF_RUN then
-	GIF_RUN.Heartbeat:Connect(function(step)
-		for player in pairs(GIF.players) do
-			local target = player.target
-			if not target or not target.Parent then
-				GIF.detach(player)
-			elseif player.ready and player.playing and player.data then
-				local frames = player.data.frames
-				local count  = #frames
-				player.clock = player.clock + step * 1000 * player.speed
-				if player.clock > 320 then player.clock = 320 end
-
-				local advance = 0
-				while advance < 40 do
-					local current = frames[player.frame]
-					if not current or player.clock < current.delay then break end
-					player.clock = player.clock - current.delay
-					local nextIndex = player.frame + 1
-					if nextIndex > count then
-						player.loopsDone = player.loopsDone + 1
-						if player.data.loops > 0 and player.loopsDone >= player.data.loops then
-							player.playing = false
-							break
-						end
-						nextIndex = 1
-						advance = advance + 1
+RunService.Heartbeat:Connect(function(step)
+	for player in pairs(Gif.players) do
+		local target = player.target
+		if not target or not target.Parent then
+			Gif.detach(player)
+		elseif player.ready and player.playing and player.data then
+			local frames = player.data.frames
+			local count = #frames
+			player.clock = player.clock + step * 1000 * player.speed
+			if player.clock > 320 then player.clock = 320 end
+			local advance, halted = 0, false
+			while advance < 40 do
+				local current = frames[player.frame]
+				if not current or player.clock < current.delay then break end
+				player.clock = player.clock - current.delay
+				local nextIndex = player.frame + 1
+				if nextIndex > count then
+					player.loopsDone = player.loopsDone + 1
+					if player.data.loops > 0 and player.loopsDone >= player.data.loops then
+						player.playing = false
+						halted = true
+						break
 					end
-					player.frame = nextIndex
+					nextIndex = 1
 					advance = advance + 1
 				end
-
-				if advance > 0 then GIF.push(player, advance > 1) end
+				player.frame = nextIndex
+				advance = advance + 1
 			end
+			if advance > 0 then
+				Gif.push(player, advance > 1)
+				if player.onFrame then
+					local now = os.clock()
+					if now - (player.tick or 0) > 0.1 then
+						player.tick = now
+						player.onFrame(player)
+					end
+				end
+			end
+			if halted and player.onState then player.onState(player) end
 		end
-	end)
+	end
+end)
+
+
+-- Compatibility wrapper for the NEXO UI image calls.
+local IMG = { pending = {}, pendingN = 0, memory = Loader.assets }
+local GIF = Gif
+local PENDING_PREFIX = "nexohub-pending://"
+
+function IMG.classify(input)
+	local url = normalize(input or "")
+	url = url:match("^%[[^%]]+%]%((https?://[^%)]+)%)$") or url
+	if url == "" then return nil, "empty" end
+	if url:match("^%d+$") or url:match("^rbx") or url:match("^https?://") or url:match("^file:") then return "asset", url end
+	return "asset", url
 end
 
--- img(id) keeps its old job: turn any input into something an ImageLabel
--- accepts RIGHT NOW. website links cannot be resolved instantly, so they get
--- a token that new() below turns into a real async load.
-local PENDING_PREFIX = "nexohub-pending://"
+function IMG.isUrl(input)
+	local url = normalize(input or "")
+	url = url:match("^%[[^%]]+%]%((https?://[^%)]+)%)$") or url
+	return url:match("^https?://") ~= nil or url:match("^file:") ~= nil
+end
 
 function IMG.isPendingToken(v)
 	return type(v) == "string" and v:sub(1, #PENDING_PREFIX) == PENDING_PREFIX
@@ -1300,21 +1249,77 @@ function IMG.readPendingToken(v)
 	return n and IMG.pending[n] or nil
 end
 
-local function img(id)
-	if id == nil or id == false or id == "" then return "" end
-
-	local kind, value = IMG.classify(id)
-	if not kind then return "" end
-	if kind == "id" then return value end
-
-	local cached = IMG.memory[tostring(id)]
-	if cached then return cached end
-
-	IMG.pendingN = IMG.pendingN + 1
-	IMG.pending[IMG.pendingN] = id
-	return PENDING_PREFIX .. tostring(IMG.pendingN)
+function IMG.hideFallbacks(inst)
+	pcall(function()
+		for _, name in ipairs({ "Fallback", "X" }) do
+			local a = inst:FindFirstChild(name)
+			if a then a.Visible = false end
+			if inst.Parent then
+				local b = inst.Parent:FindFirstChild(name)
+				if b then b.Visible = false end
+			end
+		end
+	end)
 end
 
+function IMG.get(input)
+	local clean = normalize(input or "")
+	clean = clean:match("^%[[^%]]+%]%((https?://[^%)]+)%)$") or clean
+	local id, kind = Loader.resolve(clean)
+	if id then return id, kind end
+	return nil, kind
+end
+
+function IMG.set(inst, prop, input, onDone)
+	if not inst then return end
+	prop = prop or "Image"
+	local clean = normalize(input or "")
+	clean = clean:match("^%[[^%]]+%]%((https?://[^%)]+)%)$") or clean
+	if clean == "" then
+		pcall(function() inst[prop] = "" end)
+		if onDone then onDone(false, "empty") end
+		return
+	end
+
+	Loader.request(clean, function(id, kind)
+		if id and inst and inst.Parent ~= nil then
+			pcall(function() inst[prop] = id end)
+			IMG.hideFallbacks(inst)
+			if kind == "gif" and Gif.ready and prop == "Image" then
+				Gif.attach(inst, clean)
+			end
+		end
+		if onDone then onDone(id and true or false, id or kind) end
+	end)
+end
+
+function IMG.preload(list, onDone)
+	task.spawn(function()
+		local done = 0
+		for _, item in ipairs(list or {}) do
+			local id = IMG.get(item)
+			if id then done = done + 1 end
+		end
+		if onDone then onDone(done, #(list or {})) end
+	end)
+end
+
+function IMG.clearCache()
+	Loader.assets = {}
+	Loader.bodies = {}
+	return 0
+end
+
+local function img(id)
+	if id == nil or id == false or id == "" then return "" end
+	local clean = normalize(id)
+	clean = clean:match("^%[[^%]]+%]%((https?://[^%)]+)%)$") or clean
+	if clean:match("^%d+$") then return "rbxassetid://" .. clean end
+	if clean:match("^rbxassetid://%d+$") or clean:match("^rbxasset://") or clean:match("^rbxthumb://") then return clean end
+	IMG.pendingN = IMG.pendingN + 1
+	IMG.pending[IMG.pendingN] = clean
+	return PENDING_PREFIX .. tostring(IMG.pendingN)
+end
 -- ICON PICKER: every card (tab, section, home card) accepts the icon under
 -- any of these names ->  image / icon / imageId / iconId / imageID / iconID
 -- pass "" or false to hide the icon, pass nothing to use the default one.
