@@ -40,7 +40,7 @@ local HttpService = game:GetService("HttpService")
 --  1) IMAGE IDS - REPLACE THESE WITH YOUR OWN
 --=====================================================
 local IMAGES = {
-	Background  = "2151741365", -- fills the entire panel behind everything
+	Background  = "https://i.pinimg.com/originals/8d/d8/f6/8dd8f64f4d9cd6f68a3082a875640a97.gif", -- fills the entire panel behind everything
 	Logo        = "116677845668287", -- "NEXO" logo, top-left
 	Banner      = "132582095265277", -- big PREMIUM+ / V4.0 artwork on the Home page
 	Discord     = "16171891828",     -- social button 1 (Discord)
