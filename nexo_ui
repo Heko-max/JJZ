@@ -41,7 +41,7 @@ local AssetService = game:GetService("AssetService")
 --  1) IMAGE IDS - REPLACE THESE WITH YOUR OWN
 --=====================================================
 local IMAGES = {
-	Background  = "https://img.magnific.com/premium-photo/witch-standing-hillside-crescent-moon_605022-195637.jpg?w=360", -- fills the entire panel behind everything
+	Background  = "https://i.imgur.com/lyJQbo7.png", -- fills the entire panel behind everything
 	Logo        = "https://i.imgur.com/yck4043.png", -- "NEXO" logo, top-left
 	Banner      = "132582095265277", -- big PREMIUM+ / V4.0 artwork on the Home page
 	Discord     = "16171891828",     -- social button 1 (Discord)
@@ -186,12 +186,20 @@ local HOVER_STRENGTH = 0.88 -- 1 = invisible, 0.80 = stronger glow
 
 -- TAB / SECTION CARD TEXT SIZE (Pages). These are max caps: the text scales
 -- down to fit the card, but never renders bigger than this.
-local TAB_TITLE_SIZE = 26 -- "NORMAL FARM" line
-local TAB_DESC_SIZE  = 16 -- "Auto farm levels, bosses, items ..." line
+-- BUILD STAMP: printed to the console on load. If the number you see in
+-- game is not this one, the copy running is NOT this file.
+local NEXO_BUILD = "tabtext-4"
+print("[NEXO HUB] UI library build: " .. NEXO_BUILD)
+
+local TAB_TITLE_SIZE = 34 -- "NORMAL FARM" line
+local TAB_DESC_SIZE  = 20 -- "Auto farm levels, bosses, items ..." line
 
 -- TAB / SECTION HOVER: strength of the red gradient wash on mouse over.
 -- 1 = invisible, 0 = fully solid. Lower = stronger red.
 local TAB_HOVER_STRENGTH = 0.12
+-- direction of that wash. -45 = red bottom-left, clean top-right corner.
+-- 0 = straight left-to-right. -90 = red along the bottom edge only.
+local TAB_HOVER_ANGLE = -45
 local CLICK_SPEED    = 0.45 -- seconds of the click ripple
 
 -- how many tabs the FRONT PAGE can hold. the reference design fits 3
@@ -354,8 +362,9 @@ local LAYOUT = {
 	TabRowWidthScale = 1,
 	TabPad         = 16,  -- inner padding of a tab card
 	TabIcon        = 108,  -- tab image size
-	TabTitle       = 38,  -- height of the big tab title
-	TabDescHeight  = 42,  -- height of the description background pill
+	TabTitle       = 44,  -- height of the big tab title. Must be >= TAB_TITLE_SIZE
+	-- Must fit TWO wrapped lines of TAB_DESC_SIZE, plus the 4px pill padding.
+	TabDescHeight  = 56,  -- height of the description background pill
 	TabDivider     = 0,   -- line between the columns. 0 = no line, 2 = thin line
 	TabScrollPad   = 10,   -- space kept on the right for the scrollbar
 	                      -- (the bar is hidden now, so this can stay tiny)
@@ -1354,8 +1363,14 @@ end
 local function new(class, props, children)
 	local inst = Instance.new(class)
 	local deferred = nil
+	-- ORDER MATTERS: pairs() order is undefined, and in Roblox TextScaled
+	-- overwrites TextSize. If TextScaled happened to be applied AFTER
+	-- TextSize, the explicit size was silently thrown away. Apply it first.
+	if props and props.TextScaled ~= nil then
+		pcall(function() inst.TextScaled = props.TextScaled end)
+	end
 	for k, v in pairs(props or {}) do
-		if k ~= "Parent" then
+		if k ~= "Parent" and k ~= "TextScaled" then
 			-- a website link cannot be applied instantly: leave the property
 			-- blank now and fill it in when the download finishes
 			if IMG.isPendingToken(v) then
@@ -2954,8 +2969,11 @@ local G_BAR_STRK   = { {0, 157, 2, 31}, {0.29, 76, 22, 32}, {0.66, 28, 24, 25}, 
 local G_TAB_STRK_RED = { {0, 157, 2, 31}, {0.55, 120, 14, 30}, {1, 76, 22, 32} }
 local G_BAR_STRK_RED = { {0, 157, 2, 31}, {0.55, 120, 14, 30}, {1, 76, 22, 32} }
 local G_LOGO      = { {0, 157, 2, 31}, {0.42, 163, 5, 33}, {1, 255, 51, 51} }
--- the mouse-over wash on a Pages tab: dark on the left, bright red on the right
-local G_TAB_HOVER = { {0, 26, 20, 21}, {0.45, 104, 12, 30}, {1, 182, 8, 40} }
+-- the mouse-over wash on a Pages tab. Offset 0 is the RED end, offset 1 is
+-- the dark end. With TAB_HOVER_ANGLE = -45 the axis runs bottom-left ->
+-- top-right, so: red down the LEFT side, a little red at the BOTTOM-RIGHT
+-- corner, and NO red in the TOP-RIGHT corner.
+local G_TAB_HOVER = { {0, 182, 8, 40}, {0.42, 120, 12, 32}, {0.72, 52, 22, 24}, {1, 24, 19, 20} }
 
 -- one card slice, same proportions as the reference
 local HOME_CARD_SIZE   = UDim2.fromScale(0.2906, 0.7433)
@@ -3882,7 +3900,7 @@ function Library:_addCard(ctx, info, isSection)
 		Parent = card,
 	}, { new("UICorner", { CornerRadius = UDim.new(0.1, 0) }) })
 	-- the red gradient wash that fades in under the cursor
-	hohoStops(glow, G_TAB_HOVER, 0)
+	hohoStops(glow, G_TAB_HOVER, TAB_HOVER_ANGLE)
 
 	local ripple = new("Frame", {
 		Name = "Ripple",
@@ -3975,16 +3993,24 @@ function Library:_addCard(ctx, info, isSection)
 		BackgroundTransparency = 1,
 		Font = Enum.Font.GothamBold, -- fallback only, hohoFont overrides it below
 		Text = info.title or ("TAB " .. index),
-		TextScaled = true,
-		TextWrapped = true,
+		-- FIXED SIZE: TextScaled is OFF so TAB_TITLE_SIZE is obeyed exactly.
+		-- With TextScaled on, the label filled its box and the size cap was
+		-- never the limiting factor, so changing it did nothing.
+		TextScaled = false,
+		TextSize = TAB_TITLE_SIZE,
+		TextWrapped = false,
 		TextColor3 = THEME.Text,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Center,
 		Parent = textCol,
-	-- MAIN FONT: the tab / section title cap. TAB_TITLE_SIZE at the top.
-	}, { clampText(TAB_TITLE_SIZE) })
+	-- MAIN FONT: size comes from TAB_TITLE_SIZE at the top of the file.
+	})
 	-- SAME TITLE FONT AS THE HOME PAGE CARDS
 	hohoFont(title, "Bold")
+	-- BELT AND BRACES: force the size after the font swap, so nothing that
+	-- runs later can put auto-scaling back on this label.
+	title.TextScaled = false
+	title.TextSize = TAB_TITLE_SIZE
 
 	-- the description sits on its own rounded background pill
 	local pill = new("Frame", {
@@ -4009,17 +4035,21 @@ function Library:_addCard(ctx, info, isSection)
 		BackgroundTransparency = 1,
 		Font = Enum.Font.Gotham, -- fallback only, hohoFont overrides it below
 		Text = info.desc or "",
-		TextScaled = true,
+		-- FIXED SIZE: same reason as the title above.
+		TextScaled = false,
+		TextSize = TAB_DESC_SIZE,
 		-- REFERENCE UI: the description is white, like the reference cards
 		TextColor3 = Color3.fromRGB(255, 255, 255),
 		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Center,
+		TextYAlignment = Enum.TextYAlignment.Top,
 		Parent = pill,
-	-- the description cap. TAB_DESC_SIZE at the top of the file.
-	}, { clampText(TAB_DESC_SIZE) })
+	-- size comes from TAB_DESC_SIZE at the top of the file.
+	})
 	-- SAME DESCRIPTION FONT AS THE HOME PAGE CARDS
 	hohoFont(desc, "Regular")
+	desc.TextScaled = false
+	desc.TextSize = TAB_DESC_SIZE
 
 	local slot = new("Frame", {
 		Name = "IconSlot",
