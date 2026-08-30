@@ -8977,12 +8977,15 @@ function Library:_aiBubble(who, text)
 	bubble.Parent = state.History
 
 	local face = bubble:FindFirstChild("Avatar")
-	if face then
-		if who == "user" then
-			self:_aiImage(face, self:_aiUserAvatar(), "")
-		else
-			self:_aiImage(face, Library.AiCfg.BotAvatar, Library.AiCfg.BotFallback)
-		end
+	local seed = tpl:FindFirstChild("Avatar")
+	if face and seed then
+		pcall(function()
+			if seed.ImageContent and seed.ImageContent ~= "" then
+				face.ImageContent = seed.ImageContent
+			else
+				face.Image = seed.Image
+			end
+		end)
 	end
 	state.Decor.Visible = false
 	if state.Scroll then state.Scroll() end
@@ -9111,8 +9114,15 @@ function Library:_bindRegister(name, kind, handle, fire)
 		fire = fire,
 	}
 
-	if self.Binds and self.Binds.Refresh then
-		task.defer(function() pcall(self.Binds.Refresh) end)
+	local state = self.Binds
+	if not state then return end
+	state.Dirty = true
+	if state.Open and state.Refresh and not state.Queued then
+		state.Queued = true
+		task.delay(0.4, function()
+			state.Queued = false
+			pcall(state.Refresh)
+		end)
 	end
 end
 
@@ -9579,16 +9589,27 @@ function Library:_buildKeybindWindow()
 	end
 
 	local function refresh()
-		for _, row in ipairs(state.Rows) do
-			if row.Frame then row.Frame:Destroy() end
+		if state.Building then return end
+		if (state.Built or 0) >= #Library.BindItems then
+			state.Dirty = false
+			applyFilter()
+			return
 		end
-		state.Rows = {}
-		state.Capture = nil
 
-		for index, item in ipairs(Library.BindItems) do
-			makeRow(item, index)
-		end
-		applyFilter()
+		state.Building = true
+		task.spawn(function()
+			local made = 0
+			for index = (state.Built or 0) + 1, #Library.BindItems do
+				local item = Library.BindItems[index]
+				if item then makeRow(item, index) end
+				state.Built = index
+				made = made + 1
+				if made % 20 == 0 then task.wait() end
+			end
+			state.Dirty = false
+			state.Building = false
+			applyFilter()
+		end)
 	end
 	state.Refresh = refresh
 
@@ -9655,7 +9676,8 @@ function Library:_buildKeybindWindow()
 		end
 	end)
 
-	refresh()
+	state.Built = 0
+	state.Dirty = true
 	return state
 end
 
