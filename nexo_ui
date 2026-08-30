@@ -2721,16 +2721,47 @@ local G_LOGO      = { {0, 157, 2, 31}, {0.42, 163, 5, 33}, {1, 255, 51, 51} }
 
 local G_TAB_HOVER = { {0, 182, 8, 40}, {0.42, 120, 12, 32}, {0.72, 52, 22, 24}, {1, 24, 19, 20} }
 
--- ============ HOHO SKIN (appearance only -- no geometry changes) ============
--- one table instead of many locals (Luau caps a scope at 200 registers)
+-- ===== HOHO hover sweep (single local: Luau caps a scope at 200 registers) ===
+-- Animates the Offset of an existing UIStroke's UIGradient. Adds no instances
+-- and changes no resting colours, sizes or positions.
 local HOHO = {}
+HOHO.TWEEN = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+HOHO.HOME  = Vector2.new(0, 0)
+HOHO.IN    = Vector2.new(-1, -1)
+HOHO.CARD  = Vector2.new(1, 1)
 HOHO.PLATE_STROKE = { {0, 157, 2, 31}, {0.753022, 76, 22, 32}, {1, 20, 19, 19} }
 HOHO.FILL_CHECK   = { {0, 109, 1, 23}, {0.531952, 40, 19, 23}, {1, 24, 18, 19} }
 HOHO.FILL_SEL     = { {0, 76, 21, 31}, {0.222798, 40, 19, 23}, {1, 24, 18, 19} }
-HOHO.HOVER_TWEEN  = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-HOHO.HOME = Vector2.new(0, 0)
-HOHO.IN   = Vector2.new(-1, -1)
-HOHO.CARD = Vector2.new(1, 1)
+
+function HOHO.grad(inst)
+	if not inst then return nil end
+	local st = inst:IsA("UIStroke") and inst or inst:FindFirstChildOfClass("UIStroke")
+	if not st then return nil end
+	return st:FindFirstChildOfClass("UIGradient")
+end
+
+function HOHO.sweep(inst, dir)
+	local g = HOHO.grad(inst)
+	if not g then return end
+	TweenService:Create(g, HOHO.TWEEN, { Offset = dir or HOHO.HOME }):Play()
+end
+
+function HOHO.hover(btn, target, dir)
+	target = target or btn
+	if not btn or not target then return end
+	dir = dir or HOHO.IN
+	-- the red fill plate, if HOHO.plate was used on this element
+	local plate = target:FindFirstChild("HohoFill")
+	local function go(off, tr)
+		HOHO.sweep(target, off)
+		if plate then
+			TweenService:Create(plate, HOHO.TWEEN,
+				{ BackgroundTransparency = tr }):Play()
+		end
+	end
+	btn.MouseEnter:Connect(function() go(dir, 0) end)
+	btn.MouseLeave:Connect(function() go(HOHO.HOME, 1) end)
+end
 
 
 local HOME_CARD_SIZE   = UDim2.fromScale(0.2906, 0.7433)
@@ -2790,46 +2821,24 @@ local function selectorTextGlow(parent, color, transparency)
 	return s
 end
 
--- dumped "Gradient" child: fill plate + red rim. Fills its parent exactly,
--- so it never alters layout or size.
+-- Invisible at rest (BackgroundTransparency = 1); the red gradient only fades
+-- in on hover. Fills its parent exactly, so it never affects layout.
 function HOHO.plate(parent, fillKeys, radius)
+	if not parent then return nil end
 	local g = Instance.new("Frame")
-	g.Name = "Gradient"
+	g.Name = "HohoFill"
 	g.Size = UDim2.fromScale(1, 1)
-	g.Position = UDim2.new(0, 0, 2.11993001e-08, 0)
+	g.Position = UDim2.fromScale(0, 0)
 	g.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	g.BackgroundTransparency = 1
 	g.BorderSizePixel = 0
 	g.ZIndex = 0
 	local c = Instance.new("UICorner")
-	c.CornerRadius = radius or UDim.new(0, 10)
+	c.CornerRadius = radius or UDim.new(0, 12)
 	c.Parent = g
-	nexoStops(g, fillKeys, -90)
-	local st = Instance.new("UIStroke")
-	st.Color = Color3.fromRGB(255, 255, 255)
-	st.Thickness = 2
-	st.Transparency = 0
-	st.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
-	st.Parent = g
-	nexoStops(st, HOHO.PLATE_STROKE, -85)
+	nexoStops(g, fillKeys or HOHO.FILL_CHECK, -90)
 	g.Parent = parent
 	return g
-end
-
--- dumped hover: stroke gradient Offset (0,0) -> dir, plate transparency 1 -> 0
-function HOHO.hover(btn, dir, plate)
-	plate = plate or btn:FindFirstChild("Gradient")
-	if not plate then return end
-	local stroke = plate:FindFirstChildOfClass("UIStroke")
-	local sg = stroke and stroke:FindFirstChildOfClass("UIGradient")
-	if not sg then return end
-	dir = dir or HOHO.IN
-	local function go(off, tr)
-		TweenService:Create(sg, HOHO.HOVER_TWEEN, { Offset = off }):Play()
-		TweenService:Create(plate, HOHO.HOVER_TWEEN, { BackgroundTransparency = tr }):Play()
-	end
-	btn.MouseEnter:Connect(function() go(dir, 0) end)
-	btn.MouseLeave:Connect(function() go(HOHO.HOME, 1) end)
 end
 
 local function nexoSeq(cols)
@@ -3256,7 +3265,7 @@ function Library:_buildTabsPage()
 		ClipsDescendants = true,
 		Parent = page,
 	}, {
-		new("UICorner", { CornerRadius = UDim.new(0.3, 0) }),
+		corner(16),
 
 		padding(0, 18, 0, 18),
 		new("Frame", {
@@ -3268,44 +3277,46 @@ function Library:_buildTabsPage()
 			BorderSizePixel = 0,
 			ZIndex = 0,
 		}, {
-			new("UICorner", { CornerRadius = UDim.new(0.3, 0) }),
+			corner(16),
 			new("UIGradient", {
 				Color = ColorSequence.new({
 					ColorSequenceKeypoint.new(0, Color3.fromRGB(157, 2, 31)),
-					ColorSequenceKeypoint.new(0.0690846, Color3.fromRGB(76, 22, 32)),
-					ColorSequenceKeypoint.new(0.806563, Color3.fromRGB(28, 24, 25)),
+					ColorSequenceKeypoint.new(0.07, Color3.fromRGB(76, 22, 32)),
+					ColorSequenceKeypoint.new(0.81, Color3.fromRGB(28, 24, 25)),
 					ColorSequenceKeypoint.new(1, Color3.fromRGB(24, 24, 24)),
 				}),
 				Rotation = -90,
-				Offset = Vector2.new(0, 0.100000001),
 			}),
 		}),
 
-		-- dumped SearchBox textbox: centred SemiBold-Italic, no magnifier icon
+		new("ImageLabel", {
+			Name = "Icon",
+			AnchorPoint = Vector2.new(0, 0.5),
+			Position = UDim2.new(0, 0, 0.5, 0),
+			Size = UDim2.fromOffset(LAYOUT.SearchIcon, LAYOUT.SearchIcon),
+			BackgroundTransparency = 1,
+			Image = img(IMAGES.SearchIcon),
+			ScaleType = Enum.ScaleType.Fit,
+		}),
 		new("TextBox", {
 			Name = "Field",
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.new(0.5, 0, 0.5, 0),
-			Size = UDim2.new(1, 0, 1, 0),
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, 0, 0.5, 0),
+			Size = UDim2.new(1, -(LAYOUT.SearchIcon + 12), 1, 0),
 			BackgroundTransparency = 1,
 			ClipsDescendants = true,
-			RichText = true,
+			Font = Enum.Font.GothamMedium,
 			PlaceholderText = TEXT.SearchPlaceholder or "SEARCH ...",
-			PlaceholderColor3 = Color3.fromRGB(117, 117, 117),
+			PlaceholderColor3 = THEME.SubText,
 			Text = "",
 			TextSize = 20,
 			TextColor3 = THEME.Text,
-			TextXAlignment = Enum.TextXAlignment.Center,
+			TextXAlignment = Enum.TextXAlignment.Left,
 			ClearTextOnFocus = false,
-			ZIndex = 2,
 		}),
 	})
-	pcall(function()
-		self.SearchBar.Field.FontFace =
-			Font.new(NEXO_SANS, Enum.FontWeight.SemiBold, Enum.FontStyle.Italic)
-	end)
 
-	nexoStroke(self.SearchBar.Gradient, 2.5, G_BAR_STRK, -90)
+	nexoStroke(self.SearchBar, 2.5, G_BAR_STRK, -90)
 
 	new("Frame", {
 		Name = "SearchBottomEdge",
@@ -3540,7 +3551,7 @@ function Library:_addCard(ctx, info, isSection)
 	}, { new("UICorner", { CornerRadius = UDim.new(0.1, 0) }) })
 	nexoStops(grad, G_PANEL, -57)
 
-	nexoStroke(grad, 2, G_PANEL_STRK, -57)
+	local cardStroke = nexoStroke(card, 2, G_PANEL_STRK, -57)
 
 	local pad = LAYOUT.TabPad
 
@@ -3596,7 +3607,15 @@ function Library:_addCard(ctx, info, isSection)
 			Parent = card,
 		})
 
-		HOHO.hover(hit, HOHO.CARD, grad)
+		hit.MouseEnter:Connect(function()
+			playTween(glow, fade, { BackgroundTransparency = TAB_HOVER_STRENGTH }, "hover")
+			HOHO.sweep(cardStroke, HOHO.CARD)
+		end)
+
+		hit.MouseLeave:Connect(function()
+			playTween(glow, fade, { BackgroundTransparency = 1 }, "hover")
+			HOHO.sweep(cardStroke, HOHO.HOME)
+		end)
 
 		hit.MouseButton1Down:Connect(function()
 
@@ -4554,21 +4573,20 @@ function Library:_addButton(card, info)
 		Name = "Button",
 		Size = UDim2.fromScale(1, 1),
 
-		BackgroundColor3 = Color3.fromRGB(248, 4, 46),
-		BackgroundTransparency = 1,
+		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
+		BackgroundTransparency = 0.5,
 		BorderSizePixel = 0,
 		ClipsDescendants = true,
 		ZIndex = 2,
 		Parent = slot,
 	}, {
-		new("UICorner", { CornerRadius = UDim.new(0, 10) }),
-		new("UIStroke", {
-			Color = Color3.fromRGB(253, 1, 12),
-			Thickness = 1.5,
-			Transparency = 0.25,
-			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-		}),
+		corner(12),
+		nexoBorder(2),
 	})
+	if HOVER_ENABLED then
+		HOHO.plate(shell, HOHO.FILL_SEL, UDim.new(0, 12))
+		HOHO.hover(shell, shell, HOHO.IN)
+	end
 
 	local glow = new("Frame", {
 		Name = "Hover",
@@ -4600,8 +4618,7 @@ function Library:_addButton(card, info)
 		Font = Enum.Font.GothamBold,
 		Text = info.text or "BUTTON",
 		TextSize = 18,
-		TextColor3 = Color3.fromRGB(248, 4, 46),
-		TextXAlignment = Enum.TextXAlignment.Center,
+		TextColor3 = THEME.ControlText,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		ZIndex = 3,
 		Parent = shell,
@@ -4622,11 +4639,11 @@ function Library:_addButton(card, info)
 		local fade = HOVER_FADE
 
 		hit.MouseEnter:Connect(function()
-			playTween(shell, HOHO.HOVER_TWEEN, { BackgroundTransparency = 0.1 }, "hover")
+			playTween(glow, fade, { BackgroundTransparency = HOVER_STRENGTH }, "hover")
 		end)
 
 		hit.MouseLeave:Connect(function()
-			playTween(shell, HOHO.HOVER_TWEEN, { BackgroundTransparency = 1 }, "hover")
+			playTween(glow, fade, { BackgroundTransparency = 1 }, "hover")
 		end)
 
 		hit.MouseButton1Down:Connect(function()
@@ -4684,10 +4701,10 @@ function Library:_addToggle(card, info)
 		ZIndex = 2,
 		Parent = slot,
 	}, {
-		new("UICorner", { CornerRadius = UDim.new(0, 10) }),
+		corner(12),
+		nexoBorder(2),
 		padding(0, 14, 0, 14),
 	})
-	HOHO.plate(shell, HOHO.FILL_CHECK)
 
 	local label = new("TextLabel", {
 		Name = "Label",
@@ -4705,6 +4722,8 @@ function Library:_addToggle(card, info)
 		Parent = shell,
 	})
 
+	-- HoHo checkbox: outer frame image + inner tick that scales in when on.
+	-- Same anchor/position/size as the old Frame, so layout is unchanged.
 	local square = new("ImageLabel", {
 		Name = "Box",
 		AnchorPoint = Vector2.new(1, 0.5),
@@ -4745,7 +4764,10 @@ function Library:_addToggle(card, info)
 		Parent = shell,
 	})
 
-	if HOVER_ENABLED then HOHO.hover(hit, HOHO.IN, shell:FindFirstChild("Gradient")) end
+	if HOVER_ENABLED then
+		HOHO.plate(shell, HOHO.FILL_CHECK, UDim.new(0, 12))
+		HOHO.hover(hit, shell, HOHO.IN)
+	end
 
 	local fade = TOGGLE_TWEEN
 	local state = info.default and true or false
@@ -4753,8 +4775,9 @@ function Library:_addToggle(card, info)
 	local function apply(v, fire, animate)
 		state = v and true or false
 
-		-- dumped checkbox state: Inner 0.6x0.8 when on, 0x0 when off
-		local target = state and UDim2.new(0.600000024, 0, 0.800000012, 0) or UDim2.new(0, 0, 0, 0)
+		-- tick scales in/out inside the box; the box itself never resizes
+		local target = state and UDim2.new(0.800000012, 0, 1, 0)
+			or UDim2.new(0, 0, 0, 0)
 		cancelTween(squareInner, "toggleSize")
 		if animate == false then
 			squareInner.Size = target
@@ -4801,11 +4824,14 @@ function Library:_addSlider(card, info)
 		ZIndex = 2,
 		Parent = slot,
 	}, {
-		new("UICorner", { CornerRadius = UDim.new(0, 10) }),
+		corner(12),
+		nexoBorder(2),
 		padding(10, 14, 12, 14),
 	})
-	HOHO.plate(shell, HOHO.FILL_CHECK)
-	if HOVER_ENABLED then HOHO.hover(shell, HOHO.IN) end
+	if HOVER_ENABLED then
+		HOHO.plate(shell, HOHO.FILL_CHECK, UDim.new(0, 12))
+		HOHO.hover(shell, shell, HOHO.IN)
+	end
 
 	local label = new("TextLabel", {
 		Name = "Label",
@@ -4842,39 +4868,38 @@ function Library:_addSlider(card, info)
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.new(0, 0, 1, 0),
 		Size = UDim2.new(1, 0, 0, 8),
-		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		BackgroundColor3 = THEME.SearchBar,
 		BackgroundTransparency = 0,
 		BorderSizePixel = 0,
 		ZIndex = 3,
 		Parent = shell,
 	}, {
 		new("UICorner", { CornerRadius = UDim.new(1, 0) }),
+		nexoBorder(1.6),
 	})
 
 	local fill = new("Frame", {
 		Name = "Fill",
 		Size = UDim2.fromScale(0, 1),
-		BackgroundColor3 = Color3.fromRGB(175, 40, 42),
+		BackgroundColor3 = THEME.ControlText,
 		BackgroundTransparency = 0,
 		BorderSizePixel = 0,
 		ZIndex = 4,
 		Parent = track,
 	}, { new("UICorner", { CornerRadius = UDim.new(1, 0) }) })
+	controlPart(fill, "BackgroundColor3")
 
-	local knob = new("ImageLabel", {
+	local knob = new("Frame", {
 		Name = "Knob",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.new(0, 0, 0.5, 0),
 		Size = UDim2.fromOffset(16, 16),
-		BackgroundTransparency = 1,
+		BackgroundColor3 = THEME.ControlText,
 		BorderSizePixel = 0,
-		Image = "rbxassetid://16284326668",
-		ImageColor3 = Color3.fromRGB(255, 51, 51),
-		ScaleType = Enum.ScaleType.Fit,
 		ZIndex = 5,
 		Parent = track,
-	})
-	controlPart(knob, "ImageColor3")
+	}, { new("UICorner", { CornerRadius = UDim.new(1, 0) }) })
+	controlPart(knob, "BackgroundColor3")
 
 	local hit = new("TextButton", {
 		Name = "Hit",
@@ -5308,10 +5333,13 @@ function Library:_addDropdown(card, info)
 		ZIndex = 2,
 		Parent = frame,
 	}, {
-		new("UICorner", { CornerRadius = UDim.new(0, 10) }),
+		corner(12),
+		nexoBorder(2),
 	})
-	HOHO.plate(shell, HOHO.FILL_SEL)
-	if HOVER_ENABLED then HOHO.hover(shell, HOHO.IN) end
+	if HOVER_ENABLED then
+		HOHO.plate(shell, HOHO.FILL_SEL, UDim.new(0, 12))
+		HOHO.hover(shell, shell, HOHO.IN)
+	end
 
 	local label = new("TextLabel", {
 		Name = "Label",
@@ -5366,9 +5394,9 @@ function Library:_addDropdown(card, info)
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		CanvasSize = UDim2.new(),
-		ScrollBarThickness = 3,
-		ScrollBarImageTransparency = 0,
-		ScrollBarImageColor3 = Color3.fromRGB(255, 51, 51),
+		ScrollBarThickness = SCROLLBAR_SIZE,
+		ScrollBarImageTransparency = SCROLLBAR_FADE,
+		ScrollBarImageColor3 = THEME.ControlAccent,
 		Visible = false,
 		ZIndex = 3,
 		Parent = shell,
