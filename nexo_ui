@@ -126,7 +126,7 @@ local BACK_ALWAYS_VISIBLE = true
 
 local BACK_FALLBACK_TEXT = "<"
 
-local UI_SIZE     = 1.00
+local UI_SIZE     = 0.72
 local SCREEN_FILL = 0.80
 local MIN_SCALE   = 0.40
 local MAX_SCALE   = 1.00
@@ -300,8 +300,8 @@ local HOME_CLONE = true
 
 local UI_CLONE     = true
 
-local CLONE_WIDTH  = 0.467833996
-local CLONE_ASPECT = 1.504639983177185
+local CLONE_WIDTH  = 0.62
+local CLONE_ASPECT = 1.50464
 
 local CLONE_HEIGHT = math.floor(LAYOUT.PanelWidth / CLONE_ASPECT + 0.5)
 local CLONE_SIZE   = UDim2.fromOffset(LAYOUT.PanelWidth, CLONE_HEIGHT)
@@ -2721,28 +2721,13 @@ local G_LOGO      = { {0, 157, 2, 31}, {0.42, 163, 5, 33}, {1, 255, 51, 51} }
 
 local G_TAB_HOVER = { {0, 182, 8, 40}, {0.42, 120, 12, 32}, {0.72, 52, 22, 24}, {1, 24, 19, 20} }
 
--- ===================== HOHO SKIN (exact dump values) =====================
--- one table instead of 17 top-level locals (Luau caps a scope at 200 registers)
+-- ============ HOHO SKIN (appearance only -- no geometry changes) ============
+-- one table instead of many locals (Luau caps a scope at 200 registers)
 local HOHO = {}
 HOHO.PLATE_STROKE = { {0, 157, 2, 31}, {0.753022, 76, 22, 32}, {1, 20, 19, 19} }
 HOHO.FILL_CHECK   = { {0, 109, 1, 23}, {0.531952, 40, 19, 23}, {1, 24, 18, 19} }
 HOHO.FILL_SEL     = { {0, 76, 21, 31}, {0.222798, 40, 19, 23}, {1, 24, 18, 19} }
-
--- dumped MAIN_UI layout fractions remapped into the 1010x671 panel
--- (page is inset by Body padding 16px on each side, so page width = 978)
--- SearchBox   x 0.055        w 0.786679983  h 0.116103001
--- RETURN_BTN  x 0.867055     w 0.0780468
--- Sections    y 0.337        w 0.890102029  h 0.601934016
-HOHO.PAGE_X   = 0.040440
-HOHO.SEARCH_W = 0.812425
-HOHO.RETURN_X = 0.879069
-HOHO.RETURN_W = 0.080603
-HOHO.BAR_H    = 78
-HOHO.SECT_W   = 0.919236
-HOHO.SECT_Y   = 104
-HOHO.SECT_H   = 404
-
-HOHO.HOVER_TWEEN = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+HOHO.HOVER_TWEEN  = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 HOHO.HOME = Vector2.new(0, 0)
 HOHO.IN   = Vector2.new(-1, -1)
 HOHO.CARD = Vector2.new(1, 1)
@@ -2805,13 +2790,13 @@ local function selectorTextGlow(parent, color, transparency)
 	return s
 end
 
--- gradient plate + red rim, exactly like the dump's "Gradient" child
-function HOHO.plate(parent, fillKeys, sizeOverride, radius)
+-- dumped "Gradient" child: fill plate + red rim. Fills its parent exactly,
+-- so it never alters layout or size.
+function HOHO.plate(parent, fillKeys, radius)
 	local g = Instance.new("Frame")
 	g.Name = "Gradient"
-	g.Size = sizeOverride or UDim2.fromScale(1, 1)
+	g.Size = UDim2.fromScale(1, 1)
 	g.Position = UDim2.new(0, 0, 2.11993001e-08, 0)
-	g.AnchorPoint = Vector2.new(0, 0)
 	g.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 	g.BackgroundTransparency = 1
 	g.BorderSizePixel = 0
@@ -2831,7 +2816,7 @@ function HOHO.plate(parent, fillKeys, sizeOverride, radius)
 	return g
 end
 
--- dumped hover: stroke gradient Offset (0,0) -> dir  +  plate transparency 1 -> 0
+-- dumped hover: stroke gradient Offset (0,0) -> dir, plate transparency 1 -> 0
 function HOHO.hover(btn, dir, plate)
 	plate = plate or btn:FindFirstChild("Gradient")
 	if not plate then return end
@@ -2846,7 +2831,6 @@ function HOHO.hover(btn, dir, plate)
 	btn.MouseEnter:Connect(function() go(dir, 0) end)
 	btn.MouseLeave:Connect(function() go(HOHO.HOME, 1) end)
 end
--- =========================================================================
 
 local function nexoSeq(cols)
 	local ks = {}
@@ -3263,8 +3247,8 @@ function Library:_buildTabsPage()
 	self.SearchBar = new("Frame", {
 		Name = "SearchBar",
 
-		Position = UDim2.new(HOHO.PAGE_X, 0, 0, 0),
-		Size = UDim2.new(HOHO.SEARCH_W, 0, 0, HOHO.BAR_H),
+		Position = UDim2.new(tabRowInset(), 3, 0, 3),
+		Size = UDim2.new(1 - tabRowInset() * 2, -(LAYOUT.TabScrollPad + 6 + LAYOUT.BackButton + LAYOUT.BackGap), 0, LAYOUT.SearchHeight),
 
 		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
 		BackgroundTransparency = 0.5,
@@ -3274,12 +3258,12 @@ function Library:_buildTabsPage()
 	}, {
 		new("UICorner", { CornerRadius = UDim.new(0.3, 0) }),
 
-		-- dumped SearchBox > Gradient (UICorner 0.3, UIStroke 2.5, UIGradient -90 @ offset y 0.1)
+		padding(0, 18, 0, 18),
 		new("Frame", {
 			Name = "Gradient",
-			Position = UDim2.new(0, 0, 2.11993001e-08, 0),
-			Size = UDim2.fromScale(1, 1),
-			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+
+			Position = UDim2.fromOffset(-18, 0),
+			Size = UDim2.new(1, 36, 1, 0),
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
 			ZIndex = 0,
@@ -3297,29 +3281,28 @@ function Library:_buildTabsPage()
 			}),
 		}),
 
-		-- dumped SearchBox > Textbox (SemiBold Italic, centred, TextScaled)
+		-- dumped SearchBox textbox: centred SemiBold-Italic, no magnifier icon
 		new("TextBox", {
 			Name = "Field",
-			AnchorPoint = Vector2.new(0, 0.5),
-			Position = UDim2.new(0, 0, 0.5, 0),
-			Size = UDim2.new(0.720000029, 0, 0.578886986, 0),
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(0.5, 0, 0.5, 0),
+			Size = UDim2.new(1, 0, 1, 0),
 			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
+			ClipsDescendants = true,
 			RichText = true,
 			PlaceholderText = TEXT.SearchPlaceholder or "SEARCH ...",
 			PlaceholderColor3 = Color3.fromRGB(117, 117, 117),
 			Text = "",
-			TextScaled = true,
-			TextWrapped = true,
-			TextColor3 = Color3.fromRGB(255, 255, 255),
+			TextSize = 20,
+			TextColor3 = THEME.Text,
 			TextXAlignment = Enum.TextXAlignment.Center,
 			ClearTextOnFocus = false,
 			ZIndex = 2,
 		}),
 	})
-	nexoFont(self.SearchBar.Field, "SemiBold")
 	pcall(function()
-		self.SearchBar.Field.FontFace = Font.new(NEXO_SANS, Enum.FontWeight.SemiBold, Enum.FontStyle.Italic)
+		self.SearchBar.Field.FontFace =
+			Font.new(NEXO_SANS, Enum.FontWeight.SemiBold, Enum.FontStyle.Italic)
 	end)
 
 	nexoStroke(self.SearchBar.Gradient, 2.5, G_BAR_STRK, -90)
@@ -3337,11 +3320,11 @@ function Library:_buildTabsPage()
 
 	self.BackButton = new("ImageButton", {
 		Name = "BackButton",
-		AnchorPoint = Vector2.new(0, 0),
-		Position = UDim2.new(HOHO.RETURN_X, 0, 0, 0),
-		Size = UDim2.new(HOHO.RETURN_W, 0, 0, HOHO.BAR_H),
-		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
-		BackgroundTransparency = 0.5,
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1 - tabRowInset(), -(LAYOUT.TabScrollPad + 3), 0, 3),
+		Size = UDim2.fromOffset(LAYOUT.BackButton, LAYOUT.BackHeight or LAYOUT.SearchHeight),
+		BackgroundColor3 = THEME.SearchBar,
+		BackgroundTransparency = 0.15,
 		BorderSizePixel = 0,
 		Image = "",
 		AutoButtonColor = false,
@@ -3349,27 +3332,9 @@ function Library:_buildTabsPage()
 		ZIndex = 3,
 		Parent = page,
 	}, {
-		new("UICorner", { CornerRadius = UDim.new(0.3, 0) }),
-		-- dumped RETURN_BUTTON > Gradient
-		new("Frame", {
-			Name = "Gradient",
-			Position = UDim2.new(0, 0, 2.11993001e-08, 0),
-			Size = UDim2.fromScale(1, 1),
-			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
-			ZIndex = 0,
-		}, {
-			new("UICorner", { CornerRadius = UDim.new(0.3, 0) }),
-			new("UIGradient", {
-				Color = ColorSequence.new({
-					ColorSequenceKeypoint.new(0, Color3.fromRGB(89, 1, 20)),
-					ColorSequenceKeypoint.new(0.483592, Color3.fromRGB(40, 19, 24)),
-					ColorSequenceKeypoint.new(1, Color3.fromRGB(27, 5, 5)),
-				}),
-				Rotation = -90,
-			}),
-		}),
+		corner(16),
+		stroke(THEME.Accent, 2, 0.15),
+		gradient(THEME.AccentDark, THEME.SearchBar, 205),
 
 		new("TextLabel", {
 			Name = "Fallback",
@@ -3395,10 +3360,14 @@ function Library:_buildTabsPage()
 		}),
 	})
 
-	nexoStroke(self.BackButton.Gradient, 2.5, G_BAR_STRK, -90)
 	if HOVER_ENABLED then
-		-- dumped RETURN_BUTTON hover: offset -> (-1,-1), plate 1 -> 0
-		HOHO.hover(self.BackButton, HOHO.IN)
+		local fade = HOVER_FADE
+		self.BackButton.MouseEnter:Connect(function()
+			playTween(self.BackButton, fade, { BackgroundTransparency = 0.55 }, "hover")
+		end)
+		self.BackButton.MouseLeave:Connect(function()
+			playTween(self.BackButton, fade, { BackgroundTransparency = 0.15 }, "hover")
+		end)
 	end
 
 	self.BackButton.MouseButton1Click:Connect(function()
@@ -3424,8 +3393,8 @@ function Library:_buildTabsPage()
 
 	local area = new("Frame", {
 		Name = "Sections",
-		Position = UDim2.new(HOHO.PAGE_X, 0, 0, HOHO.SECT_Y),
-		Size = UDim2.new(HOHO.SECT_W, 0, 0, HOHO.SECT_H),
+		Position = UDim2.new(tabRowInset(), 0, 0, gridTop),
+		Size = UDim2.new(1 - tabRowInset() * 2, 0, 1, -(gridTop + LAYOUT.PagesBottomSpace)),
 		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
 		BackgroundTransparency = 0.75,
 		BorderSizePixel = 0,
@@ -3444,8 +3413,8 @@ function Library:_buildTabsPage()
 	self.TabList = new("ScrollingFrame", {
 		Name = "TabList",
 
-		Position = UDim2.fromScale(0.0216725003, 0.0537310988),
-		Size = UDim2.fromScale(0.965323985, 0.946268976),
+		Position = UDim2.fromScale(0.0115, 0.0537),
+		Size = UDim2.fromScale(0.977, 0.9463),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		CanvasSize = UDim2.new(),
@@ -3459,15 +3428,8 @@ function Library:_buildTabsPage()
 		Parent = area,
 	}, {
 
-		-- dumped Sections > ScrollingFrame > UIGridLayout
-		new("UIGridLayout", {
-			CellSize = UDim2.new(0.474999994, 0, 0.174999997, 0),
-			CellPadding = UDim2.new(0.0324999988, 0, 0.0299999993, 0),
-			FillDirection = Enum.FillDirection.Horizontal,
-			HorizontalAlignment = Enum.HorizontalAlignment.Left,
-			VerticalAlignment = Enum.VerticalAlignment.Top,
-			SortOrder = Enum.SortOrder.LayoutOrder,
-		}),
+		padding(8, math.max(LAYOUT.TabScrollPad, 8), LAYOUT.TabRowGap, 8),
+		vlist(LAYOUT.TabRowGap),
 	})
 
 	self.Tabs = self.Tabs or {}
@@ -3493,9 +3455,46 @@ function Library:_buildTabsPage()
 end
 
 function Library:_rowIn(ctx, rowIndex)
-	-- UIGridLayout handles rows/columns; no per-row frames are needed.
-	ctx.Lines[rowIndex] = ctx.Lines[rowIndex] or {}
-	return ctx.List
+	if ctx.Rows[rowIndex] then return ctx.Rows[rowIndex] end
+
+	local cols = math.max(1, LAYOUT.TabColumns)
+
+	local row = new("Frame", {
+		Name = "Row" .. rowIndex,
+		LayoutOrder = rowIndex,
+		Size = UDim2.new(1, 0, 0, LAYOUT.TabHeight),
+		BackgroundTransparency = 1,
+		Parent = ctx.List,
+	}, {
+
+		rowSidePadding(),
+	})
+
+	local lines = {}
+	for i = 1, (LAYOUT.TabDivider > 0 and cols - 1 or 0) do
+		lines[i] = new("Frame", {
+			Name = "Line" .. i,
+			AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.new(i / cols, (i * LAYOUT.TabGap / cols) - (LAYOUT.TabGap / 2), 0, 0),
+			Size = UDim2.new(0, LAYOUT.TabDivider, 1, 0),
+			BackgroundColor3 = THEME.Accent,
+			BackgroundTransparency = 0.15,
+			BorderSizePixel = 0,
+			ZIndex = 0,
+			Parent = row,
+		})
+	end
+	ctx.Lines[rowIndex] = lines
+
+	local above = ctx.Lines[rowIndex - 1]
+	if above then
+		for _, line in ipairs(above) do
+			line.Size = UDim2.new(0, LAYOUT.TabDivider, 1, LAYOUT.TabGap)
+		end
+	end
+
+	ctx.Rows[rowIndex] = row
+	return row
 end
 
 function Library:AddTab(info)
@@ -3514,7 +3513,8 @@ function Library:_addCard(ctx, info, isSection)
 
 	local card = new("Frame", {
 		Name = (isSection and "Section" or "Tab") .. index,
-		LayoutOrder = index,
+		Position = cardPos,
+		Size = cardSize,
 
 		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
 		BackgroundTransparency = 0.5,
@@ -3553,8 +3553,7 @@ function Library:_addCard(ctx, info, isSection)
 		BackgroundTransparency = BOTTOM_EDGE_FADE,
 		BorderSizePixel = 0,
 		ZIndex = 1,
-		Visible = false,
-		Parent = card,
+		Parent = row,
 	}, { new("UICorner", { CornerRadius = UDim.new(1, 0) }) })
 
 	local glow = new("Frame", {
@@ -3934,8 +3933,8 @@ function Library:_sectionList(tab)
 	local list = new("ScrollingFrame", {
 		Name = "SectionList",
 
-		Position = UDim2.fromScale(0.0216725003, 0.0537310988),
-		Size = UDim2.fromScale(0.965323985, 0.946268976),
+		Position = UDim2.fromScale(0.0115, 0.0537),
+		Size = UDim2.fromScale(0.977, 0.9463),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		CanvasSize = UDim2.new(),
@@ -3950,15 +3949,8 @@ function Library:_sectionList(tab)
 		Parent = self.TabArea,
 	}, {
 
-		-- dumped Sections > ScrollingFrame > UIGridLayout
-		new("UIGridLayout", {
-			CellSize = UDim2.new(0.474999994, 0, 0.174999997, 0),
-			CellPadding = UDim2.new(0.0324999988, 0, 0.0299999993, 0),
-			FillDirection = Enum.FillDirection.Horizontal,
-			HorizontalAlignment = Enum.HorizontalAlignment.Left,
-			VerticalAlignment = Enum.VerticalAlignment.Top,
-			SortOrder = Enum.SortOrder.LayoutOrder,
-		}),
+		padding(8, math.max(LAYOUT.TabScrollPad, 8), LAYOUT.TabRowGap, 8),
+		vlist(LAYOUT.TabRowGap),
 	})
 
 	tab.SectionCtx = {
@@ -4602,22 +4594,19 @@ function Library:_addButton(card, info)
 
 	local label = new("TextLabel", {
 		Name = "Label",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0.5, 0, 0.5, 0),
-		Size = UDim2.new(1, -24, 0.55, 0),
+		Position = UDim2.fromOffset(12, 0),
+		Size = UDim2.new(1, -24, 1, 0),
 		BackgroundTransparency = 1,
 		Font = Enum.Font.GothamBold,
 		Text = info.text or "BUTTON",
-		TextScaled = true,
-		TextWrapped = true,
+		TextSize = 18,
 		TextColor3 = Color3.fromRGB(248, 4, 46),
 		TextXAlignment = Enum.TextXAlignment.Center,
+		TextTruncate = Enum.TextTruncate.AtEnd,
 		ZIndex = 3,
 		Parent = shell,
-	}, {
-		new("UITextSizeConstraint", { MaxTextSize = 18 }),
 	})
-	nexoFont(label, "Bold")
+	controlPart(label, "TextColor3")
 
 	local hit = new("TextButton", {
 		Name = "Hit",
@@ -4764,13 +4753,12 @@ function Library:_addToggle(card, info)
 	local function apply(v, fire, animate)
 		state = v and true or false
 
-		-- dumped Checkbox state: Inner 0.6x0.8 when on, 0x0 when off
+		-- dumped checkbox state: Inner 0.6x0.8 when on, 0x0 when off
 		local target = state and UDim2.new(0.600000024, 0, 0.800000012, 0) or UDim2.new(0, 0, 0, 0)
+		cancelTween(squareInner, "toggleSize")
 		if animate == false then
-			cancelTween(squareInner, "toggleSize")
 			squareInner.Size = target
 		else
-			cancelTween(squareInner, "toggleSize")
 			playTween(squareInner, fade, { Size = target }, "toggleSize")
 		end
 
@@ -4853,14 +4841,14 @@ function Library:_addSlider(card, info)
 		Name = "Track",
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.new(0, 0, 1, 0),
-		Size = UDim2.new(0.879999995, 0, 0, 8),
+		Size = UDim2.new(1, 0, 0, 8),
 		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 		BackgroundTransparency = 0,
 		BorderSizePixel = 0,
 		ZIndex = 3,
 		Parent = shell,
 	}, {
-		new("UICorner", { CornerRadius = UDim.new(1, 10) }),
+		new("UICorner", { CornerRadius = UDim.new(1, 0) }),
 	})
 
 	local fill = new("Frame", {
@@ -4871,13 +4859,13 @@ function Library:_addSlider(card, info)
 		BorderSizePixel = 0,
 		ZIndex = 4,
 		Parent = track,
-	}, { new("UICorner", { CornerRadius = UDim.new(1, 10) }) })
+	}, { new("UICorner", { CornerRadius = UDim.new(1, 0) }) })
 
 	local knob = new("ImageLabel", {
 		Name = "Knob",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.new(0, 0, 0.5, 0),
-		Size = UDim2.new(0.136261001, 0, 3.03583002, 0),
+		Size = UDim2.fromOffset(16, 16),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Image = "rbxassetid://16284326668",
