@@ -115,9 +115,9 @@ print("[NEXO HUB] UI library build: " .. NEXO_BUILD)
 local TAB_TITLE_SIZE = 42
 local TAB_DESC_SIZE  = 26
 
-local TAB_HOVER_STRENGTH = 0
+local TAB_HOVER_STRENGTH = 0.12
 
-local TAB_HOVER_ANGLE = -57
+local TAB_HOVER_ANGLE = -45
 local CLICK_SPEED    = 0.45
 
 local MAX_HOME_TABS = 3
@@ -126,7 +126,7 @@ local BACK_ALWAYS_VISIBLE = true
 
 local BACK_FALLBACK_TEXT = "<"
 
-local UI_SIZE     = 0.72
+local UI_SIZE     = 1.00
 local SCREEN_FILL = 0.80
 local MIN_SCALE   = 0.40
 local MAX_SCALE   = 1.00
@@ -163,7 +163,7 @@ local SCROLLBAR_FADE = 1
 local THEME = {
 	Panel       = Color3.fromRGB(0, 0, 0),
 	Card        = Color3.fromRGB(0, 0, 0),
-	TabCard     = Color3.fromRGB(20, 20, 20),
+	TabCard     = Color3.fromRGB(0, 0, 0),
 	Accent      = Color3.fromRGB(255, 0, 0),
 	AccentDark  = Color3.fromRGB(120, 0, 0),
 	Text        = Color3.fromRGB(245, 245, 248),
@@ -177,7 +177,7 @@ local THEME = {
 	DescPill    = Color3.fromRGB(24, 24, 24),
 	LaserShine  = Color3.fromRGB(255, 228, 228),
 	ControlAccent = Color3.fromRGB(228, 44, 44),
-	ControlText = Color3.fromRGB(248, 4, 46),
+	ControlText = Color3.fromRGB(228, 10, 10),
 	LaserSoft   = Color3.fromRGB(150, 18, 18),
 	LaserEdge   = Color3.fromRGB(140, 0, 0),
 }
@@ -264,7 +264,6 @@ local LAYOUT = {
 	ControlBoxScale = 0.85,
 	PanelExtraHeight = 0,
 	ToggleBox      = 26,
-	ToggleW        = 46,
 
 	ComboColumns   = 3,
 	ComboHeight    = 32,
@@ -615,7 +614,7 @@ function Loader.forget(url)
 	end
 	return removed
 end
-local Gif = { ready = false, cache = {}, players = {}, budget = 8 * 1024 * 1024, maxFrames = 120, limit = 3, busy = false, maxPixels = 384 * 384, checkRate = 0.25 }
+local Gif = { ready = false, cache = {}, players = {}, budget = 5 * 1024 * 1024, maxFrames = 48, limit = 2, busy = false, maxPixels = 320 * 320 }
 local bufferOk = type(buffer) == "table" and type(buffer.create) == "function"
 if bufferOk and Content ~= nil then
 	Gif.ready = pcall(function()
@@ -990,58 +989,10 @@ function Gif.detach(player, restore)
 	player.scratchBytes = nil
 end
 
-function Gif.visible(player)
-	local now = os.clock()
-	if player.seen and now - player.seen < (Gif.checkRate or 0.25) then return player.shown end
-	player.seen = now
-	local node = player.target
-	local shown = true
-	local depth = 0
-	while node and depth < 10 do
-		if node:IsA("GuiObject") then
-			if not node.Visible then
-				shown = false
-				break
-			end
-			if node:IsA("CanvasGroup") and node.GroupTransparency >= 0.985 then
-				shown = false
-				break
-			end
-		elseif node:IsA("ScreenGui") then
-			if not node.Enabled then
-				shown = false
-			end
-			break
-		end
-		node = node.Parent
-		depth = depth + 1
-	end
-	player.shown = shown
-	return shown
-end
-
-function Gif.still(target, url)
-	if not Gif.ready or not target then return end
-	Gif.load(url, function(data)
-		if not data or not target or not target.Parent then return end
-		local first = data.frames and data.frames[1]
-		if not first then return end
-		local ok, editable = pcall(function()
-			return AssetService:CreateEditableImage({ Size = Vector2.new(data.width, data.height) })
-		end)
-		if not ok or not editable then return end
-		pcall(writePixels, editable, Vector2.zero, Vector2.new(data.width, data.height), first.pixels)
-		pcall(function() target.ImageContent = Content.fromObject(editable) end)
-	end)
-end
-
 function Gif.attach(target, url, hooks)
 	if not Gif.ready then return nil end
 	if not target then return nil end
-	if Gif.count() >= (Gif.limit or 3) then
-		pcall(Gif.still, target, url)
-		return nil
-	end
+	if Gif.count() >= (Gif.limit or 2) then return nil end
 	hooks = hooks or {}
 	local player = { target = target, url = url, frame = 1, clock = 0, speed = 1, playing = true, ready = false,
 		loopsDone = 0, onFrame = hooks.onFrame, onState = hooks.onState, }
@@ -1054,9 +1005,9 @@ function Gif.attach(target, url, hooks)
 			if player.onState then player.onState(player) end
 			return
 		end
-		if data.width * data.height > (Gif.maxPixels or 147456) then
+		if data.width * data.height > (Gif.maxPixels or 102400) then
+			player.fault = "This GIF is too large to animate"
 			Gif.players[player] = nil
-			pcall(Gif.still, target, url)
 			if player.onState then player.onState(player) end
 			return
 		end
@@ -1091,12 +1042,11 @@ function Gif.attach(target, url, hooks)
 end
 
 RunService.Heartbeat:Connect(function(step)
-	if next(Gif.players) == nil then return end
 	for player in pairs(Gif.players) do
 		local target = player.target
 		if not target or not target.Parent then
 			Gif.detach(player)
-		elseif player.ready and player.playing and player.data and Gif.visible(player) then
+		elseif player.ready and player.playing and player.data and target.Visible and target.AbsoluteSize.X > 1 then
 			local frames = player.data.frames
 			local count = #frames
 			player.clock = player.clock + step * 1000 * player.speed
@@ -2008,13 +1958,11 @@ function Library:_lockPanelPos()
 	self:_unlockPanelPos()
 	local pos = self.PanelPos
 	if not pos then return end
-	local main = self.Main
-	if not main then return end
-	self._posLock = main:GetPropertyChangedSignal("Position"):Connect(function()
-		local want = self.PanelPos or pos
-		if not main.Parent or not want then return end
-		if main.Position ~= want then
-			main.Position = want
+	self._posLock = RunService.RenderStepped:Connect(function()
+		local main = self.Main
+		if not main or not main.Parent then return end
+		if main.Position ~= pos then
+			main.Position = pos
 		end
 	end)
 end
@@ -2771,7 +2719,34 @@ local G_TAB_STRK_RED = { {0, 157, 2, 31}, {0.55, 120, 14, 30}, {1, 76, 22, 32} }
 local G_BAR_STRK_RED = { {0, 157, 2, 31}, {0.55, 120, 14, 30}, {1, 76, 22, 32} }
 local G_LOGO      = { {0, 157, 2, 31}, {0.42, 163, 5, 33}, {1, 255, 51, 51} }
 
-local G_TAB_HOVER = { {0, 157, 2, 31}, {0.525043, 76, 22, 32}, {0.815199, 40, 19, 23}, {1, 24, 18, 19} }
+local G_TAB_HOVER = { {0, 182, 8, 40}, {0.42, 120, 12, 32}, {0.72, 52, 22, 24}, {1, 24, 19, 20} }
+
+-- ===================== HOHO SKIN (exact dump values) =====================
+-- one table instead of 17 top-level locals (Luau caps a scope at 200 registers)
+local HOHO = {}
+HOHO.PLATE_STROKE = { {0, 157, 2, 31}, {0.753022, 76, 22, 32}, {1, 20, 19, 19} }
+HOHO.FILL_CHECK   = { {0, 109, 1, 23}, {0.531952, 40, 19, 23}, {1, 24, 18, 19} }
+HOHO.FILL_SEL     = { {0, 76, 21, 31}, {0.222798, 40, 19, 23}, {1, 24, 18, 19} }
+
+-- dumped MAIN_UI layout fractions remapped into the 1010x671 panel
+-- (page is inset by Body padding 16px on each side, so page width = 978)
+-- SearchBox   x 0.055        w 0.786679983  h 0.116103001
+-- RETURN_BTN  x 0.867055     w 0.0780468
+-- Sections    y 0.337        w 0.890102029  h 0.601934016
+HOHO.PAGE_X   = 0.040440
+HOHO.SEARCH_W = 0.812425
+HOHO.RETURN_X = 0.879069
+HOHO.RETURN_W = 0.080603
+HOHO.BAR_H    = 78
+HOHO.SECT_W   = 0.919236
+HOHO.SECT_Y   = 104
+HOHO.SECT_H   = 404
+
+HOHO.HOVER_TWEEN = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+HOHO.HOME = Vector2.new(0, 0)
+HOHO.IN   = Vector2.new(-1, -1)
+HOHO.CARD = Vector2.new(1, 1)
+
 
 local HOME_CARD_SIZE   = UDim2.fromScale(0.2906, 0.7433)
 local HOME_CARD_RADIUS = UDim.new(0, 10)
@@ -2820,44 +2795,6 @@ local function nexoStroke(parent, thickness, cols, rot)
 	return s
 end
 
-local G_PLATE_STRK = { {0, 157, 2, 31}, {0.753022, 76, 22, 32}, {1, 20, 19, 19} }
-local G_FILL_CHECK = { {0, 109, 1, 23}, {0.531952, 40, 19, 23}, {1, 24, 18, 19} }
-local G_FILL_SEL   = { {0, 76, 21, 31}, {0.222798, 40, 19, 23}, {1, 24, 18, 19} }
-local HOVER_HOME   = Vector2.new(0, 0)
-local SWITCH_TWEEN = tweenInfo(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-
-local function plateHover(host, hit, dir, fillCols, radius, rot)
-	if not host or not hit then return nil end
-	local plate = Instance.new("Frame")
-	plate.Name = "Gradient"
-	plate.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	plate.BackgroundTransparency = 1
-	plate.BorderSizePixel = 0
-	plate.Size = UDim2.fromScale(1, 1)
-	plate.ZIndex = 0
-	local c = Instance.new("UICorner")
-	c.CornerRadius = radius or UDim.new(0, 10)
-	c.Parent = plate
-	nexoStops(plate, fillCols or G_FILL_CHECK, rot or -90)
-	local s = Instance.new("UIStroke")
-	s.Color = Color3.fromRGB(255, 255, 255)
-	s.Thickness = 2
-	s.Transparency = 0
-	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
-	s.Parent = plate
-	local sg = nexoStops(s, G_PLATE_STRK, -85)
-	plate.Parent = host
-	hit.MouseEnter:Connect(function()
-		playTween(sg, HOVER_FADE, { Offset = dir or Vector2.new(-1, -1) }, "plateEdge")
-		playTween(plate, HOVER_FADE, { BackgroundTransparency = 0 }, "plateFade")
-	end)
-	hit.MouseLeave:Connect(function()
-		playTween(sg, HOVER_FADE, { Offset = HOVER_HOME }, "plateEdge")
-		playTween(plate, HOVER_FADE, { BackgroundTransparency = 1 }, "plateFade")
-	end)
-	return plate
-end
-
 local function selectorTextGlow(parent, color, transparency)
 	local s = Instance.new("UIStroke")
 	s.Color = color or Color3.fromRGB(255, 255, 255)
@@ -2867,6 +2804,49 @@ local function selectorTextGlow(parent, color, transparency)
 	s.Parent = parent
 	return s
 end
+
+-- gradient plate + red rim, exactly like the dump's "Gradient" child
+function HOHO.plate(parent, fillKeys, sizeOverride, radius)
+	local g = Instance.new("Frame")
+	g.Name = "Gradient"
+	g.Size = sizeOverride or UDim2.fromScale(1, 1)
+	g.Position = UDim2.new(0, 0, 2.11993001e-08, 0)
+	g.AnchorPoint = Vector2.new(0, 0)
+	g.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	g.BackgroundTransparency = 1
+	g.BorderSizePixel = 0
+	g.ZIndex = 0
+	local c = Instance.new("UICorner")
+	c.CornerRadius = radius or UDim.new(0, 10)
+	c.Parent = g
+	nexoStops(g, fillKeys, -90)
+	local st = Instance.new("UIStroke")
+	st.Color = Color3.fromRGB(255, 255, 255)
+	st.Thickness = 2
+	st.Transparency = 0
+	st.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+	st.Parent = g
+	nexoStops(st, HOHO.PLATE_STROKE, -85)
+	g.Parent = parent
+	return g
+end
+
+-- dumped hover: stroke gradient Offset (0,0) -> dir  +  plate transparency 1 -> 0
+function HOHO.hover(btn, dir, plate)
+	plate = plate or btn:FindFirstChild("Gradient")
+	if not plate then return end
+	local stroke = plate:FindFirstChildOfClass("UIStroke")
+	local sg = stroke and stroke:FindFirstChildOfClass("UIGradient")
+	if not sg then return end
+	dir = dir or HOHO.IN
+	local function go(off, tr)
+		TweenService:Create(sg, HOHO.HOVER_TWEEN, { Offset = off }):Play()
+		TweenService:Create(plate, HOHO.HOVER_TWEEN, { BackgroundTransparency = tr }):Play()
+	end
+	btn.MouseEnter:Connect(function() go(dir, 0) end)
+	btn.MouseLeave:Connect(function() go(HOHO.HOME, 1) end)
+end
+-- =========================================================================
 
 local function nexoSeq(cols)
 	local ks = {}
@@ -3283,8 +3263,8 @@ function Library:_buildTabsPage()
 	self.SearchBar = new("Frame", {
 		Name = "SearchBar",
 
-		Position = UDim2.new(tabRowInset(), 3, 0, 3),
-		Size = UDim2.new(1 - tabRowInset() * 2, -(LAYOUT.TabScrollPad + 6 + LAYOUT.BackButton + LAYOUT.BackGap), 0, LAYOUT.SearchHeight),
+		Position = UDim2.new(HOHO.PAGE_X, 0, 0, 0),
+		Size = UDim2.new(HOHO.SEARCH_W, 0, 0, HOHO.BAR_H),
 
 		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
 		BackgroundTransparency = 0.5,
@@ -3294,12 +3274,12 @@ function Library:_buildTabsPage()
 	}, {
 		new("UICorner", { CornerRadius = UDim.new(0.3, 0) }),
 
-		padding(0, 18, 0, 18),
+		-- dumped SearchBox > Gradient (UICorner 0.3, UIStroke 2.5, UIGradient -90 @ offset y 0.1)
 		new("Frame", {
 			Name = "Gradient",
-
-			Position = UDim2.fromOffset(-18, 0),
-			Size = UDim2.new(1, 36, 1, 0),
+			Position = UDim2.new(0, 0, 2.11993001e-08, 0),
+			Size = UDim2.fromScale(1, 1),
+			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
 			ZIndex = 0,
@@ -3313,40 +3293,36 @@ function Library:_buildTabsPage()
 					ColorSequenceKeypoint.new(1, Color3.fromRGB(24, 24, 24)),
 				}),
 				Rotation = -90,
-				Offset = Vector2.new(0, 0.1),
+				Offset = Vector2.new(0, 0.100000001),
 			}),
 		}),
 
-		new("ImageLabel", {
-			Name = "Icon",
-			AnchorPoint = Vector2.new(0, 0.5),
-			Position = UDim2.new(0, 0, 0.5, 0),
-			Size = UDim2.fromOffset(LAYOUT.SearchIcon, LAYOUT.SearchIcon),
-			BackgroundTransparency = 1,
-			Image = img(IMAGES.SearchIcon),
-			ScaleType = Enum.ScaleType.Fit,
-			Visible = false,
-		}),
+		-- dumped SearchBox > Textbox (SemiBold Italic, centred, TextScaled)
 		new("TextBox", {
 			Name = "Field",
-			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, 0, 0.5, 0),
-			Size = UDim2.new(1, 0, 0.578886986, 0),
+			AnchorPoint = Vector2.new(0, 0.5),
+			Position = UDim2.new(0, 0, 0.5, 0),
+			Size = UDim2.new(0.720000029, 0, 0.578886986, 0),
 			BackgroundTransparency = 1,
-			ClipsDescendants = true,
-			Font = Enum.Font.SourceSansItalic,
+			BorderSizePixel = 0,
+			RichText = true,
 			PlaceholderText = TEXT.SearchPlaceholder or "SEARCH ...",
 			PlaceholderColor3 = Color3.fromRGB(117, 117, 117),
 			Text = "",
 			TextScaled = true,
-			TextSize = 20,
-			TextColor3 = THEME.Text,
+			TextWrapped = true,
+			TextColor3 = Color3.fromRGB(255, 255, 255),
 			TextXAlignment = Enum.TextXAlignment.Center,
 			ClearTextOnFocus = false,
+			ZIndex = 2,
 		}),
 	})
+	nexoFont(self.SearchBar.Field, "SemiBold")
+	pcall(function()
+		self.SearchBar.Field.FontFace = Font.new(NEXO_SANS, Enum.FontWeight.SemiBold, Enum.FontStyle.Italic)
+	end)
 
-	nexoStroke(self.SearchBar, 2.5, G_BAR_STRK, -90)
+	nexoStroke(self.SearchBar.Gradient, 2.5, G_BAR_STRK, -90)
 
 	new("Frame", {
 		Name = "SearchBottomEdge",
@@ -3361,11 +3337,11 @@ function Library:_buildTabsPage()
 
 	self.BackButton = new("ImageButton", {
 		Name = "BackButton",
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1 - tabRowInset(), -(LAYOUT.TabScrollPad + 3), 0, 3),
-		Size = UDim2.fromOffset(LAYOUT.BackButton, LAYOUT.BackHeight or LAYOUT.SearchHeight),
-		BackgroundColor3 = THEME.SearchBar,
-		BackgroundTransparency = 0.15,
+		AnchorPoint = Vector2.new(0, 0),
+		Position = UDim2.new(HOHO.RETURN_X, 0, 0, 0),
+		Size = UDim2.new(HOHO.RETURN_W, 0, 0, HOHO.BAR_H),
+		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
+		BackgroundTransparency = 0.5,
 		BorderSizePixel = 0,
 		Image = "",
 		AutoButtonColor = false,
@@ -3373,9 +3349,27 @@ function Library:_buildTabsPage()
 		ZIndex = 3,
 		Parent = page,
 	}, {
-		corner(16),
-		stroke(THEME.Accent, 2, 0.15),
-		gradient(THEME.AccentDark, THEME.SearchBar, 205),
+		new("UICorner", { CornerRadius = UDim.new(0.3, 0) }),
+		-- dumped RETURN_BUTTON > Gradient
+		new("Frame", {
+			Name = "Gradient",
+			Position = UDim2.new(0, 0, 2.11993001e-08, 0),
+			Size = UDim2.fromScale(1, 1),
+			BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			ZIndex = 0,
+		}, {
+			new("UICorner", { CornerRadius = UDim.new(0.3, 0) }),
+			new("UIGradient", {
+				Color = ColorSequence.new({
+					ColorSequenceKeypoint.new(0, Color3.fromRGB(89, 1, 20)),
+					ColorSequenceKeypoint.new(0.483592, Color3.fromRGB(40, 19, 24)),
+					ColorSequenceKeypoint.new(1, Color3.fromRGB(27, 5, 5)),
+				}),
+				Rotation = -90,
+			}),
+		}),
 
 		new("TextLabel", {
 			Name = "Fallback",
@@ -3401,14 +3395,10 @@ function Library:_buildTabsPage()
 		}),
 	})
 
+	nexoStroke(self.BackButton.Gradient, 2.5, G_BAR_STRK, -90)
 	if HOVER_ENABLED then
-		local fade = HOVER_FADE
-		self.BackButton.MouseEnter:Connect(function()
-			playTween(self.BackButton, fade, { BackgroundTransparency = 0.55 }, "hover")
-		end)
-		self.BackButton.MouseLeave:Connect(function()
-			playTween(self.BackButton, fade, { BackgroundTransparency = 0.15 }, "hover")
-		end)
+		-- dumped RETURN_BUTTON hover: offset -> (-1,-1), plate 1 -> 0
+		HOHO.hover(self.BackButton, HOHO.IN)
 	end
 
 	self.BackButton.MouseButton1Click:Connect(function()
@@ -3434,8 +3424,8 @@ function Library:_buildTabsPage()
 
 	local area = new("Frame", {
 		Name = "Sections",
-		Position = UDim2.new(tabRowInset(), 0, 0, gridTop),
-		Size = UDim2.new(1 - tabRowInset() * 2, 0, 1, -(gridTop + LAYOUT.PagesBottomSpace)),
+		Position = UDim2.new(HOHO.PAGE_X, 0, 0, HOHO.SECT_Y),
+		Size = UDim2.new(HOHO.SECT_W, 0, 0, HOHO.SECT_H),
 		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
 		BackgroundTransparency = 0.75,
 		BorderSizePixel = 0,
@@ -3454,8 +3444,8 @@ function Library:_buildTabsPage()
 	self.TabList = new("ScrollingFrame", {
 		Name = "TabList",
 
-		Position = UDim2.fromScale(0.0115, 0.0537),
-		Size = UDim2.fromScale(0.977, 0.9463),
+		Position = UDim2.fromScale(0.0216725003, 0.0537310988),
+		Size = UDim2.fromScale(0.965323985, 0.946268976),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		CanvasSize = UDim2.new(),
@@ -3469,8 +3459,15 @@ function Library:_buildTabsPage()
 		Parent = area,
 	}, {
 
-		padding(8, math.max(LAYOUT.TabScrollPad, 8), LAYOUT.TabRowGap, 8),
-		vlist(LAYOUT.TabRowGap),
+		-- dumped Sections > ScrollingFrame > UIGridLayout
+		new("UIGridLayout", {
+			CellSize = UDim2.new(0.474999994, 0, 0.174999997, 0),
+			CellPadding = UDim2.new(0.0324999988, 0, 0.0299999993, 0),
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Left,
+			VerticalAlignment = Enum.VerticalAlignment.Top,
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}),
 	})
 
 	self.Tabs = self.Tabs or {}
@@ -3496,46 +3493,9 @@ function Library:_buildTabsPage()
 end
 
 function Library:_rowIn(ctx, rowIndex)
-	if ctx.Rows[rowIndex] then return ctx.Rows[rowIndex] end
-
-	local cols = math.max(1, LAYOUT.TabColumns)
-
-	local row = new("Frame", {
-		Name = "Row" .. rowIndex,
-		LayoutOrder = rowIndex,
-		Size = UDim2.new(1, 0, 0, LAYOUT.TabHeight),
-		BackgroundTransparency = 1,
-		Parent = ctx.List,
-	}, {
-
-		rowSidePadding(),
-	})
-
-	local lines = {}
-	for i = 1, (LAYOUT.TabDivider > 0 and cols - 1 or 0) do
-		lines[i] = new("Frame", {
-			Name = "Line" .. i,
-			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(i / cols, (i * LAYOUT.TabGap / cols) - (LAYOUT.TabGap / 2), 0, 0),
-			Size = UDim2.new(0, LAYOUT.TabDivider, 1, 0),
-			BackgroundColor3 = THEME.Accent,
-			BackgroundTransparency = 0.15,
-			BorderSizePixel = 0,
-			ZIndex = 0,
-			Parent = row,
-		})
-	end
-	ctx.Lines[rowIndex] = lines
-
-	local above = ctx.Lines[rowIndex - 1]
-	if above then
-		for _, line in ipairs(above) do
-			line.Size = UDim2.new(0, LAYOUT.TabDivider, 1, LAYOUT.TabGap)
-		end
-	end
-
-	ctx.Rows[rowIndex] = row
-	return row
+	-- UIGridLayout handles rows/columns; no per-row frames are needed.
+	ctx.Lines[rowIndex] = ctx.Lines[rowIndex] or {}
+	return ctx.List
 end
 
 function Library:AddTab(info)
@@ -3554,8 +3514,7 @@ function Library:_addCard(ctx, info, isSection)
 
 	local card = new("Frame", {
 		Name = (isSection and "Section" or "Tab") .. index,
-		Position = cardPos,
-		Size = cardSize,
+		LayoutOrder = index,
 
 		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
 		BackgroundTransparency = 0.5,
@@ -3581,7 +3540,7 @@ function Library:_addCard(ctx, info, isSection)
 	}, { new("UICorner", { CornerRadius = UDim.new(0.1, 0) }) })
 	nexoStops(grad, G_PANEL, -57)
 
-	nexoStroke(card, 2, G_PANEL_STRK, -57)
+	nexoStroke(grad, 2, G_PANEL_STRK, -57)
 
 	local pad = LAYOUT.TabPad
 
@@ -3594,7 +3553,8 @@ function Library:_addCard(ctx, info, isSection)
 		BackgroundTransparency = BOTTOM_EDGE_FADE,
 		BorderSizePixel = 0,
 		ZIndex = 1,
-		Parent = row,
+		Visible = false,
+		Parent = card,
 	}, { new("UICorner", { CornerRadius = UDim.new(1, 0) }) })
 
 	local glow = new("Frame", {
@@ -3610,14 +3570,6 @@ function Library:_addCard(ctx, info, isSection)
 	}, { new("UICorner", { CornerRadius = UDim.new(0.1, 0) }) })
 
 	nexoStops(glow, G_TAB_HOVER, TAB_HOVER_ANGLE)
-
-	local glowStroke = Instance.new("UIStroke")
-	glowStroke.Color = Color3.fromRGB(255, 255, 255)
-	glowStroke.Thickness = 2
-	glowStroke.Transparency = 0
-	glowStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
-	glowStroke.Parent = glow
-	local glowEdge = nexoStops(glowStroke, G_PLATE_STRK, TAB_HOVER_ANGLE)
 
 	local ripple = new("Frame", {
 		Name = "Ripple",
@@ -3645,15 +3597,7 @@ function Library:_addCard(ctx, info, isSection)
 			Parent = card,
 		})
 
-		hit.MouseEnter:Connect(function()
-			playTween(glow, fade, { BackgroundTransparency = TAB_HOVER_STRENGTH }, "hover")
-			playTween(glowEdge, fade, { Offset = Vector2.new(1, 1) }, "hoverEdge")
-		end)
-
-		hit.MouseLeave:Connect(function()
-			playTween(glow, fade, { BackgroundTransparency = 1 }, "hover")
-			playTween(glowEdge, fade, { Offset = HOVER_HOME }, "hoverEdge")
-		end)
+		HOHO.hover(hit, HOHO.CARD, grad)
 
 		hit.MouseButton1Down:Connect(function()
 
@@ -3990,8 +3934,8 @@ function Library:_sectionList(tab)
 	local list = new("ScrollingFrame", {
 		Name = "SectionList",
 
-		Position = UDim2.fromScale(0.0115, 0.0537),
-		Size = UDim2.fromScale(0.977, 0.9463),
+		Position = UDim2.fromScale(0.0216725003, 0.0537310988),
+		Size = UDim2.fromScale(0.965323985, 0.946268976),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		CanvasSize = UDim2.new(),
@@ -4006,8 +3950,15 @@ function Library:_sectionList(tab)
 		Parent = self.TabArea,
 	}, {
 
-		padding(8, math.max(LAYOUT.TabScrollPad, 8), LAYOUT.TabRowGap, 8),
-		vlist(LAYOUT.TabRowGap),
+		-- dumped Sections > ScrollingFrame > UIGridLayout
+		new("UIGridLayout", {
+			CellSize = UDim2.new(0.474999994, 0, 0.174999997, 0),
+			CellPadding = UDim2.new(0.0324999988, 0, 0.0299999993, 0),
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Left,
+			VerticalAlignment = Enum.VerticalAlignment.Top,
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}),
 	})
 
 	tab.SectionCtx = {
@@ -4618,7 +4569,7 @@ function Library:_addButton(card, info)
 		ZIndex = 2,
 		Parent = slot,
 	}, {
-		corner(10),
+		new("UICorner", { CornerRadius = UDim.new(0, 10) }),
 		new("UIStroke", {
 			Color = Color3.fromRGB(253, 1, 12),
 			Thickness = 1.5,
@@ -4630,12 +4581,12 @@ function Library:_addButton(card, info)
 	local glow = new("Frame", {
 		Name = "Hover",
 		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = Color3.fromRGB(248, 4, 46),
+		BackgroundColor3 = THEME.ControlAccent,
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		ZIndex = 2,
 		Parent = shell,
-	}, { corner(10) })
+	}, { corner(12) })
 
 	local ripple = new("Frame", {
 		Name = "Ripple",
@@ -4651,18 +4602,22 @@ function Library:_addButton(card, info)
 
 	local label = new("TextLabel", {
 		Name = "Label",
-		Position = UDim2.fromOffset(12, 0),
-		Size = UDim2.new(1, -24, 1, 0),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Size = UDim2.new(1, -24, 0.55, 0),
 		BackgroundTransparency = 1,
 		Font = Enum.Font.GothamBold,
 		Text = info.text or "BUTTON",
-		TextSize = 18,
-		TextColor3 = THEME.ControlText,
-		TextTruncate = Enum.TextTruncate.AtEnd,
+		TextScaled = true,
+		TextWrapped = true,
+		TextColor3 = Color3.fromRGB(248, 4, 46),
+		TextXAlignment = Enum.TextXAlignment.Center,
 		ZIndex = 3,
 		Parent = shell,
+	}, {
+		new("UITextSizeConstraint", { MaxTextSize = 18 }),
 	})
-	controlPart(label, "TextColor3")
+	nexoFont(label, "Bold")
 
 	local hit = new("TextButton", {
 		Name = "Hit",
@@ -4678,11 +4633,11 @@ function Library:_addButton(card, info)
 		local fade = HOVER_FADE
 
 		hit.MouseEnter:Connect(function()
-			playTween(glow, fade, { BackgroundTransparency = 0.1 }, "hover")
+			playTween(shell, HOHO.HOVER_TWEEN, { BackgroundTransparency = 0.1 }, "hover")
 		end)
 
 		hit.MouseLeave:Connect(function()
-			playTween(glow, fade, { BackgroundTransparency = 1 }, "hover")
+			playTween(shell, HOHO.HOVER_TWEEN, { BackgroundTransparency = 1 }, "hover")
 		end)
 
 		hit.MouseButton1Down:Connect(function()
@@ -4740,10 +4695,10 @@ function Library:_addToggle(card, info)
 		ZIndex = 2,
 		Parent = slot,
 	}, {
-		corner(12),
-		nexoBorder(2),
+		new("UICorner", { CornerRadius = UDim.new(0, 10) }),
 		padding(0, 14, 0, 14),
 	})
+	HOHO.plate(shell, HOHO.FILL_CHECK)
 
 	local label = new("TextLabel", {
 		Name = "Label",
@@ -4761,44 +4716,34 @@ function Library:_addToggle(card, info)
 		Parent = shell,
 	})
 
-	local square = new("Frame", {
+	local square = new("ImageLabel", {
 		Name = "Box",
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, 0, 0.5, 0),
-		Size = UDim2.fromOffset(LAYOUT.ToggleW or 46, LAYOUT.ToggleBox),
+		Size = UDim2.fromOffset(LAYOUT.ToggleBox, LAYOUT.ToggleBox),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		ZIndex = 3,
-		Parent = shell,
-	})
-
-	local switchOuter = new("ImageLabel", {
-		Name = "Outer",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
 		Image = "rbxassetid://16798759567",
 		ImageColor3 = Color3.fromRGB(255, 51, 51),
 		ScaleType = Enum.ScaleType.Fit,
 		ZIndex = 3,
-		Parent = square,
+		Parent = shell,
 	})
-
-	local switchInner = new("ImageLabel", {
+	local squareInner = new("ImageLabel", {
 		Name = "Inner",
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromScale(0, 0),
+		Position = UDim2.new(0.5, 0, 0.5, 0),
+		Size = UDim2.new(0, 0, 0, 0),
 		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
 		Image = "rbxassetid://16798797371",
 		ImageColor3 = Color3.fromRGB(255, 51, 51),
 		ScaleType = Enum.ScaleType.Fit,
 		ZIndex = 4,
 		Parent = square,
 	})
-	controlPart(switchOuter, "ImageColor3")
-	controlPart(switchInner, "ImageColor3")
+	controlPart(square, "ImageColor3")
+	controlPart(squareInner, "ImageColor3")
 
 	local hit = new("TextButton", {
 		Name = "Hit",
@@ -4811,21 +4756,22 @@ function Library:_addToggle(card, info)
 		Parent = shell,
 	})
 
+	if HOVER_ENABLED then HOHO.hover(hit, HOHO.IN, shell:FindFirstChild("Gradient")) end
+
 	local fade = TOGGLE_TWEEN
 	local state = info.default and true or false
-
-	plateHover(shell, hit, Vector2.new(-1, -1), G_FILL_CHECK, UDim.new(0, 10), -90)
 
 	local function apply(v, fire, animate)
 		state = v and true or false
 
-		local want = state and UDim2.new(0.600000024, 0, 0.800000012, 0) or UDim2.new(0, 0, 0, 0)
+		-- dumped Checkbox state: Inner 0.6x0.8 when on, 0x0 when off
+		local target = state and UDim2.new(0.600000024, 0, 0.800000012, 0) or UDim2.new(0, 0, 0, 0)
 		if animate == false then
-			cancelTween(switchInner, "toggleSize")
-			switchInner.Size = want
+			cancelTween(squareInner, "toggleSize")
+			squareInner.Size = target
 		else
-			cancelTween(switchInner, "toggleSize")
-			playTween(switchInner, SWITCH_TWEEN, { Size = want }, "toggleSize")
+			cancelTween(squareInner, "toggleSize")
+			playTween(squareInner, fade, { Size = target }, "toggleSize")
 		end
 
 		if info.status ~= false then
@@ -4867,10 +4813,11 @@ function Library:_addSlider(card, info)
 		ZIndex = 2,
 		Parent = slot,
 	}, {
-		corner(12),
-		nexoBorder(2),
+		new("UICorner", { CornerRadius = UDim.new(0, 10) }),
 		padding(10, 14, 12, 14),
 	})
+	HOHO.plate(shell, HOHO.FILL_CHECK)
+	if HOVER_ENABLED then HOHO.hover(shell, HOHO.IN) end
 
 	local label = new("TextLabel", {
 		Name = "Label",
@@ -4906,39 +4853,40 @@ function Library:_addSlider(card, info)
 		Name = "Track",
 		AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.new(0, 0, 1, 0),
-		Size = UDim2.new(1, 0, 0, 8),
-		BackgroundColor3 = THEME.SearchBar,
+		Size = UDim2.new(0.879999995, 0, 0, 8),
+		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
 		BackgroundTransparency = 0,
 		BorderSizePixel = 0,
 		ZIndex = 3,
 		Parent = shell,
 	}, {
-		new("UICorner", { CornerRadius = UDim.new(1, 0) }),
-		nexoBorder(1.6),
+		new("UICorner", { CornerRadius = UDim.new(1, 10) }),
 	})
 
 	local fill = new("Frame", {
 		Name = "Fill",
 		Size = UDim2.fromScale(0, 1),
-		BackgroundColor3 = THEME.ControlText,
+		BackgroundColor3 = Color3.fromRGB(175, 40, 42),
 		BackgroundTransparency = 0,
 		BorderSizePixel = 0,
 		ZIndex = 4,
 		Parent = track,
-	}, { new("UICorner", { CornerRadius = UDim.new(1, 0) }) })
-	controlPart(fill, "BackgroundColor3")
+	}, { new("UICorner", { CornerRadius = UDim.new(1, 10) }) })
 
-	local knob = new("Frame", {
+	local knob = new("ImageLabel", {
 		Name = "Knob",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.new(0, 0, 0.5, 0),
-		Size = UDim2.fromOffset(16, 16),
-		BackgroundColor3 = THEME.ControlText,
+		Size = UDim2.new(0.136261001, 0, 3.03583002, 0),
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
+		Image = "rbxassetid://16284326668",
+		ImageColor3 = Color3.fromRGB(255, 51, 51),
+		ScaleType = Enum.ScaleType.Fit,
 		ZIndex = 5,
 		Parent = track,
-	}, { new("UICorner", { CornerRadius = UDim.new(1, 0) }) })
-	controlPart(knob, "BackgroundColor3")
+	})
+	controlPart(knob, "ImageColor3")
 
 	local hit = new("TextButton", {
 		Name = "Hit",
@@ -5372,9 +5320,10 @@ function Library:_addDropdown(card, info)
 		ZIndex = 2,
 		Parent = frame,
 	}, {
-		corner(12),
-		nexoBorder(2),
+		new("UICorner", { CornerRadius = UDim.new(0, 10) }),
 	})
+	HOHO.plate(shell, HOHO.FILL_SEL)
+	if HOVER_ENABLED then HOHO.hover(shell, HOHO.IN) end
 
 	local label = new("TextLabel", {
 		Name = "Label",
@@ -5429,9 +5378,9 @@ function Library:_addDropdown(card, info)
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		CanvasSize = UDim2.new(),
-		ScrollBarThickness = SCROLLBAR_SIZE,
-		ScrollBarImageTransparency = SCROLLBAR_FADE,
-		ScrollBarImageColor3 = THEME.ControlAccent,
+		ScrollBarThickness = 3,
+		ScrollBarImageTransparency = 0,
+		ScrollBarImageColor3 = Color3.fromRGB(255, 51, 51),
 		Visible = false,
 		ZIndex = 3,
 		Parent = shell,
