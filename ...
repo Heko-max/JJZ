@@ -301,6 +301,7 @@ local HOME_CLONE = true
 local UI_CLONE     = true
 
 local CLONE_WIDTH  = 0.467833996
+local CLONE_OFFSET = 15
 local CLONE_ASPECT = 1.504639983177185
 
 local CLONE_HEIGHT = math.floor(LAYOUT.PanelWidth / CLONE_ASPECT + 0.5)
@@ -2722,28 +2723,30 @@ local G_LOGO      = { {0, 157, 2, 31}, {0.42, 163, 5, 33}, {1, 255, 51, 51} }
 local G_TAB_HOVER = { {0, 182, 8, 40}, {0.42, 120, 12, 32}, {0.72, 52, 22, 24}, {1, 24, 19, 20} }
 
 -- ===================== HOHO SKIN (exact dump values) =====================
-local H_PLATE_STROKE = { {0, 157, 2, 31}, {0.753022, 76, 22, 32}, {1, 20, 19, 19} }
-local H_FILL_CHECK   = { {0, 109, 1, 23}, {0.531952, 40, 19, 23}, {1, 24, 18, 19} }
-local H_FILL_SEL     = { {0, 76, 21, 31}, {0.222798, 40, 19, 23}, {1, 24, 18, 19} }
+-- one table instead of 17 top-level locals (Luau caps a scope at 200 registers)
+local HOHO = {}
+HOHO.PLATE_STROKE = { {0, 157, 2, 31}, {0.753022, 76, 22, 32}, {1, 20, 19, 19} }
+HOHO.FILL_CHECK   = { {0, 109, 1, 23}, {0.531952, 40, 19, 23}, {1, 24, 18, 19} }
+HOHO.FILL_SEL     = { {0, 76, 21, 31}, {0.222798, 40, 19, 23}, {1, 24, 18, 19} }
 
 -- dumped MAIN_UI layout fractions remapped into the 1010x671 panel
 -- (page is inset by Body padding 16px on each side, so page width = 978)
 -- SearchBox   x 0.055        w 0.786679983  h 0.116103001
 -- RETURN_BTN  x 0.867055     w 0.0780468
 -- Sections    y 0.337        w 0.890102029  h 0.601934016
-local H_PAGE_X   = 0.040440
-local H_SEARCH_W = 0.812425
-local H_RETURN_X = 0.879069
-local H_RETURN_W = 0.080603
-local H_BAR_H    = 78
-local H_SECT_W   = 0.919236
-local H_SECT_Y   = 104
-local H_SECT_H   = 404
+HOHO.PAGE_X   = 0.040440
+HOHO.SEARCH_W = 0.812425
+HOHO.RETURN_X = 0.879069
+HOHO.RETURN_W = 0.080603
+HOHO.BAR_H    = 78
+HOHO.SECT_W   = 0.919236
+HOHO.SECT_Y   = 104
+HOHO.SECT_H   = 404
 
-local H_HOVER_TWEEN = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-local H_HOME = Vector2.new(0, 0)
-local H_IN   = Vector2.new(-1, -1)
-local H_CARD = Vector2.new(1, 1)
+HOHO.HOVER_TWEEN = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+HOHO.HOME = Vector2.new(0, 0)
+HOHO.IN   = Vector2.new(-1, -1)
+HOHO.CARD = Vector2.new(1, 1)
 
 
 local HOME_CARD_SIZE   = UDim2.fromScale(0.2906, 0.7433)
@@ -2804,7 +2807,7 @@ local function selectorTextGlow(parent, color, transparency)
 end
 
 -- gradient plate + red rim, exactly like the dump's "Gradient" child
-local function hohoPlate(parent, fillKeys, sizeOverride, radius)
+function HOHO.plate(parent, fillKeys, sizeOverride, radius)
 	local g = Instance.new("Frame")
 	g.Name = "Gradient"
 	g.Size = sizeOverride or UDim2.fromScale(1, 1)
@@ -2824,25 +2827,25 @@ local function hohoPlate(parent, fillKeys, sizeOverride, radius)
 	st.Transparency = 0
 	st.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
 	st.Parent = g
-	nexoStops(st, H_PLATE_STROKE, -85)
+	nexoStops(st, HOHO.PLATE_STROKE, -85)
 	g.Parent = parent
 	return g
 end
 
 -- dumped hover: stroke gradient Offset (0,0) -> dir  +  plate transparency 1 -> 0
-local function hohoHover(btn, dir, plate)
+function HOHO.hover(btn, dir, plate)
 	plate = plate or btn:FindFirstChild("Gradient")
 	if not plate then return end
 	local stroke = plate:FindFirstChildOfClass("UIStroke")
 	local sg = stroke and stroke:FindFirstChildOfClass("UIGradient")
 	if not sg then return end
-	dir = dir or H_IN
+	dir = dir or HOHO.IN
 	local function go(off, tr)
-		TweenService:Create(sg, H_HOVER_TWEEN, { Offset = off }):Play()
-		TweenService:Create(plate, H_HOVER_TWEEN, { BackgroundTransparency = tr }):Play()
+		TweenService:Create(sg, HOHO.HOVER_TWEEN, { Offset = off }):Play()
+		TweenService:Create(plate, HOHO.HOVER_TWEEN, { BackgroundTransparency = tr }):Play()
 	end
 	btn.MouseEnter:Connect(function() go(dir, 0) end)
-	btn.MouseLeave:Connect(function() go(H_HOME, 1) end)
+	btn.MouseLeave:Connect(function() go(HOHO.HOME, 1) end)
 end
 -- =========================================================================
 
@@ -3261,8 +3264,8 @@ function Library:_buildTabsPage()
 	self.SearchBar = new("Frame", {
 		Name = "SearchBar",
 
-		Position = UDim2.new(H_PAGE_X, 0, 0, 0),
-		Size = UDim2.new(H_SEARCH_W, 0, 0, H_BAR_H),
+		Position = UDim2.new(HOHO.PAGE_X, 0, 0, 0),
+		Size = UDim2.new(HOHO.SEARCH_W, 0, 0, HOHO.BAR_H),
 
 		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
 		BackgroundTransparency = 0.5,
@@ -3336,8 +3339,8 @@ function Library:_buildTabsPage()
 	self.BackButton = new("ImageButton", {
 		Name = "BackButton",
 		AnchorPoint = Vector2.new(0, 0),
-		Position = UDim2.new(H_RETURN_X, 0, 0, 0),
-		Size = UDim2.new(H_RETURN_W, 0, 0, H_BAR_H),
+		Position = UDim2.new(HOHO.RETURN_X, 0, 0, 0),
+		Size = UDim2.new(HOHO.RETURN_W, 0, 0, HOHO.BAR_H),
 		BackgroundColor3 = Color3.fromRGB(20, 20, 20),
 		BackgroundTransparency = 0.5,
 		BorderSizePixel = 0,
@@ -3396,7 +3399,7 @@ function Library:_buildTabsPage()
 	nexoStroke(self.BackButton.Gradient, 2.5, G_BAR_STRK, -90)
 	if HOVER_ENABLED then
 		-- dumped RETURN_BUTTON hover: offset -> (-1,-1), plate 1 -> 0
-		hohoHover(self.BackButton, H_IN)
+		HOHO.hover(self.BackButton, HOHO.IN)
 	end
 
 	self.BackButton.MouseButton1Click:Connect(function()
@@ -3422,8 +3425,8 @@ function Library:_buildTabsPage()
 
 	local area = new("Frame", {
 		Name = "Sections",
-		Position = UDim2.new(H_PAGE_X, 0, 0, H_SECT_Y),
-		Size = UDim2.new(H_SECT_W, 0, 0, H_SECT_H),
+		Position = UDim2.new(HOHO.PAGE_X, 0, 0, HOHO.SECT_Y),
+		Size = UDim2.new(HOHO.SECT_W, 0, 0, HOHO.SECT_H),
 		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
 		BackgroundTransparency = 0.75,
 		BorderSizePixel = 0,
@@ -3595,7 +3598,7 @@ function Library:_addCard(ctx, info, isSection)
 			Parent = card,
 		})
 
-		hohoHover(hit, H_CARD, grad)
+		HOHO.hover(hit, HOHO.CARD, grad)
 
 		hit.MouseButton1Down:Connect(function()
 
@@ -4631,11 +4634,11 @@ function Library:_addButton(card, info)
 		local fade = HOVER_FADE
 
 		hit.MouseEnter:Connect(function()
-			playTween(shell, H_HOVER_TWEEN, { BackgroundTransparency = 0.1 }, "hover")
+			playTween(shell, HOHO.HOVER_TWEEN, { BackgroundTransparency = 0.1 }, "hover")
 		end)
 
 		hit.MouseLeave:Connect(function()
-			playTween(shell, H_HOVER_TWEEN, { BackgroundTransparency = 1 }, "hover")
+			playTween(shell, HOHO.HOVER_TWEEN, { BackgroundTransparency = 1 }, "hover")
 		end)
 
 		hit.MouseButton1Down:Connect(function()
@@ -4696,7 +4699,7 @@ function Library:_addToggle(card, info)
 		new("UICorner", { CornerRadius = UDim.new(0, 10) }),
 		padding(0, 14, 0, 14),
 	})
-	hohoPlate(shell, H_FILL_CHECK)
+	HOHO.plate(shell, HOHO.FILL_CHECK)
 
 	local label = new("TextLabel", {
 		Name = "Label",
@@ -4754,7 +4757,7 @@ function Library:_addToggle(card, info)
 		Parent = shell,
 	})
 
-	if HOVER_ENABLED then hohoHover(hit, H_IN, shell:FindFirstChild("Gradient")) end
+	if HOVER_ENABLED then HOHO.hover(hit, HOHO.IN, shell:FindFirstChild("Gradient")) end
 
 	local fade = TOGGLE_TWEEN
 	local state = info.default and true or false
@@ -4814,8 +4817,8 @@ function Library:_addSlider(card, info)
 		new("UICorner", { CornerRadius = UDim.new(0, 10) }),
 		padding(10, 14, 12, 14),
 	})
-	hohoPlate(shell, H_FILL_CHECK)
-	if HOVER_ENABLED then hohoHover(shell, H_IN) end
+	HOHO.plate(shell, HOHO.FILL_CHECK)
+	if HOVER_ENABLED then HOHO.hover(shell, HOHO.IN) end
 
 	local label = new("TextLabel", {
 		Name = "Label",
@@ -5320,8 +5323,8 @@ function Library:_addDropdown(card, info)
 	}, {
 		new("UICorner", { CornerRadius = UDim.new(0, 10) }),
 	})
-	hohoPlate(shell, H_FILL_SEL)
-	if HOVER_ENABLED then hohoHover(shell, H_IN) end
+	HOHO.plate(shell, HOHO.FILL_SEL)
+	if HOVER_ENABLED then HOHO.hover(shell, HOHO.IN) end
 
 	local label = new("TextLabel", {
 		Name = "Label",
@@ -6168,7 +6171,7 @@ function Library:_fitToScreen()
 
 	if UI_CLONE then
 
-		local wantW = (viewport.X * CLONE_WIDTH) / LAYOUT.PanelWidth
+		local wantW = (viewport.X * CLONE_WIDTH + CLONE_OFFSET) / LAYOUT.PanelWidth
 		local capH  = (viewport.Y * SCREEN_FILL) / CLONE_HEIGHT
 		self.BaseScale = math.min(wantW, capH) * UI_SIZE
 	else
