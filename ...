@@ -6,7 +6,7 @@ local HttpService = game:GetService("HttpService")
 local AssetService = game:GetService("AssetService")
 
 local IMAGES = {
-	Background  = "https://i.imgur.com/lyJQbo7.png",
+	Background  = "2151741365",
 	Logo        = "https://i.imgur.com/yck4043.png",
 	Banner      = "132582095265277",
 	Discord     = "16171891828",
