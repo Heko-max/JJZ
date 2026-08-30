@@ -2729,6 +2729,9 @@ HOHO.TWEEN = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out
 HOHO.HOME  = Vector2.new(0, 0)
 HOHO.IN    = Vector2.new(-1, -1)
 HOHO.CARD  = Vector2.new(1, 1)
+HOHO.PLATE_STROKE = { {0, 157, 2, 31}, {0.753022, 76, 22, 32}, {1, 20, 19, 19} }
+HOHO.FILL_CHECK   = { {0, 109, 1, 23}, {0.531952, 40, 19, 23}, {1, 24, 18, 19} }
+HOHO.FILL_SEL     = { {0, 76, 21, 31}, {0.222798, 40, 19, 23}, {1, 24, 18, 19} }
 
 function HOHO.grad(inst)
 	if not inst then return nil end
@@ -2747,8 +2750,17 @@ function HOHO.hover(btn, target, dir)
 	target = target or btn
 	if not btn or not target then return end
 	dir = dir or HOHO.IN
-	btn.MouseEnter:Connect(function() HOHO.sweep(target, dir) end)
-	btn.MouseLeave:Connect(function() HOHO.sweep(target, HOHO.HOME) end)
+	-- the red fill plate, if HOHO.plate was used on this element
+	local plate = target:FindFirstChild("HohoFill")
+	local function go(off, tr)
+		HOHO.sweep(target, off)
+		if plate then
+			TweenService:Create(plate, HOHO.TWEEN,
+				{ BackgroundTransparency = tr }):Play()
+		end
+	end
+	btn.MouseEnter:Connect(function() go(dir, 0) end)
+	btn.MouseLeave:Connect(function() go(HOHO.HOME, 1) end)
 end
 
 
@@ -2807,6 +2819,38 @@ local function selectorTextGlow(parent, color, transparency)
 	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
 	s.Parent = parent
 	return s
+end
+
+-- Invisible at rest (BackgroundTransparency = 1); the red gradient only fades
+-- in on hover. Fills its parent exactly, so it never affects layout.
+function HOHO.plate(parent, fillKeys, radius)
+	if not parent then return nil end
+	local g = Instance.new("Frame")
+	g.Name = "HohoFill"
+	g.Size = UDim2.fromScale(1, 1)
+	g.Position = UDim2.fromScale(0, 0)
+	-- A UIPadding on the parent shrinks the box its children live in, which
+	-- would leave the hover fill short of the element's real edges. Grow the
+	-- plate back out by the padding amounts so it covers the full control.
+	local pad = parent:FindFirstChildOfClass("UIPadding")
+	if pad then
+		local pl, pr = pad.PaddingLeft, pad.PaddingRight
+		local pt, pb = pad.PaddingTop, pad.PaddingBottom
+		g.Size = UDim2.new(
+			1 + pl.Scale + pr.Scale, pl.Offset + pr.Offset,
+			1 + pt.Scale + pb.Scale, pt.Offset + pb.Offset)
+		g.Position = UDim2.new(-pl.Scale, -pl.Offset, -pt.Scale, -pt.Offset)
+	end
+	g.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	g.BackgroundTransparency = 1
+	g.BorderSizePixel = 0
+	g.ZIndex = 0
+	local c = Instance.new("UICorner")
+	c.CornerRadius = radius or UDim.new(0, 12)
+	c.Parent = g
+	nexoStops(g, fillKeys or HOHO.FILL_CHECK, -90)
+	g.Parent = parent
+	return g
 end
 
 local function nexoSeq(cols)
@@ -4551,7 +4595,10 @@ function Library:_addButton(card, info)
 		corner(12),
 		nexoBorder(2),
 	})
-	if HOVER_ENABLED then HOHO.hover(shell, shell, HOHO.IN) end
+	if HOVER_ENABLED then
+		HOHO.plate(shell, HOHO.FILL_SEL, UDim.new(0, 12))
+		HOHO.hover(shell, shell, HOHO.IN)
+	end
 
 	local glow = new("Frame", {
 		Name = "Hover",
@@ -4729,7 +4776,10 @@ function Library:_addToggle(card, info)
 		Parent = shell,
 	})
 
-	if HOVER_ENABLED then HOHO.hover(hit, shell, HOHO.IN) end
+	if HOVER_ENABLED then
+		HOHO.plate(shell, HOHO.FILL_CHECK, UDim.new(0, 12))
+		HOHO.hover(hit, shell, HOHO.IN)
+	end
 
 	local fade = TOGGLE_TWEEN
 	local state = info.default and true or false
@@ -4738,7 +4788,7 @@ function Library:_addToggle(card, info)
 		state = v and true or false
 
 		-- tick scales in/out inside the box; the box itself never resizes
-		local target = state and UDim2.new(0.600000024, 0, 0.800000012, 0)
+		local target = state and UDim2.new(0.800000012, 0, 1, 0)
 			or UDim2.new(0, 0, 0, 0)
 		cancelTween(squareInner, "toggleSize")
 		if animate == false then
@@ -4790,7 +4840,10 @@ function Library:_addSlider(card, info)
 		nexoBorder(2),
 		padding(10, 14, 12, 14),
 	})
-	if HOVER_ENABLED then HOHO.hover(shell, shell, HOHO.IN) end
+	if HOVER_ENABLED then
+		HOHO.plate(shell, HOHO.FILL_CHECK, UDim.new(0, 12))
+		HOHO.hover(shell, shell, HOHO.IN)
+	end
 
 	local label = new("TextLabel", {
 		Name = "Label",
@@ -5295,7 +5348,10 @@ function Library:_addDropdown(card, info)
 		corner(12),
 		nexoBorder(2),
 	})
-	if HOVER_ENABLED then HOHO.hover(shell, shell, HOHO.IN) end
+	if HOVER_ENABLED then
+		HOHO.plate(shell, HOHO.FILL_SEL, UDim.new(0, 12))
+		HOHO.hover(shell, shell, HOHO.IN)
+	end
 
 	local label = new("TextLabel", {
 		Name = "Label",
