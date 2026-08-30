@@ -238,6 +238,7 @@ local LAYOUT = {
 	TabTextGap     = 26,
 
 	TabTitleLines  = 2,
+	TabTitleGap    = 14,
 	TabTitleMin    = 20,
 	TabTitleStep   = 0.86,
 	TabTitleLine   = 1.25,
@@ -613,7 +614,7 @@ function Loader.forget(url)
 	end
 	return removed
 end
-local Gif = { ready = false, cache = {}, players = {}, budget = 26 * 1024 * 1024, maxFrames = 300 }
+local Gif = { ready = false, cache = {}, players = {}, budget = 5 * 1024 * 1024, maxFrames = 48, limit = 2, busy = false, maxPixels = 320 * 320 }
 local bufferOk = type(buffer) == "table" and type(buffer.create) == "function"
 if bufferOk and Content ~= nil then
 	Gif.ready = pcall(function()
@@ -916,6 +917,12 @@ function Gif.load(url, done)
 	entry = { pending = true, waiting = { done } }
 	Gif.cache[key] = entry
 	task.spawn(function()
+		local guard = 0
+		while Gif.busy and guard < 900 do
+			guard = guard + 1
+			task.wait(0.05)
+		end
+		Gif.busy = true
 		local bytes = Loader.bytes(key)
 		local data, fault
 		if type(bytes) == "string" then
@@ -929,6 +936,7 @@ function Gif.load(url, done)
 			fault = "Could not read the GIF data"
 		end
 		Loader.bodies[key] = nil
+		Gif.busy = false
 		entry.pending = false
 		entry.data = data
 		entry.fault = fault
@@ -983,6 +991,8 @@ end
 
 function Gif.attach(target, url, hooks)
 	if not Gif.ready then return nil end
+	if not target then return nil end
+	if Gif.count() >= (Gif.limit or 2) then return nil end
 	hooks = hooks or {}
 	local player = { target = target, url = url, frame = 1, clock = 0, speed = 1, playing = true, ready = false,
 		loopsDone = 0, onFrame = hooks.onFrame, onState = hooks.onState, }
@@ -995,6 +1005,13 @@ function Gif.attach(target, url, hooks)
 			if player.onState then player.onState(player) end
 			return
 		end
+		if data.width * data.height > (Gif.maxPixels or 102400) then
+			player.fault = "This GIF is too large to animate"
+			Gif.players[player] = nil
+			if player.onState then player.onState(player) end
+			return
+		end
+
 		local ok, editable = pcall(function()
 			return AssetService:CreateEditableImage({ Size = Vector2.new(data.width, data.height) })
 		end)
@@ -1029,7 +1046,7 @@ RunService.Heartbeat:Connect(function(step)
 		local target = player.target
 		if not target or not target.Parent then
 			Gif.detach(player)
-		elseif player.ready and player.playing and player.data then
+		elseif player.ready and player.playing and player.data and target.Visible and target.AbsoluteSize.X > 1 then
 			local frames = player.data.frames
 			local count = #frames
 			player.clock = player.clock + step * 1000 * player.speed
@@ -3577,7 +3594,7 @@ function Library:_addCard(ctx, info, isSection)
 		BackgroundTransparency = 1,
 		ClipsDescendants = true,
 		Parent = card,
-	}, { vlist(6) })
+	}, { vlist(LAYOUT.TabTitleGap or 14) })
 
 	do
 		local layout = textCol:FindFirstChildOfClass("UIListLayout")
@@ -3627,7 +3644,7 @@ function Library:_addCard(ctx, info, isSection)
 		local function roomFor()
 			local total = textCol.AbsoluteSize.Y
 			if total <= 0 then total = LAYOUT.TabHeight or 164 end
-			local used = (LAYOUT.TabDescHeight or 70) + 10
+			local used = (LAYOUT.TabDescHeight or 70) + (LAYOUT.TabTitleGap or 14) + 4
 			return math.max(24, math.floor(total - used))
 		end
 
@@ -4593,6 +4610,11 @@ function Library:_addButton(card, info)
 
 	local handle = { Frame = shell, Label = label, IgnoreConfig = true }
 	function handle:SetText(v) self.Label.Text = v end
+	pcall(function()
+		self:_bindRegister(info.text or "BUTTON", "Button", handle, function()
+			if info.callback then task.spawn(info.callback) end
+		end)
+	end)
 	return self:_flag(info.flag, handle, "Button")
 end
 
@@ -4691,6 +4713,9 @@ function Library:_addToggle(card, info)
 	function handle:Set(v) apply(v, true) end
 	function handle:Get() return state end
 	function handle:SetText(v) self.Label.Text = v end
+	pcall(function()
+		self:_bindRegister(info.text or "SWITCH", "Switch", handle)
+	end)
 	return self:_flag(info.flag, handle, "Toggle")
 end
 
@@ -8649,7 +8674,7 @@ function Library:_buildAiWindow()
 
 	local Dock = Instance.new("Frame")
 	Dock.Name = "AI_DOCK"
-	Dock.Size = UDim2.fromOffset(CFG.BtnSize * 2 + CFG.BtnGap, CFG.BtnSize + 26)
+	Dock.Size = UDim2.fromOffset(CFG.BtnSize * 3 + CFG.BtnGap * 2, CFG.BtnSize + 26)
 	Dock.Position = UDim2.new(0.5, 0, 0, CFG.BtnY)
 	Dock.AnchorPoint = Vector2.new(0.5, 0)
 	Dock.BackgroundTransparency = 1
@@ -8744,8 +8769,9 @@ function Library:_buildAiWindow()
 		return item
 	end
 
-	local aiBtn = makeDockButton(0, CFG.Gif, CFG.Name)
-	local statusBtn = makeDockButton(1, CFG.StatusIcon, CFG.StatusName)
+	local bindBtn = makeDockButton(0, Library.BindCfg.Icon, Library.BindCfg.Name)
+	local aiBtn = makeDockButton(1, CFG.Gif, CFG.Name)
+	local statusBtn = makeDockButton(2, CFG.StatusIcon, CFG.StatusName)
 
 	local Toggle = aiBtn.Root
 	local tScale = aiBtn.Scale
@@ -8838,6 +8864,14 @@ function Library:_buildAiWindow()
 		pcall(function() self:ToggleStatus() end)
 		task.delay(0.16, function()
 			TS:Create(statusBtn.Scale, TweenInfo.new(0.16), { Scale = 1 }):Play()
+		end)
+	end)
+
+	bindBtn.Click.MouseButton1Click:Connect(function()
+		TS:Create(bindBtn.Scale, TweenInfo.new(0.12), { Scale = 0.92 }):Play()
+		pcall(function() self:ToggleKeybinds() end)
+		task.delay(0.16, function()
+			TS:Create(bindBtn.Scale, TweenInfo.new(0.16), { Scale = 1 }):Play()
 		end)
 	end)
 
@@ -8959,12 +8993,15 @@ function Library:_aiBubble(who, text)
 	bubble.Parent = state.History
 
 	local face = bubble:FindFirstChild("Avatar")
-	if face then
-		if who == "user" then
-			self:_aiImage(face, self:_aiUserAvatar(), "")
-		else
-			self:_aiImage(face, Library.AiCfg.BotAvatar, Library.AiCfg.BotFallback)
-		end
+	local seed = tpl:FindFirstChild("Avatar")
+	if face and seed then
+		pcall(function()
+			if seed.ImageContent and seed.ImageContent ~= "" then
+				face.ImageContent = seed.ImageContent
+			else
+				face.Image = seed.Image
+			end
+		end)
 	end
 	state.Decor.Visible = false
 	if state.Scroll then state.Scroll() end
@@ -9055,6 +9092,661 @@ function Library:SetAiReplies(url)
 	return self
 end
 
+Library.BindCfg = {
+	Enabled     = true,
+	Name        = "NeXo KeyBinds",
+	Icon        = "https://media.tenor.com/xA4q0AO9UH0AAAAM/keyboard-hanamaru-kindergarten.gif",
+	Title       = '>> Keybinds <font color="#f8042e">Gui</font>',
+	SearchText  = "Search Features...",
+	UnbindText  = "Unbind All",
+	Pattern     = "rbxassetid://2151741365",
+	PatternFade = 0.6,
+	Red         = Color3.fromRGB(248, 4, 46),
+	RedEdge     = Color3.fromRGB(253, 1, 12),
+	Bg          = Color3.fromRGB(30, 30, 30),
+	SearchBg    = Color3.fromRGB(24, 24, 24),
+	CheckBg     = Color3.fromRGB(40, 40, 40),
+	WidthScale  = 0.374045998,
+	HeightScale = 0.43859601,
+	Ratio       = 1.399999976158142,
+	RowHeight   = 18,
+	RowGap      = 3,
+	Small       = 780,
+	OpenTime    = 0.24,
+}
+
+Library.BindItems = {}
+Library.BindSaved = {}
+
+function Library:_bindRegister(name, kind, handle, fire)
+	if not name then return end
+	local text = tostring(name)
+	if text == "" then return end
+
+	Library.BindItems[#Library.BindItems + 1] = {
+		name = text,
+		kind = kind or "Switch",
+		handle = handle,
+		fire = fire,
+	}
+
+	local state = self.Binds
+	if not state then return end
+	state.Dirty = true
+	if state.Open and state.Refresh and not state.Queued then
+		state.Queued = true
+		task.delay(0.4, function()
+			state.Queued = false
+			pcall(state.Refresh)
+		end)
+	end
+end
+
+function Library:_bindKeyName(code)
+	local text = tostring(code)
+	text = text:gsub("^Enum%.KeyCode%.", "")
+	text = text:gsub("^Enum%.UserInputType%.", "")
+	return text
+end
+
+function Library:_bindNotify(text)
+	pcall(function() self:Notify({ text = text }) end)
+end
+
+function Library:_buildKeybindWindow()
+	local CFG = Library.BindCfg
+	if CFG.Enabled == false then return nil end
+	if self.Binds and self.Binds.Root and self.Binds.Root.Parent then return self.Binds end
+
+	local UIS = game:GetService("UserInputService")
+	local TS = game:GetService("TweenService")
+
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "NEXO_KEYBINDS"
+	gui.ResetOnSpawn = false
+	gui.IgnoreGuiInset = false
+	gui.DisplayOrder = 9997
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	pcall(function() gui.Parent = self.Gui and self.Gui.Parent end)
+	if not gui.Parent then
+		pcall(function() gui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui") end)
+	end
+
+	local bgFrame = Instance.new("CanvasGroup")
+	bgFrame.Name = "Background"
+	bgFrame.BackgroundColor3 = CFG.Bg
+	bgFrame.BackgroundTransparency = 0
+	bgFrame.BorderSizePixel = 0
+	bgFrame.ClipsDescendants = true
+	bgFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+	bgFrame.Position = UDim2.fromScale(0.5, 0.5)
+	bgFrame.Size = UDim2.new(CFG.WidthScale, 0, CFG.HeightScale, 0)
+	bgFrame.GroupTransparency = 1
+	bgFrame.Visible = false
+	bgFrame.ZIndex = 20
+	bgFrame.Parent = gui
+
+	local bgCorner = Instance.new("UICorner")
+	bgCorner.CornerRadius = UDim.new(0.075000003, 0)
+	bgCorner.Parent = bgFrame
+
+	local ratio = Instance.new("UIAspectRatioConstraint")
+	ratio.AspectRatio = CFG.Ratio
+	ratio.Parent = bgFrame
+
+	local winScale = Instance.new("UIScale")
+	winScale.Scale = 0.92
+	winScale.Parent = bgFrame
+
+	local grad = Instance.new("Frame")
+	grad.Name = "Gradient"
+	grad.BackgroundColor3 = Color3.new(1, 1, 1)
+	grad.BackgroundTransparency = 0
+	grad.BorderSizePixel = 0
+	grad.Size = UDim2.fromScale(1, 1)
+	grad.ZIndex = 0
+	grad.Parent = bgFrame
+
+	local gCorner = Instance.new("UICorner")
+	gCorner.CornerRadius = UDim.new(0.075000003, 0)
+	gCorner.Parent = grad
+
+	local pattern = Instance.new("ImageLabel")
+	pattern.Name = "Pattern"
+	pattern.ScaleType = Enum.ScaleType.Tile
+	pattern.TileSize = UDim2.new(0, 250, 0, 250)
+	pattern.ImageTransparency = CFG.PatternFade
+	pattern.BackgroundTransparency = 1
+	pattern.BorderSizePixel = 0
+	pattern.Position = UDim2.new(6.6499997e-05, 0, 0.00124400004, 0)
+	pattern.Size = UDim2.fromScale(1, 1)
+	pattern.ZIndex = 0
+	pattern.Parent = grad
+	self:_aiImage(pattern, CFG.Pattern, "")
+
+	local pCorner = Instance.new("UICorner")
+	pCorner.CornerRadius = UDim.new(0.075000003, 0)
+	pCorner.Parent = pattern
+
+	local ug = Instance.new("UIGradient")
+	ug.Rotation = -90
+	ug.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(157, 2, 31)),
+		ColorSequenceKeypoint.new(0.468048, Color3.fromRGB(47, 28, 31)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 30, 30)),
+	})
+	ug.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.9),
+		NumberSequenceKeypoint.new(1, 0.9),
+	})
+	ug.Parent = grad
+
+	local logo = Instance.new("ImageLabel")
+	logo.Name = "Logo"
+	logo.ScaleType = Enum.ScaleType.Fit
+	logo.BackgroundTransparency = 1
+	logo.BorderSizePixel = 0
+	logo.Position = UDim2.new(0.0603621006, 0, 0.0529119, 0)
+	logo.Size = UDim2.new(0.20000000, 0, 0.107871003, 0)
+	logo.ZIndex = 22
+	logo.Parent = bgFrame
+	self:_aiImage(logo, IMAGES.Logo, Library.AiCfg.BtnFallback)
+
+	local title = Instance.new("TextLabel")
+	title.Name = "Label"
+	title.RichText = true
+	title.Text = CFG.Title
+	title.TextColor3 = Color3.new(1, 1, 1)
+	title.TextScaled = true
+	title.TextWrapped = true
+	title.Font = Enum.Font.SourceSansSemibold
+	title.BackgroundTransparency = 1
+	title.BorderSizePixel = 0
+	title.AnchorPoint = Vector2.new(0.5, 0.5)
+	title.Position = UDim2.new(0.400000006, 0, 0.108231999, 0)
+	title.Size = UDim2.new(0.241307005, 0, 0.0536177009, 0)
+	title.ZIndex = 22
+	title.Parent = bgFrame
+
+	local header = Instance.new("TextButton")
+	header.Name = "DragBar"
+	header.Text = ""
+	header.AutoButtonColor = false
+	header.BackgroundTransparency = 1
+	header.BorderSizePixel = 0
+	header.Size = UDim2.new(1, 0, 0.17, 0)
+	header.ZIndex = 21
+	header.Active = true
+	header.Parent = bgFrame
+
+	local listFrame = Instance.new("Frame")
+	listFrame.Name = "FeatureListFrame"
+	listFrame.BackgroundTransparency = 1
+	listFrame.BorderSizePixel = 0
+	listFrame.Position = UDim2.new(0.0599999987, 0, 0.191429004, 0)
+	listFrame.Size = UDim2.new(0.884000003, 0, 0.745714009, 0)
+	listFrame.ZIndex = 22
+	listFrame.Parent = bgFrame
+
+	local search = Instance.new("TextBox")
+	search.Name = "SearchFeature"
+	search.PlaceholderText = CFG.SearchText
+	search.PlaceholderColor3 = Color3.fromRGB(128, 128, 128)
+	search.Text = ""
+	search.TextColor3 = Color3.new(1, 1, 1)
+	search.TextScaled = true
+	search.TextWrapped = true
+	search.TextXAlignment = Enum.TextXAlignment.Center
+	search.Font = Enum.Font.SourceSans
+	search.BackgroundColor3 = CFG.SearchBg
+	search.BorderSizePixel = 0
+	search.AnchorPoint = Vector2.new(0.5, 0.5)
+	search.Position = UDim2.new(0.239999995, 0, 0.0469081998, 0)
+	search.Size = UDim2.new(0.419999987, 0, 0.104943, 0)
+	search.ClearTextOnFocus = false
+	search.ZIndex = 23
+	search.Parent = listFrame
+
+	local sCorner = Instance.new("UICorner")
+	sCorner.CornerRadius = UDim.new(0, 7)
+	sCorner.Parent = search
+
+	local sLine = Instance.new("UIStroke")
+	sLine.Color = CFG.Red
+	sLine.Thickness = 1.25
+	sLine.Transparency = 0.5
+	sLine.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	sLine.Parent = search
+
+	local unbind = Instance.new("TextButton")
+	unbind.Name = "UnbindAllButton"
+	unbind.Text = CFG.UnbindText
+	unbind.TextColor3 = Color3.new(1, 1, 1)
+	unbind.TextScaled = true
+	unbind.TextWrapped = true
+	unbind.Font = Enum.Font.SourceSansBold
+	unbind.AutoButtonColor = false
+	unbind.BackgroundColor3 = CFG.Red
+	unbind.BorderSizePixel = 0
+	unbind.AnchorPoint = Vector2.new(0.5, 0.5)
+	unbind.Position = UDim2.new(0.529999971, 0, 0.0469081998, 0)
+	unbind.Size = UDim2.new(0.140000001, 0, 0.104943, 0)
+	unbind.ZIndex = 23
+	unbind.Parent = listFrame
+
+	local uCorner = Instance.new("UICorner")
+	uCorner.CornerRadius = UDim.new(0, 7)
+	uCorner.Parent = unbind
+
+	local uLine = Instance.new("UIStroke")
+	uLine.Color = CFG.RedEdge
+	uLine.Thickness = 1.25
+	uLine.Transparency = 0.25
+	uLine.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	uLine.Parent = unbind
+
+	local close = Instance.new("TextButton")
+	close.Name = "CloseButton"
+	close.Text = "X"
+	close.TextColor3 = Color3.new(1, 1, 1)
+	close.TextScaled = true
+	close.TextWrapped = true
+	close.Font = Enum.Font.SourceSansBold
+	close.AutoButtonColor = false
+	close.BackgroundColor3 = CFG.Red
+	close.BackgroundTransparency = 0.15
+	close.BorderSizePixel = 0
+	close.AnchorPoint = Vector2.new(0.5, 0.5)
+	close.Position = UDim2.new(0.955000019, 0, 0.0469081998, 0)
+	close.Size = UDim2.new(0.0500000007, 0, 0.104943, 0)
+	close.ZIndex = 23
+	close.Parent = listFrame
+
+	local cCorner = Instance.new("UICorner")
+	cCorner.CornerRadius = UDim.new(0, 7)
+	cCorner.Parent = close
+
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Name = "FeatureListScroll"
+	scroll.BackgroundTransparency = 1
+	scroll.BorderSizePixel = 0
+	scroll.ClipsDescendants = true
+	scroll.Position = UDim2.new(0, 0, 0.168582007, 0)
+	scroll.Size = UDim2.new(1, 0, 0.831417978, 0)
+	scroll.ScrollBarThickness = 5
+	scroll.ScrollBarImageColor3 = Color3.fromRGB(255, 0, 0)
+	scroll.ScrollBarImageTransparency = 0
+	scroll.ScrollingDirection = Enum.ScrollingDirection.Y
+	scroll.ElasticBehavior = Enum.ElasticBehavior.WhenScrollable
+	scroll.VerticalScrollBarInset = Enum.ScrollBarInset.None
+	scroll.CanvasPosition = Vector2.zero
+	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scroll.ZIndex = 22
+	scroll.Parent = listFrame
+
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Vertical
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	layout.VerticalAlignment = Enum.VerticalAlignment.Top
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0, CFG.RowGap)
+	layout.Parent = scroll
+
+	local empty = Instance.new("TextLabel")
+	empty.Name = "Empty"
+	empty.Text = "No switches or buttons yet"
+	empty.TextColor3 = Color3.fromRGB(190, 190, 195)
+	empty.TextSize = 15
+	empty.Font = Enum.Font.SourceSansSemibold
+	empty.BackgroundTransparency = 1
+	empty.BorderSizePixel = 0
+	empty.Size = UDim2.new(1, 0, 0, 26)
+	empty.LayoutOrder = 9999
+	empty.ZIndex = 23
+	empty.Parent = scroll
+
+	local state = {
+		Gui = gui,
+		Root = bgFrame,
+		Scale = winScale,
+		Scroll = scroll,
+		Search = search,
+		Empty = empty,
+		Rows = {},
+		Capture = nil,
+		Open = false,
+	}
+	self.Binds = state
+
+	local function saveRow(row)
+		Library.BindSaved[row.Name] = { key = row.Key, on = row.On }
+	end
+
+	local function setOn(row, value)
+		row.On = value and true or false
+		row.Circle.BackgroundColor3 = row.On and CFG.RedEdge or Color3.fromRGB(105, 105, 105)
+		TS:Create(row.Circle, TweenInfo.new(0.16, Enum.EasingStyle.Quad), {
+			Position = row.On and UDim2.new(0.5, 0, 0.0500000007, 0) or UDim2.new(0.05, 0, 0.0500000007, 0),
+		}):Play()
+		saveRow(row)
+	end
+
+	local function setKey(row, code)
+		row.Key = code
+		row.Bind.Text = code and ("[" .. self:_bindKeyName(code) .. "]") or "[BIND]"
+		saveRow(row)
+	end
+
+	local function trigger(row)
+		if row.Kind == "Button" then
+			if row.Fire then pcall(row.Fire) end
+			self:_bindNotify(row.Name .. " fired")
+			return
+		end
+
+		local handle = row.Handle
+		if not handle then return end
+		local now = false
+		pcall(function() now = handle:Get() end)
+		pcall(function() handle:Set(not now) end)
+		local after = not now
+		pcall(function() after = handle:Get() end)
+		self:_bindNotify(row.Name .. " " .. tostring(after and true or false))
+	end
+
+	local function makeRow(item, order)
+		local frame = Instance.new("Frame")
+		frame.Name = "Row"
+		frame.BackgroundTransparency = 1
+		frame.BorderSizePixel = 0
+		frame.LayoutOrder = order
+		frame.Size = UDim2.new(1, 0, 0, CFG.RowHeight)
+		frame.ZIndex = 23
+		frame.Parent = scroll
+
+		local label = Instance.new("TextLabel")
+		label.Name = "Label"
+		label.Text = item.name
+		label.TextColor3 = Color3.new(1, 1, 1)
+		label.TextScaled = true
+		label.TextWrapped = true
+		label.TextXAlignment = Enum.TextXAlignment.Left
+		label.TextTruncate = Enum.TextTruncate.AtEnd
+		label.Font = Enum.Font.SourceSansSemibold
+		label.BackgroundTransparency = 1
+		label.BorderSizePixel = 0
+		label.AnchorPoint = Vector2.new(0.5, 0.5)
+		label.Position = UDim2.new(0.382970005, 0, 0.490714014, 0)
+		label.Size = UDim2.new(0.733223975, 0, 0.818575978, 0)
+		label.ZIndex = 24
+		label.Parent = frame
+
+		local check = Instance.new("Frame")
+		check.Name = "CheckboxButton"
+		check.BackgroundColor3 = CFG.CheckBg
+		check.BorderSizePixel = 0
+		check.AnchorPoint = Vector2.new(0.5, 0.5)
+		check.Position = UDim2.new(0.783819318, 0, 0.483880311, 0)
+		check.Size = UDim2.new(0.118000001, 0, 0.832000017, 0)
+		check.ZIndex = 24
+		check.Parent = frame
+
+		local kCorner = Instance.new("UICorner")
+		kCorner.CornerRadius = UDim.new(0.5, 0)
+		kCorner.Parent = check
+
+		local kLine = Instance.new("UIStroke")
+		kLine.Color = CFG.RedEdge
+		kLine.Thickness = 1.25
+		kLine.Transparency = 0.25
+		kLine.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		kLine.Parent = check
+
+		local circle = Instance.new("Frame")
+		circle.Name = "ToggleCircle"
+		circle.BackgroundColor3 = CFG.RedEdge
+		circle.BorderSizePixel = 0
+		circle.Position = UDim2.new(0.05, 0, 0.0500000007, 0)
+		circle.Size = UDim2.new(0.449999988, 0, 0.899999976, 0)
+		circle.ZIndex = 25
+		circle.Parent = check
+
+		local cCircle = Instance.new("UICorner")
+		cCircle.CornerRadius = UDim.new(1, 0)
+		cCircle.Parent = circle
+
+		local tbtn = Instance.new("TextButton")
+		tbtn.Name = "ToggleButton"
+		tbtn.Text = ""
+		tbtn.AutoButtonColor = false
+		tbtn.BackgroundTransparency = 1
+		tbtn.Size = UDim2.fromScale(1, 1)
+		tbtn.ZIndex = 26
+		tbtn.Parent = check
+
+		local bind = Instance.new("TextButton")
+		bind.Name = "ClickBindButton"
+		bind.Text = "[BIND]"
+		bind.TextColor3 = Color3.new(1, 1, 1)
+		bind.TextScaled = true
+		bind.TextWrapped = true
+		bind.Font = Enum.Font.SourceSansBold
+		bind.AutoButtonColor = false
+		bind.BackgroundColor3 = CFG.Red
+		bind.BorderSizePixel = 0
+		bind.AnchorPoint = Vector2.new(0.5, 0.5)
+		bind.Position = UDim2.new(0.920000017, 0, 0.483880311, 0)
+		bind.Size = UDim2.new(0.117725201, 0, 0.832231998, 0)
+		bind.ZIndex = 24
+		bind.Parent = frame
+
+		local bCorner = Instance.new("UICorner")
+		bCorner.CornerRadius = UDim.new(0, 3)
+		bCorner.Parent = bind
+
+		local bLine = Instance.new("UIStroke")
+		bLine.Color = CFG.RedEdge
+		bLine.Thickness = 1.25
+		bLine.Transparency = 0.25
+		bLine.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		bLine.Parent = bind
+
+		local row = {
+			Name = item.name,
+			Kind = item.kind,
+			Handle = item.handle,
+			Fire = item.fire,
+			Frame = frame,
+			Label = label,
+			Circle = circle,
+			Bind = bind,
+			Key = nil,
+			On = false,
+		}
+
+		local saved = Library.BindSaved[item.name]
+		if saved then
+			setKey(row, saved.key)
+			setOn(row, saved.on)
+		else
+			setOn(row, false)
+		end
+
+		tbtn.MouseButton1Click:Connect(function()
+			setOn(row, not row.On)
+			self:_bindNotify("Key Bind " .. row.Name .. " " .. tostring(row.On))
+		end)
+
+		bind.MouseButton1Click:Connect(function()
+			if state.Capture and state.Capture ~= row then
+				state.Capture.Bind.Text = state.Capture.Key
+					and ("[" .. self:_bindKeyName(state.Capture.Key) .. "]")
+					or "[BIND]"
+			end
+			state.Capture = row
+			bind.Text = "[...]"
+		end)
+
+		state.Rows[#state.Rows + 1] = row
+		return row
+	end
+
+	local function applyFilter()
+		local query = string.lower(search.Text or "")
+		query = query:gsub("^%s+", ""):gsub("%s+$", "")
+		local shown = 0
+		for _, row in ipairs(state.Rows) do
+			local hit = query == "" or string.find(string.lower(row.Name), query, 1, true) ~= nil
+			row.Frame.Visible = hit
+			if hit then shown = shown + 1 end
+		end
+		empty.Visible = shown == 0
+	end
+
+	local function refresh()
+		if state.Building then return end
+		if (state.Built or 0) >= #Library.BindItems then
+			state.Dirty = false
+			applyFilter()
+			return
+		end
+
+		state.Building = true
+		task.spawn(function()
+			local made = 0
+			for index = (state.Built or 0) + 1, #Library.BindItems do
+				local item = Library.BindItems[index]
+				if item then makeRow(item, index) end
+				state.Built = index
+				made = made + 1
+				if made % 20 == 0 then task.wait() end
+			end
+			state.Dirty = false
+			state.Building = false
+			applyFilter()
+		end)
+	end
+	state.Refresh = refresh
+
+	search:GetPropertyChangedSignal("Text"):Connect(applyFilter)
+
+	unbind.MouseButton1Click:Connect(function()
+		for _, row in ipairs(state.Rows) do
+			setKey(row, nil)
+			setOn(row, false)
+		end
+		state.Capture = nil
+		Library.BindSaved = {}
+		self:_bindNotify("Unbind All done")
+	end)
+
+	close.MouseButton1Click:Connect(function()
+		self:ShowKeybinds(false)
+	end)
+
+	pcall(function() state.Drag = makeDraggable(bgFrame, header) end)
+
+	local function fitBinds()
+		local cam = workspace.CurrentCamera
+		if not cam then return end
+		local vp = cam.ViewportSize
+		local phone = vp.X < CFG.Small
+		bgFrame.Size = UDim2.new(phone and 0.82 or CFG.WidthScale, 0, phone and 0.5 or CFG.HeightScale, 0)
+		winScale.Scale = state.Open and 1 or 0.92
+	end
+	state.Fit = fitBinds
+	pcall(function()
+		task.defer(fitBinds)
+		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fitBinds)
+	end)
+
+	UIS.InputBegan:Connect(function(input, gp)
+		if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+		local code = input.KeyCode
+		if code == Enum.KeyCode.Unknown then return end
+
+		if state.Capture then
+			local row = state.Capture
+			state.Capture = nil
+
+			if code == Enum.KeyCode.Escape then
+				setKey(row, nil)
+				self:_bindNotify("Key Bind cleared " .. row.Name)
+				return
+			end
+
+			for _, other in ipairs(state.Rows) do
+				if other ~= row and other.Key == code then setKey(other, nil) end
+			end
+
+			setKey(row, code)
+			setOn(row, true)
+			self:_bindNotify("Key Bind set " .. row.Name .. " to " .. self:_bindKeyName(code))
+			return
+		end
+
+		if gp then return end
+		for _, row in ipairs(state.Rows) do
+			if row.On and row.Key == code then trigger(row) end
+		end
+	end)
+
+	state.Built = 0
+	state.Dirty = true
+	return state
+end
+
+function Library:ShowKeybinds(show)
+	local state = self:_buildKeybindWindow()
+	if not state then return self end
+
+	local TS = game:GetService("TweenService")
+	local CFG = Library.BindCfg
+	local want = show ~= false
+	state.Open = want
+
+	if want then
+		if state.Refresh then pcall(state.Refresh) end
+		state.Root.Visible = true
+		TS:Create(state.Root, TweenInfo.new(CFG.OpenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { GroupTransparency = 0 }):Play()
+		TS:Create(state.Scale, TweenInfo.new(CFG.OpenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	else
+		TS:Create(state.Root, TweenInfo.new(CFG.OpenTime, Enum.EasingStyle.Quart, Enum.EasingDirection.In), { GroupTransparency = 1 }):Play()
+		local shrink = TS:Create(state.Scale, TweenInfo.new(CFG.OpenTime, Enum.EasingStyle.Quart, Enum.EasingDirection.In), { Scale = 0.92 })
+		shrink:Play()
+		shrink.Completed:Once(function()
+			if not state.Open then state.Root.Visible = false end
+		end)
+	end
+
+	return self
+end
+
+function Library:ToggleKeybinds()
+	local state = self:_buildKeybindWindow()
+	if not state then return self end
+	return self:ShowKeybinds(not state.Open)
+end
+
+function Library:UnbindAll()
+	local state = self.Binds
+	if not state then
+		Library.BindSaved = {}
+		return self
+	end
+	for _, row in ipairs(state.Rows) do
+		row.Key = nil
+		row.Bind.Text = "[BIND]"
+		row.On = false
+		row.Circle.Position = UDim2.new(0.05, 0, 0.0500000007, 0)
+		row.Circle.BackgroundColor3 = Color3.fromRGB(105, 105, 105)
+	end
+	Library.BindSaved = {}
+	self:_bindNotify("Unbind All done")
+	return self
+end
+
 local NexoHub = {}
 NexoHub.Library = Library
 NexoHub.Version = "1.0"
@@ -9092,6 +9784,12 @@ function NexoHub:CreateWindow(opts)
 	else
 		if opts.aiRoot then Library.AiCfg.Root = tostring(opts.aiRoot) end
 		pcall(function() ui:_buildAiWindow() end)
+	end
+
+	if opts.keybinds == false then
+		Library.BindCfg.Enabled = false
+	else
+		pcall(function() ui:_buildKeybindWindow() end)
 	end
 
 	if opts.autoload then
