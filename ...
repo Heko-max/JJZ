@@ -11461,12 +11461,417 @@ function Library:ToggleUiSettings()
 	return self:ShowUiSettings(not state.Open)
 end
 
+Library.TutorialCfg = {
+	Enabled     = true,
+	Title       = 'NeXo <font color="#f8042e">Tutorial</font>',
+	Image       = "https://i.imgur.com/JUkHcOy.png",
+	NeverText   = "Never Show Again",
+	CloseText   = "Close",
+	HintText    = "Read this first, then press Close to load the hub.",
+	Pattern     = "rbxassetid://2151741365",
+	PatternFade = 0.6,
+	Red         = Color3.fromRGB(248, 4, 46),
+	RedEdge     = Color3.fromRGB(253, 1, 12),
+	Bg          = Color3.fromRGB(30, 30, 30),
+	PanelBg     = Color3.fromRGB(24, 24, 24),
+	WidthScale  = 0.939999998,
+	HeightScale = 0.899999976,
+	ImgW        = 1599,
+	ImgH        = 823,
+	Small       = 780,
+	OpenTime    = 0.28,
+	Timeout     = 300,
+}
+
+function Library:_tutorialPath()
+	return (self.Folder or "NexoHub") .. "/tutorial.json"
+end
+
+function Library:TutorialSeen()
+	if not fsReady() then return false end
+	local path = self:_tutorialPath()
+	local okFile, has = pcall(function() return FS.isFile(path) end)
+	if (not okFile) or (not has) then return false end
+	local okRead, raw = pcall(function() return FS.read(path) end)
+	if (not okRead) or type(raw) ~= "string" then return false end
+	local okJson, data = pcall(function() return HttpService:JSONDecode(raw) end)
+	if (not okJson) or type(data) ~= "table" then return false end
+	return data.never == true
+end
+
+function Library:SetTutorialSeen(value)
+	if not fsReady() then return false end
+	pcall(function() self:_ensureFolders() end)
+	local okJson, encoded = pcall(function()
+		return HttpService:JSONEncode({ version = 1, never = value ~= false })
+	end)
+	if (not okJson) or type(encoded) ~= "string" then return false end
+	return (pcall(function() FS.write(self:_tutorialPath(), encoded) end))
+end
+
+function Library:ResetTutorial()
+	return self:SetTutorialSeen(false)
+end
+
+function Library:ShowTutorial(force)
+	local CFG = Library.TutorialCfg
+	if CFG.Enabled == false then return false end
+	if (not force) and self:TutorialSeen() then return false end
+
+	local TS = game:GetService("TweenService")
+	local host = (gethui and gethui())
+		or (game:GetService("Players").LocalPlayer:FindFirstChildOfClass("PlayerGui"))
+	if not host then return false end
+
+	local old = host:FindFirstChild("NEXO_TUTORIAL")
+	if old then old:Destroy() end
+
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "NEXO_TUTORIAL"
+	gui.ResetOnSpawn = false
+	gui.IgnoreGuiInset = true
+	gui.DisplayOrder = 10000
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	gui.Parent = host
+
+	local shade = Instance.new("Frame")
+	shade.Name = "Shade"
+	shade.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	shade.BackgroundTransparency = 1
+	shade.BorderSizePixel = 0
+	shade.Size = UDim2.fromScale(1, 1)
+	shade.ZIndex = 10
+	shade.Parent = gui
+
+	local bgFrame = Instance.new("CanvasGroup")
+	bgFrame.Name = "Background"
+	bgFrame.BackgroundColor3 = CFG.Bg
+	bgFrame.BorderSizePixel = 0
+	bgFrame.ClipsDescendants = true
+	bgFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+	bgFrame.Position = UDim2.fromScale(0.5, 0.5)
+	bgFrame.Size = UDim2.new(CFG.WidthScale, 0, CFG.HeightScale, 0)
+	bgFrame.GroupTransparency = 1
+	bgFrame.ZIndex = 20
+	bgFrame.Parent = gui
+
+	local bgCorner = Instance.new("UICorner")
+	bgCorner.CornerRadius = UDim.new(0.0500000007, 0)
+	bgCorner.Parent = bgFrame
+
+	local winScale = Instance.new("UIScale")
+	winScale.Scale = 0.92
+	winScale.Parent = bgFrame
+
+	local grad = Instance.new("Frame")
+	grad.Name = "Gradient"
+	grad.BackgroundColor3 = Color3.new(1, 1, 1)
+	grad.BorderSizePixel = 0
+	grad.Size = UDim2.fromScale(1, 1)
+	grad.ZIndex = 0
+	grad.Parent = bgFrame
+
+	local gCorner = Instance.new("UICorner")
+	gCorner.CornerRadius = UDim.new(0.0500000007, 0)
+	gCorner.Parent = grad
+
+	local ug = Instance.new("UIGradient")
+	ug.Rotation = -90
+	ug.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(157, 2, 31)),
+		ColorSequenceKeypoint.new(0.468048, Color3.fromRGB(47, 28, 31)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 30, 30)),
+	})
+	ug.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.9),
+		NumberSequenceKeypoint.new(1, 0.9),
+	})
+	ug.Parent = grad
+
+	local pattern = Instance.new("ImageLabel")
+	pattern.Name = "Pattern"
+	pattern.ScaleType = Enum.ScaleType.Tile
+	pattern.TileSize = UDim2.new(0, 250, 0, 250)
+	pattern.ImageTransparency = CFG.PatternFade
+	pattern.BackgroundTransparency = 1
+	pattern.BorderSizePixel = 0
+	pattern.Size = UDim2.fromScale(1, 1)
+	pattern.ZIndex = 0
+	pattern.Parent = grad
+	self:_aiImage(pattern, CFG.Pattern, "")
+
+	local pCorner = Instance.new("UICorner")
+	pCorner.CornerRadius = UDim.new(0.0500000007, 0)
+	pCorner.Parent = pattern
+
+	local header = Instance.new("TextButton")
+	header.Name = "DragBar"
+	header.Text = ""
+	header.AutoButtonColor = false
+	header.BackgroundTransparency = 1
+	header.BorderSizePixel = 0
+	header.Size = UDim2.new(1, 0, 0.100000001, 0)
+	header.ZIndex = 21
+	header.Parent = bgFrame
+
+	local hLine = Instance.new("Frame")
+	hLine.Name = "HeaderLine"
+	hLine.BackgroundColor3 = CFG.Red
+	hLine.BackgroundTransparency = 0.35
+	hLine.BorderSizePixel = 0
+	hLine.AnchorPoint = Vector2.new(0.5, 1)
+	hLine.Position = UDim2.new(0.5, 0, 1, 0)
+	hLine.Size = UDim2.new(0.920000017, 0, 0, 2)
+	hLine.ZIndex = 22
+	hLine.Parent = header
+
+	local logo = Instance.new("ImageLabel")
+	logo.Name = "Logo"
+	logo.BackgroundTransparency = 1
+	logo.BorderSizePixel = 0
+	logo.ScaleType = Enum.ScaleType.Fit
+	logo.AnchorPoint = Vector2.new(0, 0.5)
+	logo.Position = UDim2.new(0.0399999991, 0, 0.5, 0)
+	logo.Size = UDim2.new(0.119999997, 0, 0.699999988, 0)
+	logo.ZIndex = 22
+	logo.Parent = header
+	self:_aiImage(logo, IMAGES.Logo, Library.AiCfg.BtnFallback)
+
+	local title = Instance.new("TextLabel")
+	title.Name = "Title"
+	title.RichText = true
+	title.Text = CFG.Title
+	title.TextColor3 = Color3.new(1, 1, 1)
+	title.TextScaled = true
+	title.TextXAlignment = Enum.TextXAlignment.Center
+	title.Font = Enum.Font.SourceSansBold
+	title.BackgroundTransparency = 1
+	title.BorderSizePixel = 0
+	title.AnchorPoint = Vector2.new(0.5, 0.5)
+	title.Position = UDim2.new(0.5, 0, 0.5, 0)
+	title.Size = UDim2.new(0.400000006, 0, 0.550000012, 0)
+	title.ZIndex = 22
+	title.Parent = header
+
+	local body = Instance.new("Frame")
+	body.Name = "Body"
+	body.BackgroundTransparency = 1
+	body.BorderSizePixel = 0
+	body.Position = UDim2.new(0.0149999997, 0, 0.115000002, 0)
+	body.Size = UDim2.new(0.970000029, 0, 0.769999981, 0)
+	body.ZIndex = 21
+	body.Parent = bgFrame
+
+	local shot = Instance.new("ImageLabel")
+	shot.Name = "TutorialImage"
+	shot.BackgroundColor3 = CFG.PanelBg
+	shot.BackgroundTransparency = 0.15
+	shot.BorderSizePixel = 0
+	shot.ScaleType = Enum.ScaleType.Fit
+	shot.AnchorPoint = Vector2.new(0.5, 0.5)
+	shot.Position = UDim2.new(0.5, 0, 0.5, 0)
+	shot.Size = UDim2.new(1, 0, 1, 0)
+	shot.ZIndex = 22
+	shot.Parent = body
+
+	local shotRatio = Instance.new("UIAspectRatioConstraint")
+	shotRatio.AspectRatio = (CFG.ImgW or 1599) / (CFG.ImgH or 823)
+	shotRatio.AspectType = Enum.AspectType.FitWithinMaxSize
+	shotRatio.DominantAxis = Enum.DominantAxis.Width
+	shotRatio.Parent = shot
+	self:_aiImage(shot, CFG.Image, "")
+	task.delay(2.5, function()
+		if shot and shot.Parent and (shot.Image == "" or shot.Image == nil) then
+			pcall(function() self:_aiImage(shot, CFG.Image, "") end)
+		end
+	end)
+
+	local sCorner = Instance.new("UICorner")
+	sCorner.CornerRadius = UDim.new(0, 10)
+	sCorner.Parent = shot
+
+	local sLine = Instance.new("UIStroke")
+	sLine.Color = CFG.RedEdge
+	sLine.Thickness = 1.25
+	sLine.Transparency = 0.35
+	sLine.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	sLine.Parent = shot
+
+	local side = Instance.new("Frame")
+	side.Name = "Side"
+	side.BackgroundTransparency = 1
+	side.BorderSizePixel = 0
+	side.AnchorPoint = Vector2.new(0.5, 1)
+	side.Position = UDim2.new(0.5, 0, 0.985000014, 0)
+	side.Size = UDim2.new(0.970000029, 0, 0.0900000036, 0)
+	side.ZIndex = 22
+	side.Parent = bgFrame
+
+	local hint = Instance.new("TextLabel")
+	hint.Name = "Hint"
+	hint.Text = CFG.HintText
+	hint.TextColor3 = Color3.fromRGB(205, 205, 210)
+	hint.TextScaled = true
+	hint.TextWrapped = true
+	hint.TextXAlignment = Enum.TextXAlignment.Center
+	hint.Font = Enum.Font.SourceSansSemibold
+	hint.BackgroundTransparency = 1
+	hint.BorderSizePixel = 0
+	hint.TextXAlignment = Enum.TextXAlignment.Left
+	hint.AnchorPoint = Vector2.new(0, 0.5)
+	hint.Position = UDim2.new(0.00999999978, 0, 0.5, 0)
+	hint.Size = UDim2.new(0.479999989, 0, 0.550000012, 0)
+	hint.ZIndex = 23
+	hint.Parent = side
+
+	local never = Instance.new("TextButton")
+	never.Name = "NeverButton"
+	never.Text = CFG.NeverText
+	never.TextColor3 = Color3.new(1, 1, 1)
+	never.TextScaled = true
+	never.TextWrapped = true
+	never.Font = Enum.Font.SourceSansBold
+	never.AutoButtonColor = false
+	never.BackgroundColor3 = CFG.PanelBg
+	never.BorderSizePixel = 0
+	never.AnchorPoint = Vector2.new(1, 0.5)
+	never.Position = UDim2.new(0.819999993, 0, 0.5, 0)
+	never.Size = UDim2.new(0.219999999, 0, 0.800000012, 0)
+	never.ZIndex = 23
+	never.Parent = side
+
+	local nCorner = Instance.new("UICorner")
+	nCorner.CornerRadius = UDim.new(0, 8)
+	nCorner.Parent = never
+
+	local nLine = Instance.new("UIStroke")
+	nLine.Color = CFG.RedEdge
+	nLine.Thickness = 1.25
+	nLine.Transparency = 0.2
+	nLine.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	nLine.Parent = never
+
+	local nPad = Instance.new("UIPadding")
+	nPad.PaddingLeft = UDim.new(0, 8)
+	nPad.PaddingRight = UDim.new(0, 8)
+	nPad.PaddingTop = UDim.new(0, 6)
+	nPad.PaddingBottom = UDim.new(0, 6)
+	nPad.Parent = never
+
+	local close = Instance.new("TextButton")
+	close.Name = "CloseButton"
+	close.Text = CFG.CloseText
+	close.TextColor3 = Color3.new(1, 1, 1)
+	close.TextScaled = true
+	close.TextWrapped = true
+	close.Font = Enum.Font.SourceSansBold
+	close.AutoButtonColor = false
+	close.BackgroundColor3 = CFG.Red
+	close.BorderSizePixel = 0
+	close.AnchorPoint = Vector2.new(1, 0.5)
+	close.Position = UDim2.new(1, 0, 0.5, 0)
+	close.Size = UDim2.new(0.159999996, 0, 0.800000012, 0)
+	close.ZIndex = 23
+	close.Parent = side
+
+	local cCorner = Instance.new("UICorner")
+	cCorner.CornerRadius = UDim.new(0, 8)
+	cCorner.Parent = close
+
+	local cLine = Instance.new("UIStroke")
+	cLine.Color = CFG.RedEdge
+	cLine.Thickness = 1.25
+	cLine.Transparency = 0.15
+	cLine.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	cLine.Parent = close
+
+	local cPad = Instance.new("UIPadding")
+	cPad.PaddingLeft = UDim.new(0, 8)
+	cPad.PaddingRight = UDim.new(0, 8)
+	cPad.PaddingTop = UDim.new(0, 6)
+	cPad.PaddingBottom = UDim.new(0, 6)
+	cPad.Parent = close
+
+	pcall(function() makeDraggable(bgFrame, header) end)
+
+	local function fitTutorial()
+		local cam = workspace.CurrentCamera
+		if not cam then return end
+		local phone = cam.ViewportSize.X < CFG.Small
+		bgFrame.Size = UDim2.new(phone and 0.970000029 or CFG.WidthScale, 0,
+			phone and 0.800000012 or CFG.HeightScale, 0)
+	end
+	pcall(function()
+		fitTutorial()
+		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fitTutorial)
+	end)
+
+	self.Tutorial = { Gui = gui, Root = bgFrame, Scale = winScale, Done = false }
+
+	TS:Create(shade, TweenInfo.new(CFG.OpenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+		{ BackgroundTransparency = 0.45 }):Play()
+	TS:Create(bgFrame, TweenInfo.new(CFG.OpenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+		{ GroupTransparency = 0 }):Play()
+	TS:Create(winScale, TweenInfo.new(CFG.OpenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+		{ Scale = 1 }):Play()
+
+	local answer = nil
+
+	local function finish(choice)
+		if answer then return end
+		answer = choice
+		if choice == "never" then
+			pcall(function() self:SetTutorialSeen(true) end)
+		end
+		TS:Create(shade, TweenInfo.new(CFG.OpenTime, Enum.EasingStyle.Quart, Enum.EasingDirection.In),
+			{ BackgroundTransparency = 1 }):Play()
+		TS:Create(bgFrame, TweenInfo.new(CFG.OpenTime, Enum.EasingStyle.Quart, Enum.EasingDirection.In),
+			{ GroupTransparency = 1 }):Play()
+		local shrink = TS:Create(winScale,
+			TweenInfo.new(CFG.OpenTime, Enum.EasingStyle.Quart, Enum.EasingDirection.In), { Scale = 0.92 })
+		shrink:Play()
+		shrink.Completed:Once(function()
+			pcall(function() gui:Destroy() end)
+		end)
+	end
+
+	close.MouseButton1Click:Connect(function()
+		TS:Create(close, TweenInfo.new(0.12), { BackgroundTransparency = 0.35 }):Play()
+		finish("close")
+	end)
+
+	never.MouseButton1Click:Connect(function()
+		never.Text = "Saved, will not show again"
+		TS:Create(never, TweenInfo.new(0.12), { BackgroundColor3 = CFG.Red }):Play()
+		task.delay(0.35, function() finish("never") end)
+	end)
+
+	local waited = 0
+	while answer == nil and waited < (CFG.Timeout or 300) do
+		waited = waited + task.wait()
+	end
+	if answer == nil then finish("close") end
+
+	self.Tutorial.Done = true
+	return answer or "close"
+end
+
 local NexoHub = {}
 NexoHub.Library = Library
 NexoHub.Version = "1.0"
 
 function NexoHub:CreateWindow(opts)
 	opts = opts or {}
+
+	if opts.folder then Library.Folder = tostring(opts.folder) end
+	if opts.tutorial == false then
+		Library.TutorialCfg.Enabled = false
+	else
+		if type(opts.tutorial) == "string" then Library.TutorialCfg.Image = opts.tutorial end
+		if opts.tutorialImage then Library.TutorialCfg.Image = tostring(opts.tutorialImage) end
+		pcall(function() Library:ShowTutorial(opts.forceTutorial == true) end)
+	end
+
 	local ui = Library.new()
 
 	if DEFAULT_UI_TAB and opts.uiTab ~= false then
@@ -11524,6 +11929,14 @@ function NexoHub:CreateWindow(opts)
 
 	NexoHub.Window = ui
 	return ui
+end
+
+function NexoHub:ShowTutorial(force)
+	return Library:ShowTutorial(force ~= false)
+end
+
+function NexoHub:ResetTutorial()
+	return Library:ResetTutorial()
 end
 
 function NexoHub.new(opts)
