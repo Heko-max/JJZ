@@ -17,7 +17,7 @@ local IMAGES = {
 	TabIcon     = "87628150067132",
 	SearchIcon  = "118685771787843",
 	BackIcon    = "72257591594286",
-	MiniIcon    = "https://i.imgur.com/QWZbBqe.png",
+	MiniIcon    = "https://i.imgur.com/eFFYZrM.png",
 	CloseIcon   = "",
 	NotifyIcon  = "",
 }
