@@ -494,10 +494,32 @@ local function fetchImage(url)
 			end
 		end
 	end
-	local body = httpGet(url)
-	if type(body) ~= "string" or #body < 32 then return nil, "Download failed or empty response" end
-	local head = body:sub(1, 200):lower()
-	if head:find("<!doctype") or head:find("<html") then return nil, "Host returned a web page, link is blocked" end
+	local tries = { url }
+	if not (url:find("wsrv.nl", 1, true) or url:find("weserv.nl", 1, true)) then
+		local bare = url:gsub("^%a+://", "")
+		local safe = bare:gsub("[^%w%-%._~/%?&=:%%]", function(c)
+			return string.format("%%%02X", string.byte(c))
+		end)
+		table.insert(tries, "https://wsrv.nl/?url=" .. safe .. "&n=-1")
+		table.insert(tries, "https://wsrv.nl/?url=" .. safe .. "&n=-1&output=png")
+		table.insert(tries, "https://images.weserv.nl/?url=" .. safe .. "&n=-1&output=png")
+	end
+
+	local body, lastErr = nil, "Download failed or empty response"
+	for _, link in ipairs(tries) do
+		local got = httpGet(link)
+		if type(got) == "string" and #got >= 32 then
+			local peek = got:sub(1, 200):lower()
+			if peek:find("<!doctype") or peek:find("<html") then
+				lastErr = "Host returned a web page, link is blocked"
+			else
+				body = got
+				break
+			end
+		end
+		task.wait(0.05)
+	end
+	if not body then return nil, lastErr end
 	local ext, err = sniff(body)
 	if not ext then return nil, err end
 	if ext == "gif" then Loader.bodies[url] = body end
@@ -8577,6 +8599,12 @@ function Library:_buildAiWindow()
 	bAvatar.BackgroundTransparency = 0.15
 	bAvatar.ScaleType = Enum.ScaleType.Crop
 	self:_aiImage(bAvatar, CFG.BotAvatar, CFG.BotFallback)
+	self.AiAvatarImage = bAvatar
+	task.delay(2, function()
+		if bAvatar and bAvatar.Parent and bAvatar.Image == img(CFG.BotFallback) then
+			pcall(function() self:_aiImage(bAvatar, CFG.BotAvatar, CFG.BotFallback) end)
+		end
+	end)
 	bAvatar.Parent = BotChatTemplate
 
 	local bAvCorner = Instance.new("UICorner")
@@ -10819,7 +10847,7 @@ end
 Library.UiSetCfg = {
 	Enabled     = true,
 	Name        = "Ui Settings",
-	Icon        = "https://i.pinimg.com/originals/00/94/18/009418460183d05cbbff41179436b3eb.gif",
+	Icon        = "rbxassetid://6031280882",
 	Title       = '> > > > <font color="#f8042e">Ui Settings</font>',
 	Pattern     = "rbxassetid://2151741365",
 	PatternFade = 0.6,
@@ -10831,8 +10859,10 @@ Library.UiSetCfg = {
 	WidthScale  = 0.374045998,
 	HeightScale = 0.43859601,
 	Ratio       = 1.399999976158142,
-	RowHeight   = 40,
-	RowGap      = 8,
+	RowHeight   = 48,
+	RowGap      = 12,
+	PadLeft     = 14,
+	PadRight    = 20,
 	Small       = 780,
 	OpenTime    = 0.24,
 	Min         = 0.5,
@@ -11155,7 +11185,8 @@ function Library:_buildUiSetWindow()
 	scroll.ScrollBarImageTransparency = 0
 	scroll.ScrollingDirection = Enum.ScrollingDirection.Y
 	scroll.ElasticBehavior = Enum.ElasticBehavior.WhenScrollable
-	scroll.VerticalScrollBarInset = Enum.ScrollBarInset.None
+	scroll.VerticalScrollBarPosition = Enum.VerticalScrollBarPosition.Right
+	scroll.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
 	scroll.CanvasPosition = Vector2.zero
 	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -11169,6 +11200,13 @@ function Library:_buildUiSetWindow()
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Padding = UDim.new(0, CFG.RowGap)
 	layout.Parent = scroll
+
+	local listPad = Instance.new("UIPadding")
+	listPad.PaddingLeft = UDim.new(0, CFG.PadLeft)
+	listPad.PaddingRight = UDim.new(0, CFG.PadRight)
+	listPad.PaddingTop = UDim.new(0, 6)
+	listPad.PaddingBottom = UDim.new(0, 12)
+	listPad.Parent = scroll
 
 	local state = {
 		Gui = gui,
@@ -11187,6 +11225,7 @@ function Library:_buildUiSetWindow()
 		frame.BackgroundTransparency = 1
 		frame.BorderSizePixel = 0
 		frame.LayoutOrder = order
+		frame.ClipsDescendants = false
 		frame.Size = UDim2.new(1, 0, 0, CFG.RowHeight)
 		frame.ZIndex = 23
 		frame.Parent = scroll
@@ -11201,8 +11240,8 @@ function Library:_buildUiSetWindow()
 		label.Font = Enum.Font.SourceSansSemibold
 		label.BackgroundTransparency = 1
 		label.BorderSizePixel = 0
-		label.Position = UDim2.new(0, 0, 0, 0)
-		label.Size = UDim2.new(0.680000007, 0, 0.449999988, 0)
+		label.Position = UDim2.new(0, 6, 0, 2)
+		label.Size = UDim2.new(0.680000007, -6, 0.400000006, 0)
 		label.ZIndex = 24
 		label.Parent = frame
 
@@ -11216,8 +11255,8 @@ function Library:_buildUiSetWindow()
 		value.BackgroundTransparency = 1
 		value.BorderSizePixel = 0
 		value.AnchorPoint = Vector2.new(1, 0)
-		value.Position = UDim2.new(1, 0, 0, 0)
-		value.Size = UDim2.new(0.200000003, 0, 0.449999988, 0)
+		value.Position = UDim2.new(1, -6, 0, 2)
+		value.Size = UDim2.new(0.200000003, 0, 0.400000006, 0)
 		value.ZIndex = 24
 		value.Parent = frame
 
@@ -11226,8 +11265,8 @@ function Library:_buildUiSetWindow()
 		track.BackgroundColor3 = CFG.TrackBg
 		track.BorderSizePixel = 0
 		track.AnchorPoint = Vector2.new(0, 0.5)
-		track.Position = UDim2.new(0, 0, 0.769999981, 0)
-		track.Size = UDim2.new(1, 0, 0.230000004, 0)
+		track.Position = UDim2.new(0, 9, 0.769999981, 0)
+		track.Size = UDim2.new(1, -18, 0.200000003, 0)
 		track.ZIndex = 24
 		track.Parent = frame
 
@@ -11283,7 +11322,7 @@ function Library:_buildUiSetWindow()
 		hit.BorderSizePixel = 0
 		hit.AnchorPoint = Vector2.new(0.5, 0.5)
 		hit.Position = UDim2.new(0.5, 0, 0.5, 0)
-		hit.Size = UDim2.new(1, 0, 3, 0)
+		hit.Size = UDim2.new(1, 18, 2, 0)
 		hit.ZIndex = 27
 		hit.Parent = track
 
