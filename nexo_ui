@@ -17,7 +17,7 @@ local IMAGES = {
 	TabIcon     = "87628150067132",
 	SearchIcon  = "118685771787843",
 	BackIcon    = "72257591594286",
-	MiniIcon    = "https://i.imgur.com/w5tnAXh.png",
+	MiniIcon    = "https://i.imgur.com/eFFYZrM.png",
 	CloseIcon   = "",
 	NotifyIcon  = "",
 }
@@ -1642,6 +1642,15 @@ local function makeDraggable(frame, handle, onSettled)
 end
 
 local Library = {}
+
+Library.UiSizes = {
+	Main   = 1,
+	Ai     = 1,
+	Feed   = 1,
+	Bind   = 1,
+	Mini   = 1,
+	Status = 1,
+}
 Library.__index = Library
 
 function Library.new()
@@ -1915,6 +1924,13 @@ function Library:_buildMiniIcon()
 
 	makeDraggable(shell, hit)
 
+	local miniScale = new("UIScale", {
+		Name = "UiScale",
+		Scale = Library.UiSizes.Mini or 1,
+		Parent = shell,
+	})
+
+	self.MiniScale = miniScale
 	self.MiniIcon = shell
 	self.MiniImage = icon
 	self.MiniFallback = fallback
@@ -6200,9 +6216,9 @@ function Library:_fitToScreen()
 
 		local wantW = (viewport.X * CLONE_WIDTH) / LAYOUT.PanelWidth
 		local capH  = (viewport.Y * SCREEN_FILL) / CLONE_HEIGHT
-		self.BaseScale = math.min(wantW, capH) * UI_SIZE
+		self.BaseScale = math.min(wantW, capH) * UI_SIZE * (Library.UiSizes.Main or 1)
 	else
-		self.BaseScale = math.clamp(fit, MIN_SCALE, MAX_SCALE) * UI_SIZE
+		self.BaseScale = math.clamp(fit, MIN_SCALE, MAX_SCALE) * UI_SIZE * (Library.UiSizes.Main or 1)
 	end
 
 	if not self.Animating and self._introDone ~= false then
@@ -7639,6 +7655,11 @@ function Library:_buildStatusWindow()
 	statusFit.MaxSize = Vector2.new(340, math.huge)
 	statusFit.Parent = F
 
+	local statusScale = Instance.new("UIScale")
+	statusScale.Scale = Library.UiSizes.Status or 1
+	statusScale.Parent = F
+	self.StatusScale = statusScale
+
 	local function fitStatus()
 		local cam = workspace.CurrentCamera
 		if not cam then return end
@@ -7892,15 +7913,15 @@ end
 Library.AiCfg = {
 	Enabled     = true,
 	Root        = "Pages",
-	Name        = "NeXo Ai Assistant",
+	Name        = "MOMO AYASE Ai Assistant",
 	Title       = '>> AI <font color="#f8042e">Assistant</font>',
-	DecorText   = "NeXo <br />Assistant",
+	DecorText   = "MOMO AYASE <br />Assistant",
 	Placeholder = "How can i help you today?",
-	Greeting    = "Hiya~ I am NeXo, your hub assistant. How may I help you today?",
+	Greeting    = "Hiya~ I am MOMO AYASE, your hub assistant. How may I help you today?",
 	RepliesUrl  = "",
 	Logo        = "",
 	DecorImage  = "rbxassetid://124670495450647",
-	BotAvatar   = "https://ih1.redbubble.net/image.5961883642.3439/bg,f8f8f8-flat,750x,075,f-pad,750x1000,f8f8f8.jpg",
+	BotAvatar   = "https://i.pinimg.com/236x/17/07/83/170783f5dc11f44cc5e9a599d665aa6d.jpg",
 	UserAvatar  = "",
 	StatusIcon  = "https://i.pinimg.com/736x/d3/19/d4/d319d4b087d849a94f6da32483086cab.jpg",
 	StatusName  = "Live Status",
@@ -7935,12 +7956,15 @@ Library.AiCfg = {
 	TypeSpeed   = 0.055,
 	MinScore    = 0.34,
 	AskScore    = 0.5,
-	ArrowW      = 34,
-	ArrowH      = 18,
-	ArrowText   = 17,
-	ArrowGrow   = 1.16,
+	ArrowW      = 26,
+	ArrowH      = 20,
+	ArrowText   = 22,
+	ArrowGrow   = 1.22,
+	ArrowColor  = Color3.fromRGB(255, 51, 51),
 	ArrowDown   = "▼",
 	ArrowUp     = "▲",
+	ArrowTop    = 0,
+	LiftPad     = 100,
 	HideTime    = 0.3,
 }
 
@@ -8019,13 +8043,13 @@ Library.AiTail = {
 
 Library.AiTalk = {
 	{ words = { "hi", "hii", "hiii", "hello", "helo", "hey", "heyy", "yo", "hola", "sup", "hiya" },
-	  reply = "Hiya~ I am NeXo, your hub assistant. How may I help you today?" },
+	  reply = "Hiya~ I am MOMO AYASE, your hub assistant. How may I help you today?" },
 	{ words = { "good morning", "good evening", "good night", "good afternoon" },
 	  reply = "Aww, that is sweet of you~ I hope your day is going lovely. What can I do for you?" },
 	{ words = { "how are you", "how r u", "how you doing", "hows it going" },
 	  reply = "I am doing wonderfully, thank you for asking~ How about you? Anything you want me to find?" },
 	{ words = { "who are you", "who r u", "your name", "whats your name" },
-	  reply = "I am NeXo, the little assistant of NeXo Hub~ I know every tab, section and feature in here." },
+	  reply = "I am MOMO AYASE, the little assistant of NeXo Hub~ I know every tab, section and feature in here." },
 	{ words = { "what can you do", "what you do", "help", "help me" },
 	  reply = "I can point you to any feature~ Just ask like: where is auto level. And I love a bit of chatting too!" },
 	{ words = { "thanks", "thank you", "ty", "tysm", "thx", "arigato" },
@@ -8035,7 +8059,7 @@ Library.AiTalk = {
 	{ words = { "love you", "i like you", "youre cute", "you are cute" },
 	  reply = "Aah, thank you so much~ that is very kind. I like helping you too!" },
 	{ words = { "who made you", "who made this", "owner", "developer" },
-	  reply = "NeXo Hub is made by NeXo~ I am the assistant that comes with it." },
+	  reply = "NeXo Hub is made by NeXo~ I am MOMO AYASE, the assistant that comes with it." },
 	{ words = { "bored", "im bored", "time pass", "talk to me", "lets chat" },
 	  reply = "Then let us chat~ Tell me what you are grinding today, or ask me anything about the hub!" },
 }
@@ -8802,7 +8826,7 @@ function Library:_buildAiWindow()
 	DragBar.Parent = Background
 
 	local winScale = Instance.new("UIScale")
-	winScale.Scale = 0.9
+	winScale.Scale = 0.9 * (Library.UiSizes.Ai or 1)
 	winScale.Parent = Background
 
 	Background.Visible = false
@@ -8811,8 +8835,10 @@ function Library:_buildAiWindow()
 	local Dock = Instance.new("Frame")
 	Dock.Name = "AI_DOCK"
 	Dock.Size = UDim2.fromOffset(
-		CFG.BtnSize * (Library.FeedbackCfg.Enabled and 4 or 3)
-			+ CFG.BtnGap * (Library.FeedbackCfg.Enabled and 3 or 2),
+		CFG.BtnSize * (3 + (Library.FeedbackCfg.Enabled and 1 or 0)
+			+ ((Library.UiSetCfg and Library.UiSetCfg.Enabled ~= false) and 1 or 0))
+			+ CFG.BtnGap * (2 + (Library.FeedbackCfg.Enabled and 1 or 0)
+			+ ((Library.UiSetCfg and Library.UiSetCfg.Enabled ~= false) and 1 or 0)),
 		CFG.BtnSize + 50)
 	Dock.Position = UDim2.new(0.5, 0, 0, CFG.BtnY)
 	Dock.AnchorPoint = Vector2.new(0.5, 0)
@@ -8914,59 +8940,37 @@ function Library:_buildAiWindow()
 	if Library.FeedbackCfg.Enabled then
 		makeDockButton(3, Library.FeedbackCfg.Icon, Library.FeedbackCfg.Name)
 	end
+	if Library.UiSetCfg and Library.UiSetCfg.Enabled ~= false then
+		makeDockButton(Library.FeedbackCfg.Enabled and 4 or 3,
+			Library.UiSetCfg.Icon, Library.UiSetCfg.Name)
+	end
 
-	-- Up / Down arrow under the icons. Facing down while the icons are shown;
-	-- clicking slides them up out of sight and flips the glyph to up.
-	local Arrow = Instance.new("CanvasGroup")
+	-- A plain red arrow under the icons. No plate, no outline, no button look:
+	-- just the glyph itself, which is also the clickable area.
+	local Arrow = Instance.new("TextButton")
 	Arrow.Name = "DockArrow"
 	Arrow.Size = UDim2.fromOffset(CFG.ArrowW, CFG.ArrowH)
 	Arrow.Position = UDim2.new(0.5, 0, 0, CFG.BtnSize + 28)
 	Arrow.AnchorPoint = Vector2.new(0.5, 0)
-	Arrow.BackgroundColor3 = Color3.new(0.0705882, 0.0705882, 0.0705882)
-	Arrow.BackgroundTransparency = 0.1
+	Arrow.BackgroundTransparency = 1
 	Arrow.BorderSizePixel = 0
+	Arrow.AutoButtonColor = false
+	Arrow.Text = CFG.ArrowDown
+	Arrow.TextColor3 = CFG.ArrowColor
+	Arrow.TextSize = CFG.ArrowText
+	Arrow.TextTransparency = 0.12
+	Arrow.Font = Enum.Font.SourceSansBold
+	Arrow.TextXAlignment = Enum.TextXAlignment.Center
+	Arrow.TextYAlignment = Enum.TextYAlignment.Center
 	Arrow.ZIndex = 1010
-	Arrow.GroupTransparency = 0
 	Arrow.Parent = Dock
-
-	local aCorner = Instance.new("UICorner")
-	aCorner.CornerRadius = UDim.new(0, math.max(4, CFG.BtnCorner - 4))
-	aCorner.Parent = Arrow
-
-	local aLine = Instance.new("UIStroke")
-	aLine.Color = CFG.Red
-	aLine.Thickness = 1.4
-	aLine.Transparency = 0.25
-	aLine.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	aLine.Parent = Arrow
 
 	local aScale = Instance.new("UIScale")
 	aScale.Scale = 1
 	aScale.Parent = Arrow
 
-	local aGlyph = Instance.new("TextLabel")
-	aGlyph.Name = "Glyph"
-	aGlyph.Size = UDim2.new(1, 0, 1, 0)
-	aGlyph.BackgroundTransparency = 1
-	aGlyph.BorderSizePixel = 0
-	aGlyph.Text = CFG.ArrowDown
-	aGlyph.TextColor3 = Color3.new(1, 1, 1)
-	aGlyph.TextSize = CFG.ArrowText
-	aGlyph.Font = Enum.Font.SourceSansBold
-	aGlyph.TextXAlignment = Enum.TextXAlignment.Center
-	aGlyph.TextYAlignment = Enum.TextYAlignment.Center
-	aGlyph.ZIndex = 1011
-	aGlyph.Parent = Arrow
-
-	local aHit = Instance.new("TextButton")
-	aHit.Name = "Hit"
-	aHit.Size = UDim2.new(1, 0, 1, 0)
-	aHit.BackgroundTransparency = 1
-	aHit.BorderSizePixel = 0
-	aHit.Text = ""
-	aHit.AutoButtonColor = false
-	aHit.ZIndex = 1012
-	aHit.Parent = Arrow
+	local arrowHome = Arrow.Position
+	local arrowLifted = UDim2.new(0.5, 0, 0, CFG.ArrowTop)
 
 	local iconsHidden = false
 	local iconsBusy = false
@@ -8977,12 +8981,17 @@ function Library:_buildAiWindow()
 		iconsHidden = hidden
 
 		local span = instant and 0 or CFG.HideTime
-		local lift = -(CFG.BtnSize + 26)
+		-- Big enough to clear the top of the screen, topbar inset included.
+		local lift = -(CFG.BtnSize + CFG.LiftPad)
 		local info = TweenInfo.new(span, Enum.EasingStyle.Quint,
 			hidden and Enum.EasingDirection.In or Enum.EasingDirection.Out)
 
-		aGlyph.Text = hidden and CFG.ArrowUp or CFG.ArrowDown
+		Arrow.Text = hidden and CFG.ArrowUp or CFG.ArrowDown
 		iconsBusy = true
+
+		-- The arrow rides up with the icons and stays on screen.
+		TweenService:Create(Arrow, info,
+			{ Position = hidden and arrowLifted or arrowHome }):Play()
 
 		for i = 1, #buttons do
 			local item = buttons[i]
@@ -9008,6 +9017,7 @@ function Library:_buildAiWindow()
 
 		task.delay(span, function()
 			iconsBusy = false
+			Arrow.Position = hidden and arrowLifted or arrowHome
 			for i = 1, #buttons do
 				local item = buttons[i]
 				local root = item.Root
@@ -9024,20 +9034,20 @@ function Library:_buildAiWindow()
 	self.AiIconsSet = setIcons
 	self.AiIconsHidden = function() return iconsHidden end
 
-	aHit.MouseButton1Click:Connect(function()
+	Arrow.MouseButton1Click:Connect(function()
 		setIcons(not iconsHidden, false)
 	end)
 
-	aHit.MouseEnter:Connect(function()
+	Arrow.MouseEnter:Connect(function()
 		TweenService:Create(aScale, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
 			{ Scale = CFG.ArrowGrow }):Play()
-		TweenService:Create(aLine, TweenInfo.new(0.18), { Transparency = 0 }):Play()
+		TweenService:Create(Arrow, TweenInfo.new(0.18), { TextTransparency = 0 }):Play()
 	end)
 
-	aHit.MouseLeave:Connect(function()
+	Arrow.MouseLeave:Connect(function()
 		TweenService:Create(aScale, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
 			{ Scale = 1 }):Play()
-		TweenService:Create(aLine, TweenInfo.new(0.18), { Transparency = 0.25 }):Play()
+		TweenService:Create(Arrow, TweenInfo.new(0.18), { TextTransparency = 0.12 }):Play()
 	end)
 
 	local Toggle = aiBtn.Root
@@ -9142,12 +9152,22 @@ function Library:_buildAiWindow()
 		end)
 	end)
 
-	if buttons[4] then
+	if Library.FeedbackCfg.Enabled and buttons[4] then
 		buttons[4].Click.MouseButton1Click:Connect(function()
 			TS:Create(buttons[4].Scale, TweenInfo.new(0.12), { Scale = 0.92 }):Play()
 			pcall(function() self:ToggleFeedback() end)
 			task.delay(0.16, function()
 				TS:Create(buttons[4].Scale, TweenInfo.new(0.16), { Scale = 1 }):Play()
+			end)
+		end)
+	end
+
+	if Library.UiSetCfg and Library.UiSetCfg.Enabled ~= false and buttons[#buttons] then
+		buttons[#buttons].Click.MouseButton1Click:Connect(function()
+			TS:Create(buttons[#buttons].Scale, TweenInfo.new(0.12), { Scale = 0.92 }):Play()
+			pcall(function() self:ToggleUiSettings() end)
+			task.delay(0.16, function()
+				TS:Create(buttons[#buttons].Scale, TweenInfo.new(0.16), { Scale = 1 }):Play()
 			end)
 		end)
 	end
@@ -9210,9 +9230,9 @@ function Library:_buildAiWindow()
 	local function openUI()
 		Background.Visible = true
 		Background.GroupTransparency = 1
-		winScale.Scale = 0.9
+		winScale.Scale = 0.9 * (Library.UiSizes.Ai or 1)
 		TS:Create(Background, openInfo, { GroupTransparency = 0 }):Play()
-		TS:Create(winScale, openInfo, { Scale = 1 }):Play()
+		TS:Create(winScale, openInfo, { Scale = 1 * (Library.UiSizes.Ai or 1) }):Play()
 		if self.Ai.Order == 0 then
 			self:AiSay("bot", CFG.Greeting)
 		end
@@ -9221,7 +9241,7 @@ function Library:_buildAiWindow()
 
 	local function closeUI()
 		local fade = TS:Create(Background, closeInfo, { GroupTransparency = 1 })
-		TS:Create(winScale, closeInfo, { Scale = 0.9 }):Play()
+		TS:Create(winScale, closeInfo, { Scale = 0.9 * (Library.UiSizes.Ai or 1) }):Play()
 		fade:Play()
 		fade.Completed:Connect(function()
 			if self.Ai and not self.Ai.Open then Background.Visible = false end
@@ -9515,6 +9535,8 @@ function Library:_rememberStart()
 	self.RememberOn = true
 
 	pcall(function() self:LoadBinds(true) end)
+	pcall(function() self:LoadUiSizes(true) end)
+	pcall(function() self:ApplyUiSizes() end)
 
 	task.delay(1.5, function()
 		pcall(function() self:LoadSettings() end)
@@ -9526,6 +9548,7 @@ function Library:_rememberStart()
 			task.wait(8)
 			if not self.RememberOn then break end
 			pcall(function() self:SaveBinds() end)
+			pcall(function() self:SaveUiSizes() end)
 			if self.SettingsReady then
 				pcall(function() self:SaveSettings() end)
 			end
@@ -9675,7 +9698,7 @@ function Library:_buildFeedbackWindow()
 	DragBar.Parent = Background
 
 	local winScale = Instance.new("UIScale")
-	winScale.Scale = 0.9
+	winScale.Scale = 0.9 * (Library.UiSizes.Feed or 1)
 	winScale.Parent = Background
 
 	-- Fixed vertical stack so nothing can ever overlap:
@@ -10057,13 +10080,13 @@ function Library:_buildFeedbackWindow()
 	local function openUI()
 		Background.Visible = true
 		Background.GroupTransparency = 1
-		winScale.Scale = 0.9
+		winScale.Scale = 0.9 * (Library.UiSizes.Feed or 1)
 		TweenService:Create(Background,
 			TweenInfo.new(FB.OpenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
 			{ GroupTransparency = 0 }):Play()
 		TweenService:Create(winScale,
 			TweenInfo.new(FB.OpenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-			{ Scale = 1 }):Play()
+			{ Scale = 1 * (Library.UiSizes.Feed or 1) }):Play()
 	end
 
 	local function closeUI()
@@ -10072,7 +10095,7 @@ function Library:_buildFeedbackWindow()
 			{ GroupTransparency = 1 })
 		TweenService:Create(winScale,
 			TweenInfo.new(FB.CloseTime, Enum.EasingStyle.Quart, Enum.EasingDirection.In),
-			{ Scale = 0.9 }):Play()
+			{ Scale = 0.9 * (Library.UiSizes.Feed or 1) }):Play()
 		fade:Play()
 		fade.Completed:Connect(function()
 			if self.Feed and not self.Feed.Open then Background.Visible = false end
@@ -10237,7 +10260,7 @@ function Library:_buildKeybindWindow()
 	ratio.Parent = bgFrame
 
 	local winScale = Instance.new("UIScale")
-	winScale.Scale = 0.92
+	winScale.Scale = 0.92 * (Library.UiSizes.Bind or 1)
 	winScale.Parent = bgFrame
 
 	local grad = Instance.new("Frame")
@@ -10697,7 +10720,7 @@ function Library:_buildKeybindWindow()
 		local vp = cam.ViewportSize
 		local phone = vp.X < CFG.Small
 		bgFrame.Size = UDim2.new(phone and 0.82 or CFG.WidthScale, 0, phone and 0.5 or CFG.HeightScale, 0)
-		winScale.Scale = state.Open and 1 or 0.92
+		winScale.Scale = (state.Open and 1 or 0.92) * (Library.UiSizes.Bind or 1)
 	end
 	state.Fit = fitBinds
 	pcall(function()
@@ -10754,10 +10777,10 @@ function Library:ShowKeybinds(show)
 		if state.Refresh then pcall(state.Refresh) end
 		state.Root.Visible = true
 		TS:Create(state.Root, TweenInfo.new(CFG.OpenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { GroupTransparency = 0 }):Play()
-		TS:Create(state.Scale, TweenInfo.new(CFG.OpenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+		TS:Create(state.Scale, TweenInfo.new(CFG.OpenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Scale = 1 * (Library.UiSizes.Bind or 1) }):Play()
 	else
 		TS:Create(state.Root, TweenInfo.new(CFG.OpenTime, Enum.EasingStyle.Quart, Enum.EasingDirection.In), { GroupTransparency = 1 }):Play()
-		local shrink = TS:Create(state.Scale, TweenInfo.new(CFG.OpenTime, Enum.EasingStyle.Quart, Enum.EasingDirection.In), { Scale = 0.92 })
+		local shrink = TS:Create(state.Scale, TweenInfo.new(CFG.OpenTime, Enum.EasingStyle.Quart, Enum.EasingDirection.In), { Scale = 0.92 * (Library.UiSizes.Bind or 1) })
 		shrink:Play()
 		shrink.Completed:Once(function()
 			if not state.Open then state.Root.Visible = false end
@@ -10791,6 +10814,623 @@ function Library:UnbindAll()
 	pcall(function() self:SaveBinds() end)
 	self:_bindNotify("Unbind All done")
 	return self
+end
+
+Library.UiSetCfg = {
+	Enabled     = true,
+	Name        = "Ui Settings",
+	Icon        = "rbxassetid://6031280882",
+	Title       = '> > > > <font color="#f8042e">Ui Settings</font>',
+	Pattern     = "rbxassetid://2151741365",
+	PatternFade = 0.6,
+	Red         = Color3.fromRGB(248, 4, 46),
+	RedEdge     = Color3.fromRGB(253, 1, 12),
+	Bg          = Color3.fromRGB(30, 30, 30),
+	TrackBg     = Color3.fromRGB(24, 24, 24),
+	ResetText   = "Reset All",
+	WidthScale  = 0.374045998,
+	HeightScale = 0.43859601,
+	Ratio       = 1.399999976158142,
+	RowHeight   = 48,
+	RowGap      = 12,
+	PadLeft     = 14,
+	PadRight    = 20,
+	Small       = 780,
+	OpenTime    = 0.24,
+	Min         = 0.5,
+	Max         = 2.0,
+	Rows = {
+		{ key = "Main",   label = "Main Ui Size" },
+		{ key = "Ai",     label = "Ai Assistant Ui Size" },
+		{ key = "Feed",   label = "Feedback Ui Size" },
+		{ key = "Bind",   label = "Key Bind Ui Size" },
+		{ key = "Mini",   label = "Mini Icon Ui Size" },
+		{ key = "Status", label = "Live Status Ui Size" },
+	},
+}
+
+function Library:_uiSizesPath()
+	return (self.Folder or "NexoHub") .. "/uisizes.json"
+end
+
+function Library:SaveUiSizes()
+	if not fsReady() then return false end
+	pcall(function() self:_ensureFolders() end)
+
+	local data = { version = 1, sizes = {} }
+	for key, value in pairs(Library.UiSizes or {}) do
+		data.sizes[tostring(key)] = tonumber(value) or 1
+	end
+
+	local ok, encoded = pcall(function() return HttpService:JSONEncode(data) end)
+	if (not ok) or type(encoded) ~= "string" then return false end
+	return (pcall(function() FS.write(self:_uiSizesPath(), encoded) end))
+end
+
+function Library:_uiSizesQueueSave()
+	if self.UiSizesSaveQueued then return end
+	self.UiSizesSaveQueued = true
+	task.delay(0.4, function()
+		self.UiSizesSaveQueued = false
+		pcall(function() self:SaveUiSizes() end)
+	end)
+end
+
+function Library:LoadUiSizes(force)
+	if self.UiSizesLoaded and not force then return false end
+	self.UiSizesLoaded = true
+	if not fsReady() then return false end
+
+	local path = self:_uiSizesPath()
+	local exists = false
+	pcall(function() exists = FS.isFile(path) and true or false end)
+	if not exists then return false end
+
+	local ok, decoded = pcall(function() return HttpService:JSONDecode(FS.read(path)) end)
+	if (not ok) or type(decoded) ~= "table" then return false end
+
+	local CFG = Library.UiSetCfg
+	for key, value in pairs(decoded.sizes or {}) do
+		if Library.UiSizes[key] ~= nil and tonumber(value) then
+			Library.UiSizes[key] = math.clamp(tonumber(value), CFG.Min, CFG.Max)
+		end
+	end
+
+	pcall(function() self:ApplyUiSizes() end)
+	if self.UiSet and self.UiSet.Sync then pcall(self.UiSet.Sync) end
+	return true
+end
+
+function Library:ApplyUiSizes()
+	local sizes = Library.UiSizes or {}
+
+	pcall(function() self:_fitToScreen() end)
+
+	if self.Ai and self.Ai.Scale then
+		self.Ai.Scale.Scale = (self.Ai.Open and 1 or 0.9) * (sizes.Ai or 1)
+	end
+	if self.Feed and self.Feed.Scale then
+		self.Feed.Scale.Scale = (self.Feed.Open and 1 or 0.9) * (sizes.Feed or 1)
+	end
+	if self.Binds and self.Binds.Scale then
+		self.Binds.Scale.Scale = (self.Binds.Open and 1 or 0.92) * (sizes.Bind or 1)
+	end
+	if self.MiniScale then self.MiniScale.Scale = sizes.Mini or 1 end
+	if self.StatusScale then self.StatusScale.Scale = sizes.Status or 1 end
+
+	return self
+end
+
+function Library:GetUiSize(key)
+	return (Library.UiSizes or {})[key] or 1
+end
+
+function Library:SetUiSize(key, value)
+	if Library.UiSizes[key] == nil then return self end
+	local CFG = Library.UiSetCfg
+	Library.UiSizes[key] = math.clamp(tonumber(value) or 1, CFG.Min, CFG.Max)
+	self:ApplyUiSizes()
+	self:_uiSizesQueueSave()
+	if self.UiSet and self.UiSet.Sync then pcall(self.UiSet.Sync) end
+	return self
+end
+
+function Library:ResetUiSizes()
+	for key in pairs(Library.UiSizes or {}) do
+		Library.UiSizes[key] = 1
+	end
+	self:ApplyUiSizes()
+	self:_uiSizesQueueSave()
+	if self.UiSet and self.UiSet.Sync then pcall(self.UiSet.Sync) end
+	pcall(function() self:Notify({ text = "Ui sizes reset" }) end)
+	return self
+end
+
+function Library:_buildUiSetWindow()
+	local CFG = Library.UiSetCfg
+	if CFG.Enabled == false then return nil end
+	if self.UiSet and self.UiSet.Root and self.UiSet.Root.Parent then return self.UiSet end
+	pcall(function() self:LoadUiSizes() end)
+
+	local UIS = game:GetService("UserInputService")
+	local TS = game:GetService("TweenService")
+
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "NEXO_UISETTINGS"
+	gui.ResetOnSpawn = false
+	gui.IgnoreGuiInset = false
+	gui.DisplayOrder = 9998
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	pcall(function() gui.Parent = self.Gui and self.Gui.Parent end)
+	if not gui.Parent then
+		pcall(function() gui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui") end)
+	end
+
+	local bgFrame = Instance.new("CanvasGroup")
+	bgFrame.Name = "Background"
+	bgFrame.BackgroundColor3 = CFG.Bg
+	bgFrame.BackgroundTransparency = 0
+	bgFrame.BorderSizePixel = 0
+	bgFrame.ClipsDescendants = true
+	bgFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+	bgFrame.Position = UDim2.fromScale(0.5, 0.5)
+	bgFrame.Size = UDim2.new(CFG.WidthScale, 0, CFG.HeightScale, 0)
+	bgFrame.GroupTransparency = 1
+	bgFrame.Visible = false
+	bgFrame.ZIndex = 20
+	bgFrame.Parent = gui
+
+	local bgCorner = Instance.new("UICorner")
+	bgCorner.CornerRadius = UDim.new(0.075000003, 0)
+	bgCorner.Parent = bgFrame
+
+	local ratio = Instance.new("UIAspectRatioConstraint")
+	ratio.AspectRatio = CFG.Ratio
+	ratio.Parent = bgFrame
+
+	local winScale = Instance.new("UIScale")
+	winScale.Scale = 0.92
+	winScale.Parent = bgFrame
+
+	local grad = Instance.new("Frame")
+	grad.Name = "Gradient"
+	grad.BackgroundColor3 = Color3.new(1, 1, 1)
+	grad.BackgroundTransparency = 0
+	grad.BorderSizePixel = 0
+	grad.Size = UDim2.fromScale(1, 1)
+	grad.ZIndex = 0
+	grad.Parent = bgFrame
+
+	local gCorner = Instance.new("UICorner")
+	gCorner.CornerRadius = UDim.new(0.075000003, 0)
+	gCorner.Parent = grad
+
+	local pattern = Instance.new("ImageLabel")
+	pattern.Name = "Pattern"
+	pattern.ScaleType = Enum.ScaleType.Tile
+	pattern.TileSize = UDim2.new(0, 250, 0, 250)
+	pattern.ImageTransparency = CFG.PatternFade
+	pattern.BackgroundTransparency = 1
+	pattern.BorderSizePixel = 0
+	pattern.Position = UDim2.new(6.6499997e-05, 0, 0.00124400004, 0)
+	pattern.Size = UDim2.fromScale(1, 1)
+	pattern.ZIndex = 0
+	pattern.Parent = grad
+	self:_aiImage(pattern, CFG.Pattern, "")
+
+	local pCorner = Instance.new("UICorner")
+	pCorner.CornerRadius = UDim.new(0.075000003, 0)
+	pCorner.Parent = pattern
+
+	local ug = Instance.new("UIGradient")
+	ug.Rotation = -90
+	ug.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(157, 2, 31)),
+		ColorSequenceKeypoint.new(0.468048, Color3.fromRGB(47, 28, 31)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 30, 30)),
+	})
+	ug.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.9),
+		NumberSequenceKeypoint.new(1, 0.9),
+	})
+	ug.Parent = grad
+
+	local logo = Instance.new("ImageLabel")
+	logo.Name = "Logo"
+	logo.ScaleType = Enum.ScaleType.Fit
+	logo.BackgroundTransparency = 1
+	logo.BorderSizePixel = 0
+	logo.Position = UDim2.new(0.0603621006, 0, 0.0529119, 0)
+	logo.Size = UDim2.new(0.20000000, 0, 0.107871003, 0)
+	logo.ZIndex = 22
+	logo.Parent = bgFrame
+	self:_aiImage(logo, IMAGES.Logo, Library.AiCfg.BtnFallback)
+
+	local title = Instance.new("TextLabel")
+	title.Name = "Label"
+	title.RichText = true
+	title.Text = CFG.Title
+	title.TextColor3 = Color3.new(1, 1, 1)
+	title.TextScaled = true
+	title.TextWrapped = true
+	title.Font = Enum.Font.SourceSansSemibold
+	title.BackgroundTransparency = 1
+	title.BorderSizePixel = 0
+	title.AnchorPoint = Vector2.new(0.5, 0.5)
+	title.Position = UDim2.new(0.400000006, 0, 0.108231999, 0)
+	title.Size = UDim2.new(0.320000006, 0, 0.0536177009, 0)
+	title.ZIndex = 22
+	title.Parent = bgFrame
+
+	local header = Instance.new("TextButton")
+	header.Name = "DragBar"
+	header.Text = ""
+	header.AutoButtonColor = false
+	header.BackgroundTransparency = 1
+	header.BorderSizePixel = 0
+	header.Size = UDim2.new(1, 0, 0.17, 0)
+	header.ZIndex = 21
+	header.Active = true
+	header.Parent = bgFrame
+
+	local listFrame = Instance.new("Frame")
+	listFrame.Name = "SliderListFrame"
+	listFrame.BackgroundTransparency = 1
+	listFrame.BorderSizePixel = 0
+	listFrame.Position = UDim2.new(0.0599999987, 0, 0.191429004, 0)
+	listFrame.Size = UDim2.new(0.884000003, 0, 0.745714009, 0)
+	listFrame.ZIndex = 22
+	listFrame.Parent = bgFrame
+
+	local reset = Instance.new("TextButton")
+	reset.Name = "ResetButton"
+	reset.Text = CFG.ResetText
+	reset.TextColor3 = Color3.new(1, 1, 1)
+	reset.TextScaled = true
+	reset.TextWrapped = true
+	reset.Font = Enum.Font.SourceSansBold
+	reset.AutoButtonColor = false
+	reset.BackgroundColor3 = CFG.Red
+	reset.BorderSizePixel = 0
+	reset.AnchorPoint = Vector2.new(0.5, 0.5)
+	reset.Position = UDim2.new(0.109999999, 0, 0.0469081998, 0)
+	reset.Size = UDim2.new(0.200000001, 0, 0.104943, 0)
+	reset.ZIndex = 23
+	reset.Parent = listFrame
+
+	local rCorner = Instance.new("UICorner")
+	rCorner.CornerRadius = UDim.new(0, 7)
+	rCorner.Parent = reset
+
+	local rLine = Instance.new("UIStroke")
+	rLine.Color = CFG.RedEdge
+	rLine.Thickness = 1.25
+	rLine.Transparency = 0.25
+	rLine.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	rLine.Parent = reset
+
+	local hint = Instance.new("TextLabel")
+	hint.Name = "Hint"
+	hint.Text = "Drag a slider to resize each window. Values are saved."
+	hint.TextColor3 = Color3.fromRGB(200, 200, 205)
+	hint.TextScaled = true
+	hint.TextXAlignment = Enum.TextXAlignment.Left
+	hint.Font = Enum.Font.SourceSansSemibold
+	hint.BackgroundTransparency = 1
+	hint.BorderSizePixel = 0
+	hint.AnchorPoint = Vector2.new(0, 0.5)
+	hint.Position = UDim2.new(0.239999995, 0, 0.0469081998, 0)
+	hint.Size = UDim2.new(0.639999986, 0, 0.0899999976, 0)
+	hint.ZIndex = 23
+	hint.Parent = listFrame
+
+	local close = Instance.new("TextButton")
+	close.Name = "CloseButton"
+	close.Text = "X"
+	close.TextColor3 = Color3.new(1, 1, 1)
+	close.TextScaled = true
+	close.TextWrapped = true
+	close.Font = Enum.Font.SourceSansBold
+	close.AutoButtonColor = false
+	close.BackgroundColor3 = CFG.Red
+	close.BackgroundTransparency = 0.15
+	close.BorderSizePixel = 0
+	close.AnchorPoint = Vector2.new(0.5, 0.5)
+	close.Position = UDim2.new(0.955000019, 0, 0.0469081998, 0)
+	close.Size = UDim2.new(0.0500000007, 0, 0.104943, 0)
+	close.ZIndex = 23
+	close.Parent = listFrame
+
+	local cCorner = Instance.new("UICorner")
+	cCorner.CornerRadius = UDim.new(0, 7)
+	cCorner.Parent = close
+
+	local scroll = Instance.new("ScrollingFrame")
+	scroll.Name = "SliderListScroll"
+	scroll.BackgroundTransparency = 1
+	scroll.BorderSizePixel = 0
+	scroll.ClipsDescendants = true
+	scroll.Position = UDim2.new(0, 0, 0.168582007, 0)
+	scroll.Size = UDim2.new(1, 0, 0.831417978, 0)
+	scroll.ScrollBarThickness = 5
+	scroll.ScrollBarImageColor3 = Color3.fromRGB(255, 0, 0)
+	scroll.ScrollBarImageTransparency = 0
+	scroll.ScrollingDirection = Enum.ScrollingDirection.Y
+	scroll.ElasticBehavior = Enum.ElasticBehavior.WhenScrollable
+	scroll.VerticalScrollBarPosition = Enum.VerticalScrollBarPosition.Right
+	scroll.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
+	scroll.CanvasPosition = Vector2.zero
+	scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scroll.ZIndex = 22
+	scroll.Parent = listFrame
+
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Vertical
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	layout.VerticalAlignment = Enum.VerticalAlignment.Top
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Padding = UDim.new(0, CFG.RowGap)
+	layout.Parent = scroll
+
+	local listPad = Instance.new("UIPadding")
+	listPad.PaddingLeft = UDim.new(0, CFG.PadLeft)
+	listPad.PaddingRight = UDim.new(0, CFG.PadRight)
+	listPad.PaddingTop = UDim.new(0, 6)
+	listPad.PaddingBottom = UDim.new(0, 12)
+	listPad.Parent = scroll
+
+	local state = {
+		Gui = gui,
+		Root = bgFrame,
+		Scale = winScale,
+		Scroll = scroll,
+		Rows = {},
+		Drag = nil,
+		Open = false,
+	}
+	self.UiSet = state
+
+	local function makeRow(info, order)
+		local frame = Instance.new("Frame")
+		frame.Name = "SliderRow"
+		frame.BackgroundTransparency = 1
+		frame.BorderSizePixel = 0
+		frame.LayoutOrder = order
+		frame.ClipsDescendants = false
+		frame.Size = UDim2.new(1, 0, 0, CFG.RowHeight)
+		frame.ZIndex = 23
+		frame.Parent = scroll
+
+		local label = Instance.new("TextLabel")
+		label.Name = "Label"
+		label.Text = info.label
+		label.TextColor3 = Color3.new(1, 1, 1)
+		label.TextScaled = true
+		label.TextXAlignment = Enum.TextXAlignment.Left
+		label.TextTruncate = Enum.TextTruncate.AtEnd
+		label.Font = Enum.Font.SourceSansSemibold
+		label.BackgroundTransparency = 1
+		label.BorderSizePixel = 0
+		label.Position = UDim2.new(0, 6, 0, 2)
+		label.Size = UDim2.new(0.680000007, -6, 0.400000006, 0)
+		label.ZIndex = 24
+		label.Parent = frame
+
+		local value = Instance.new("TextLabel")
+		value.Name = "Value"
+		value.Text = "1.00x"
+		value.TextColor3 = CFG.Red
+		value.TextScaled = true
+		value.TextXAlignment = Enum.TextXAlignment.Right
+		value.Font = Enum.Font.SourceSansBold
+		value.BackgroundTransparency = 1
+		value.BorderSizePixel = 0
+		value.AnchorPoint = Vector2.new(1, 0)
+		value.Position = UDim2.new(1, -6, 0, 2)
+		value.Size = UDim2.new(0.200000003, 0, 0.400000006, 0)
+		value.ZIndex = 24
+		value.Parent = frame
+
+		local track = Instance.new("Frame")
+		track.Name = "Track"
+		track.BackgroundColor3 = CFG.TrackBg
+		track.BorderSizePixel = 0
+		track.AnchorPoint = Vector2.new(0, 0.5)
+		track.Position = UDim2.new(0, 9, 0.769999981, 0)
+		track.Size = UDim2.new(1, -18, 0.200000003, 0)
+		track.ZIndex = 24
+		track.Parent = frame
+
+		local tCorner = Instance.new("UICorner")
+		tCorner.CornerRadius = UDim.new(1, 0)
+		tCorner.Parent = track
+
+		local tLine = Instance.new("UIStroke")
+		tLine.Color = CFG.RedEdge
+		tLine.Thickness = 1.25
+		tLine.Transparency = 0.35
+		tLine.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		tLine.Parent = track
+
+		local fill = Instance.new("Frame")
+		fill.Name = "Fill"
+		fill.BackgroundColor3 = CFG.Red
+		fill.BorderSizePixel = 0
+		fill.Size = UDim2.new(0.5, 0, 1, 0)
+		fill.ZIndex = 25
+		fill.Parent = track
+
+		local fCorner = Instance.new("UICorner")
+		fCorner.CornerRadius = UDim.new(1, 0)
+		fCorner.Parent = fill
+
+		local knob = Instance.new("Frame")
+		knob.Name = "Knob"
+		knob.BackgroundColor3 = Color3.new(1, 1, 1)
+		knob.BorderSizePixel = 0
+		knob.AnchorPoint = Vector2.new(0.5, 0.5)
+		knob.Position = UDim2.new(0.5, 0, 0.5, 0)
+		knob.Size = UDim2.new(0, 12, 0, 12)
+		knob.ZIndex = 26
+		knob.Parent = track
+
+		local kCorner = Instance.new("UICorner")
+		kCorner.CornerRadius = UDim.new(1, 0)
+		kCorner.Parent = knob
+
+		local kLine = Instance.new("UIStroke")
+		kLine.Color = CFG.RedEdge
+		kLine.Thickness = 1.5
+		kLine.Transparency = 0.1
+		kLine.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		kLine.Parent = knob
+
+		local hit = Instance.new("TextButton")
+		hit.Name = "Hit"
+		hit.Text = ""
+		hit.AutoButtonColor = false
+		hit.BackgroundTransparency = 1
+		hit.BorderSizePixel = 0
+		hit.AnchorPoint = Vector2.new(0.5, 0.5)
+		hit.Position = UDim2.new(0.5, 0, 0.5, 0)
+		hit.Size = UDim2.new(1, 18, 2, 0)
+		hit.ZIndex = 27
+		hit.Parent = track
+
+		local row = {
+			Key = info.key,
+			Track = track,
+			Fill = fill,
+			Knob = knob,
+			Value = value,
+		}
+
+		function row.PctFromX(x)
+			local left = track.AbsolutePosition.X
+			local width = math.max(track.AbsoluteSize.X, 1)
+			return math.clamp((x - left) / width, 0, 1)
+		end
+
+		function row.Sync()
+			local val = math.clamp(Library.UiSizes[info.key] or 1, CFG.Min, CFG.Max)
+			local pct = (val - CFG.Min) / (CFG.Max - CFG.Min)
+			fill.Size = UDim2.new(pct, 0, 1, 0)
+			knob.Position = UDim2.new(pct, 0, 0.5, 0)
+			value.Text = string.format("%.2fx", val)
+		end
+
+		function row.SetFromPct(pct, commit)
+			local val = CFG.Min + (CFG.Max - CFG.Min) * math.clamp(pct, 0, 1)
+			val = math.floor(val * 100 + 0.5) / 100
+			Library.UiSizes[info.key] = val
+			row.Sync()
+			pcall(function() self:ApplyUiSizes() end)
+			if commit then self:_uiSizesQueueSave() end
+		end
+
+		hit.MouseButton1Down:Connect(function()
+			state.Drag = row
+			local okMouse, spot = pcall(function() return UIS:GetMouseLocation() end)
+			if okMouse and spot then row.SetFromPct(row.PctFromX(spot.X), false) end
+		end)
+
+		hit.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.Touch then
+				state.Drag = row
+				row.SetFromPct(row.PctFromX(input.Position.X), false)
+			end
+		end)
+
+		row.Sync()
+		state.Rows[#state.Rows + 1] = row
+		return row
+	end
+
+	for index, info in ipairs(CFG.Rows) do
+		makeRow(info, index)
+	end
+
+	function state.Sync()
+		for _, row in ipairs(state.Rows) do pcall(row.Sync) end
+	end
+
+	UIS.InputChanged:Connect(function(input)
+		if not state.Drag then return end
+		if input.UserInputType == Enum.UserInputType.MouseMovement
+			or input.UserInputType == Enum.UserInputType.Touch then
+			state.Drag.SetFromPct(state.Drag.PctFromX(input.Position.X), false)
+		end
+	end)
+
+	UIS.InputEnded:Connect(function(input)
+		if not state.Drag then return end
+		if input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch then
+			state.Drag = nil
+			self:_uiSizesQueueSave()
+		end
+	end)
+
+	reset.MouseButton1Click:Connect(function()
+		self:ResetUiSizes()
+		state.Sync()
+	end)
+
+	close.MouseButton1Click:Connect(function()
+		self:ShowUiSettings(false)
+	end)
+
+	pcall(function() state.Drag2 = makeDraggable(bgFrame, header) end)
+
+	local function fitUiSet()
+		local cam = workspace.CurrentCamera
+		if not cam then return end
+		local vp = cam.ViewportSize
+		local phone = vp.X < CFG.Small
+		bgFrame.Size = UDim2.new(phone and 0.82 or CFG.WidthScale, 0, phone and 0.5 or CFG.HeightScale, 0)
+		winScale.Scale = state.Open and 1 or 0.92
+	end
+	state.Fit = fitUiSet
+	pcall(function()
+		task.defer(fitUiSet)
+		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fitUiSet)
+	end)
+
+	state.Sync()
+	return state
+end
+
+function Library:ShowUiSettings(show)
+	local state = self:_buildUiSetWindow()
+	if not state then return self end
+
+	local TS = game:GetService("TweenService")
+	local CFG = Library.UiSetCfg
+	local want = show ~= false
+	state.Open = want
+
+	if want then
+		pcall(state.Sync)
+		state.Root.Visible = true
+		TS:Create(state.Root, TweenInfo.new(CFG.OpenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { GroupTransparency = 0 }):Play()
+		TS:Create(state.Scale, TweenInfo.new(CFG.OpenTime, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	else
+		TS:Create(state.Root, TweenInfo.new(CFG.OpenTime, Enum.EasingStyle.Quart, Enum.EasingDirection.In), { GroupTransparency = 1 }):Play()
+		local shrink = TS:Create(state.Scale, TweenInfo.new(CFG.OpenTime, Enum.EasingStyle.Quart, Enum.EasingDirection.In), { Scale = 0.92 })
+		shrink:Play()
+		shrink.Completed:Once(function()
+			if not state.Open then state.Root.Visible = false end
+		end)
+	end
+
+	return self
+end
+
+function Library:ToggleUiSettings()
+	local state = self:_buildUiSetWindow()
+	if not state then return self end
+	return self:ShowUiSettings(not state.Open)
 end
 
 local NexoHub = {}
@@ -10836,6 +11476,14 @@ function NexoHub:CreateWindow(opts)
 		Library.BindCfg.Enabled = false
 	else
 		pcall(function() ui:_buildKeybindWindow() end)
+	end
+
+	if opts.uiSettings == false then
+		Library.UiSetCfg.Enabled = false
+	else
+		pcall(function() ui:_buildUiSetWindow() end)
+		pcall(function() ui:LoadUiSizes(true) end)
+		task.defer(function() pcall(function() ui:ApplyUiSizes() end) end)
 	end
 
 	if opts.remember ~= false then
