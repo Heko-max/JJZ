@@ -7935,6 +7935,16 @@ Library.AiCfg = {
 	TypeSpeed   = 0.055,
 	MinScore    = 0.34,
 	AskScore    = 0.5,
+	ArrowW      = 26,
+	ArrowH      = 20,
+	ArrowText   = 22,
+	ArrowGrow   = 1.22,
+	ArrowColor  = Color3.fromRGB(255, 51, 51),
+	ArrowDown   = "▼",
+	ArrowUp     = "▲",
+	ArrowTop    = 0,
+	LiftPad     = 100,
+	HideTime    = 0.3,
 }
 
 Library.FeedbackCfg = {
@@ -8806,7 +8816,7 @@ function Library:_buildAiWindow()
 	Dock.Size = UDim2.fromOffset(
 		CFG.BtnSize * (Library.FeedbackCfg.Enabled and 4 or 3)
 			+ CFG.BtnGap * (Library.FeedbackCfg.Enabled and 3 or 2),
-		CFG.BtnSize + 26)
+		CFG.BtnSize + 50)
 	Dock.Position = UDim2.new(0.5, 0, 0, CFG.BtnY)
 	Dock.AnchorPoint = Vector2.new(0.5, 0)
 	Dock.BackgroundTransparency = 1
@@ -8907,6 +8917,111 @@ function Library:_buildAiWindow()
 	if Library.FeedbackCfg.Enabled then
 		makeDockButton(3, Library.FeedbackCfg.Icon, Library.FeedbackCfg.Name)
 	end
+
+	-- A plain red arrow under the icons. No plate, no outline, no button look:
+	-- just the glyph itself, which is also the clickable area.
+	local Arrow = Instance.new("TextButton")
+	Arrow.Name = "DockArrow"
+	Arrow.Size = UDim2.fromOffset(CFG.ArrowW, CFG.ArrowH)
+	Arrow.Position = UDim2.new(0.5, 0, 0, CFG.BtnSize + 28)
+	Arrow.AnchorPoint = Vector2.new(0.5, 0)
+	Arrow.BackgroundTransparency = 1
+	Arrow.BorderSizePixel = 0
+	Arrow.AutoButtonColor = false
+	Arrow.Text = CFG.ArrowDown
+	Arrow.TextColor3 = CFG.ArrowColor
+	Arrow.TextSize = CFG.ArrowText
+	Arrow.TextTransparency = 0.12
+	Arrow.Font = Enum.Font.SourceSansBold
+	Arrow.TextXAlignment = Enum.TextXAlignment.Center
+	Arrow.TextYAlignment = Enum.TextYAlignment.Center
+	Arrow.ZIndex = 1010
+	Arrow.Parent = Dock
+
+	local aScale = Instance.new("UIScale")
+	aScale.Scale = 1
+	aScale.Parent = Arrow
+
+	local arrowHome = Arrow.Position
+	local arrowLifted = UDim2.new(0.5, 0, 0, CFG.ArrowTop)
+
+	local iconsHidden = false
+	local iconsBusy = false
+
+	local function setIcons(hidden, instant)
+		hidden = hidden and true or false
+		if iconsBusy and not instant then return end
+		iconsHidden = hidden
+
+		local span = instant and 0 or CFG.HideTime
+		-- Big enough to clear the top of the screen, topbar inset included.
+		local lift = -(CFG.BtnSize + CFG.LiftPad)
+		local info = TweenInfo.new(span, Enum.EasingStyle.Quint,
+			hidden and Enum.EasingDirection.In or Enum.EasingDirection.Out)
+
+		Arrow.Text = hidden and CFG.ArrowUp or CFG.ArrowDown
+		iconsBusy = true
+
+		-- The arrow rides up with the icons and stays on screen.
+		TweenService:Create(Arrow, info,
+			{ Position = hidden and arrowLifted or arrowHome }):Play()
+
+		for i = 1, #buttons do
+			local item = buttons[i]
+			local root = item.Root
+			if root then
+				local home = item.Base or root.Position
+				if not hidden then root.Visible = true end
+				TweenService:Create(root, info, {
+					Position = hidden and (home + UDim2.fromOffset(0, lift)) or home,
+					GroupTransparency = hidden and 1 or 0,
+				}):Play()
+				if item.Label then
+					TweenService:Create(item.Label, info, { TextTransparency = 1 }):Play()
+				end
+				if item.Stroke then
+					TweenService:Create(item.Stroke, info, { Transparency = 1 }):Play()
+				end
+				if item.Scale then
+					TweenService:Create(item.Scale, info, { Scale = 1 }):Play()
+				end
+			end
+		end
+
+		task.delay(span, function()
+			iconsBusy = false
+			Arrow.Position = hidden and arrowLifted or arrowHome
+			for i = 1, #buttons do
+				local item = buttons[i]
+				local root = item.Root
+				if root then
+					local home = item.Base or root.Position
+					root.Position = hidden and (home + UDim2.fromOffset(0, lift)) or home
+					root.GroupTransparency = hidden and 1 or 0
+					root.Visible = not hidden
+				end
+			end
+		end)
+	end
+
+	self.AiIconsSet = setIcons
+	self.AiIconsHidden = function() return iconsHidden end
+
+	Arrow.MouseButton1Click:Connect(function()
+		setIcons(not iconsHidden, false)
+	end)
+
+	Arrow.MouseEnter:Connect(function()
+		TweenService:Create(aScale, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+			{ Scale = CFG.ArrowGrow }):Play()
+		TweenService:Create(Arrow, TweenInfo.new(0.18), { TextTransparency = 0 }):Play()
+	end)
+
+	Arrow.MouseLeave:Connect(function()
+		TweenService:Create(aScale, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+			{ Scale = 1 }):Play()
+		TweenService:Create(Arrow, TweenInfo.new(0.18), { TextTransparency = 0.12 }):Play()
+	end)
 
 	local Toggle = aiBtn.Root
 	local tScale = aiBtn.Scale
@@ -9401,6 +9516,21 @@ function Library:_rememberStart()
 	end)
 
 	return self
+end
+
+function Library:HideDockIcons(hidden)
+	if self.AiIconsSet then
+		pcall(function() self.AiIconsSet(hidden ~= false, false) end)
+	end
+	return self
+end
+
+function Library:ToggleDockIcons()
+	local hidden = false
+	if self.AiIconsHidden then
+		pcall(function() hidden = self.AiIconsHidden() end)
+	end
+	return self:HideDockIcons(not hidden)
 end
 
 function Library:_buildFeedbackWindow()
