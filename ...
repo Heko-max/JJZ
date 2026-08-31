@@ -1,8 +1,4 @@
---[[
-	NeXo Hub - protected build
-	This file is machine generated. The library source is encrypted
-	and reassembled at runtime. Editing any byte below will break it.
-]]
+
 local NEXO_E4F14C5219F3FABC23CAE1A1
 do
 local K={206,118,6,214,130,186,174,138,80,75,153,82,201,45,215,102,86,71,25,96,88,217,65,149,112,94,98,159,51,26,157,178,122,1,193,182,19,144,245,253,
