@@ -7935,6 +7935,13 @@ Library.AiCfg = {
 	TypeSpeed   = 0.055,
 	MinScore    = 0.34,
 	AskScore    = 0.5,
+	ArrowW      = 34,
+	ArrowH      = 18,
+	ArrowText   = 17,
+	ArrowGrow   = 1.16,
+	ArrowDown   = "▼",
+	ArrowUp     = "▲",
+	HideTime    = 0.3,
 }
 
 Library.FeedbackCfg = {
@@ -8806,7 +8813,7 @@ function Library:_buildAiWindow()
 	Dock.Size = UDim2.fromOffset(
 		CFG.BtnSize * (Library.FeedbackCfg.Enabled and 4 or 3)
 			+ CFG.BtnGap * (Library.FeedbackCfg.Enabled and 3 or 2),
-		CFG.BtnSize + 26)
+		CFG.BtnSize + 50)
 	Dock.Position = UDim2.new(0.5, 0, 0, CFG.BtnY)
 	Dock.AnchorPoint = Vector2.new(0.5, 0)
 	Dock.BackgroundTransparency = 1
@@ -8907,6 +8914,131 @@ function Library:_buildAiWindow()
 	if Library.FeedbackCfg.Enabled then
 		makeDockButton(3, Library.FeedbackCfg.Icon, Library.FeedbackCfg.Name)
 	end
+
+	-- Up / Down arrow under the icons. Facing down while the icons are shown;
+	-- clicking slides them up out of sight and flips the glyph to up.
+	local Arrow = Instance.new("CanvasGroup")
+	Arrow.Name = "DockArrow"
+	Arrow.Size = UDim2.fromOffset(CFG.ArrowW, CFG.ArrowH)
+	Arrow.Position = UDim2.new(0.5, 0, 0, CFG.BtnSize + 28)
+	Arrow.AnchorPoint = Vector2.new(0.5, 0)
+	Arrow.BackgroundColor3 = Color3.new(0.0705882, 0.0705882, 0.0705882)
+	Arrow.BackgroundTransparency = 0.1
+	Arrow.BorderSizePixel = 0
+	Arrow.ZIndex = 1010
+	Arrow.GroupTransparency = 0
+	Arrow.Parent = Dock
+
+	local aCorner = Instance.new("UICorner")
+	aCorner.CornerRadius = UDim.new(0, math.max(4, CFG.BtnCorner - 4))
+	aCorner.Parent = Arrow
+
+	local aLine = Instance.new("UIStroke")
+	aLine.Color = CFG.Red
+	aLine.Thickness = 1.4
+	aLine.Transparency = 0.25
+	aLine.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	aLine.Parent = Arrow
+
+	local aScale = Instance.new("UIScale")
+	aScale.Scale = 1
+	aScale.Parent = Arrow
+
+	local aGlyph = Instance.new("TextLabel")
+	aGlyph.Name = "Glyph"
+	aGlyph.Size = UDim2.new(1, 0, 1, 0)
+	aGlyph.BackgroundTransparency = 1
+	aGlyph.BorderSizePixel = 0
+	aGlyph.Text = CFG.ArrowDown
+	aGlyph.TextColor3 = Color3.new(1, 1, 1)
+	aGlyph.TextSize = CFG.ArrowText
+	aGlyph.Font = Enum.Font.SourceSansBold
+	aGlyph.TextXAlignment = Enum.TextXAlignment.Center
+	aGlyph.TextYAlignment = Enum.TextYAlignment.Center
+	aGlyph.ZIndex = 1011
+	aGlyph.Parent = Arrow
+
+	local aHit = Instance.new("TextButton")
+	aHit.Name = "Hit"
+	aHit.Size = UDim2.new(1, 0, 1, 0)
+	aHit.BackgroundTransparency = 1
+	aHit.BorderSizePixel = 0
+	aHit.Text = ""
+	aHit.AutoButtonColor = false
+	aHit.ZIndex = 1012
+	aHit.Parent = Arrow
+
+	local iconsHidden = false
+	local iconsBusy = false
+
+	local function setIcons(hidden, instant)
+		hidden = hidden and true or false
+		if iconsBusy and not instant then return end
+		iconsHidden = hidden
+
+		local span = instant and 0 or CFG.HideTime
+		local lift = -(CFG.BtnSize + 26)
+		local info = TweenInfo.new(span, Enum.EasingStyle.Quint,
+			hidden and Enum.EasingDirection.In or Enum.EasingDirection.Out)
+
+		aGlyph.Text = hidden and CFG.ArrowUp or CFG.ArrowDown
+		iconsBusy = true
+
+		for i = 1, #buttons do
+			local item = buttons[i]
+			local root = item.Root
+			if root then
+				local home = item.Base or root.Position
+				if not hidden then root.Visible = true end
+				TweenService:Create(root, info, {
+					Position = hidden and (home + UDim2.fromOffset(0, lift)) or home,
+					GroupTransparency = hidden and 1 or 0,
+				}):Play()
+				if item.Label then
+					TweenService:Create(item.Label, info, { TextTransparency = 1 }):Play()
+				end
+				if item.Stroke then
+					TweenService:Create(item.Stroke, info, { Transparency = 1 }):Play()
+				end
+				if item.Scale then
+					TweenService:Create(item.Scale, info, { Scale = 1 }):Play()
+				end
+			end
+		end
+
+		task.delay(span, function()
+			iconsBusy = false
+			for i = 1, #buttons do
+				local item = buttons[i]
+				local root = item.Root
+				if root then
+					local home = item.Base or root.Position
+					root.Position = hidden and (home + UDim2.fromOffset(0, lift)) or home
+					root.GroupTransparency = hidden and 1 or 0
+					root.Visible = not hidden
+				end
+			end
+		end)
+	end
+
+	self.AiIconsSet = setIcons
+	self.AiIconsHidden = function() return iconsHidden end
+
+	aHit.MouseButton1Click:Connect(function()
+		setIcons(not iconsHidden, false)
+	end)
+
+	aHit.MouseEnter:Connect(function()
+		TweenService:Create(aScale, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+			{ Scale = CFG.ArrowGrow }):Play()
+		TweenService:Create(aLine, TweenInfo.new(0.18), { Transparency = 0 }):Play()
+	end)
+
+	aHit.MouseLeave:Connect(function()
+		TweenService:Create(aScale, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+			{ Scale = 1 }):Play()
+		TweenService:Create(aLine, TweenInfo.new(0.18), { Transparency = 0.25 }):Play()
+	end)
 
 	local Toggle = aiBtn.Root
 	local tScale = aiBtn.Scale
@@ -9263,6 +9395,161 @@ Library.BindCfg = {
 Library.BindItems = {}
 Library.BindSaved = {}
 
+function Library:_bindsPath()
+	return (self.Folder or "NexoHub") .. "/keybinds.json"
+end
+
+function Library:SaveBinds()
+	if not fsReady() then return false end
+	pcall(function() self:_ensureFolders() end)
+
+	local function keyToText(code)
+		if code == nil then return nil end
+		if typeof(code) == "EnumItem" then
+			if string.find(tostring(code), "Enum.UserInputType.", 1, true) == 1 then
+				return "UserInputType." .. code.Name
+			end
+			return "KeyCode." .. code.Name
+		end
+		return tostring(code)
+	end
+
+	local data = { version = 1, binds = {} }
+	for name, entry in pairs(Library.BindSaved or {}) do
+		if type(entry) == "table" then
+			data.binds[tostring(name)] = {
+				key = keyToText(entry.key),
+				on = entry.on and true or false,
+			}
+		end
+	end
+
+	local ok, encoded = pcall(function() return HttpService:JSONEncode(data) end)
+	if (not ok) or type(encoded) ~= "string" then return false end
+	return (pcall(function() FS.write(self:_bindsPath(), encoded) end))
+end
+
+function Library:_bindsQueueSave()
+	if self.BindsSaveQueued then return end
+	self.BindsSaveQueued = true
+	task.delay(0.4, function()
+		self.BindsSaveQueued = false
+		pcall(function() self:SaveBinds() end)
+	end)
+end
+
+function Library:LoadBinds(force)
+	if self.BindsLoaded and not force then return false end
+	self.BindsLoaded = true
+	if not fsReady() then return false end
+
+	local path = self:_bindsPath()
+	local exists = false
+	pcall(function() exists = FS.isFile(path) and true or false end)
+	if not exists then return false end
+
+	local ok, decoded = pcall(function() return HttpService:JSONDecode(FS.read(path)) end)
+	if (not ok) or type(decoded) ~= "table" then return false end
+
+	local function textToKey(text)
+		if type(text) ~= "string" or text == "" then return nil end
+		local kind, name = string.match(text, "^(%a+)%.(.+)$")
+		local out = nil
+		if kind == "UserInputType" and name then
+			pcall(function() out = Enum.UserInputType[name] end)
+		elseif kind == "KeyCode" and name then
+			pcall(function() out = Enum.KeyCode[name] end)
+		else
+			pcall(function() out = Enum.KeyCode[text] end)
+		end
+		return out
+	end
+
+	local restored = 0
+	for name, entry in pairs(decoded.binds or {}) do
+		if type(entry) == "table" then
+			Library.BindSaved[tostring(name)] = {
+				key = textToKey(entry.key),
+				on = entry.on and true or false,
+			}
+			restored = restored + 1
+		end
+	end
+
+	local state = self.Binds
+	if state and state.Rows then
+		for _, row in ipairs(state.Rows) do
+			local saved = Library.BindSaved[row.Name]
+			if saved and row.Bind and row.Circle then
+				row.Key = saved.key
+				row.On = saved.on and true or false
+				row.Bind.Text = row.Key and ("[" .. self:_bindKeyName(row.Key) .. "]") or "[BIND]"
+				row.Circle.BackgroundColor3 = row.On and Library.BindCfg.RedEdge or Color3.fromRGB(105, 105, 105)
+				row.Circle.Position = row.On and UDim2.new(0.5, 0, 0.0500000007, 0) or UDim2.new(0.05, 0, 0.0500000007, 0)
+			end
+		end
+	end
+
+	return restored > 0
+end
+
+function Library:SaveSettings()
+	if not fsReady() then return false end
+	if next(self.Flags or {}) == nil then return false end
+	local keep = self.ConfigName
+	local ok, done = pcall(function() return self:SaveConfig("nexo_autosave") end)
+	self.ConfigName = keep
+	return (ok and done) and true or false
+end
+
+function Library:LoadSettings()
+	if not fsReady() then return false end
+	local keep = self.ConfigName
+	local ok, done = pcall(function() return self:LoadConfig("nexo_autosave") end)
+	self.ConfigName = keep
+	return (ok and done) and true or false
+end
+
+function Library:_rememberStart()
+	if self.RememberOn then return self end
+	self.RememberOn = true
+
+	pcall(function() self:LoadBinds(true) end)
+
+	task.delay(1.5, function()
+		pcall(function() self:LoadSettings() end)
+		self.SettingsReady = true
+	end)
+
+	task.spawn(function()
+		while self.RememberOn do
+			task.wait(8)
+			if not self.RememberOn then break end
+			pcall(function() self:SaveBinds() end)
+			if self.SettingsReady then
+				pcall(function() self:SaveSettings() end)
+			end
+		end
+	end)
+
+	return self
+end
+
+function Library:HideDockIcons(hidden)
+	if self.AiIconsSet then
+		pcall(function() self.AiIconsSet(hidden ~= false, false) end)
+	end
+	return self
+end
+
+function Library:ToggleDockIcons()
+	local hidden = false
+	if self.AiIconsHidden then
+		pcall(function() hidden = self.AiIconsHidden() end)
+	end
+	return self:HideDockIcons(not hidden)
+end
+
 function Library:_buildFeedbackWindow()
 	local FB = Library.FeedbackCfg
 	if not FB or not FB.Enabled then return nil end
@@ -9451,8 +9738,6 @@ function Library:_buildFeedbackWindow()
 	taCorner.CornerRadius = UDim.new(0, 12)
 	taCorner.Parent = TextArea
 
-	nexoStroke(TextArea, 1.4, HOHO.PLATE_STROKE, -90)
-
 	local taPad = Instance.new("UIPadding")
 	taPad.PaddingTop = UDim.new(0, 10)
 	taPad.PaddingBottom = UDim.new(0, 10)
@@ -9571,8 +9856,6 @@ function Library:_buildFeedbackWindow()
 		local oCorner = Instance.new("UICorner")
 		oCorner.CornerRadius = UDim.new(0, 12)
 		oCorner.Parent = box
-
-		nexoStroke(box, 1.6, HOHO.PLATE_STROKE, -90)
 
 		local tick = Instance.new("ImageLabel")
 		tick.Name = "Tick"
@@ -9891,7 +10174,7 @@ function Library:_bindRegister(name, kind, handle, fire)
 	local state = self.Binds
 	if not state then return end
 	state.Dirty = true
-	if state.Open and state.Refresh and not state.Queued then
+	if state.Refresh and not state.Queued then
 		state.Queued = true
 		task.delay(0.4, function()
 			state.Queued = false
@@ -9915,6 +10198,7 @@ function Library:_buildKeybindWindow()
 	local CFG = Library.BindCfg
 	if CFG.Enabled == false then return nil end
 	if self.Binds and self.Binds.Root and self.Binds.Root.Parent then return self.Binds end
+	pcall(function() self:LoadBinds() end)
 
 	local UIS = game:GetService("UserInputService")
 	local TS = game:GetService("TweenService")
@@ -10179,6 +10463,7 @@ function Library:_buildKeybindWindow()
 
 	local function saveRow(row)
 		Library.BindSaved[row.Name] = { key = row.Key, on = row.On }
+		self:_bindsQueueSave()
 	end
 
 	local function setOn(row, value)
@@ -10396,6 +10681,7 @@ function Library:_buildKeybindWindow()
 		end
 		state.Capture = nil
 		Library.BindSaved = {}
+		pcall(function() self:SaveBinds() end)
 		self:_bindNotify("Unbind All done")
 	end)
 
@@ -10491,6 +10777,7 @@ function Library:UnbindAll()
 	local state = self.Binds
 	if not state then
 		Library.BindSaved = {}
+		pcall(function() self:SaveBinds() end)
 		return self
 	end
 	for _, row in ipairs(state.Rows) do
@@ -10501,6 +10788,7 @@ function Library:UnbindAll()
 		row.Circle.BackgroundColor3 = Color3.fromRGB(105, 105, 105)
 	end
 	Library.BindSaved = {}
+	pcall(function() self:SaveBinds() end)
 	self:_bindNotify("Unbind All done")
 	return self
 end
@@ -10548,6 +10836,10 @@ function NexoHub:CreateWindow(opts)
 		Library.BindCfg.Enabled = false
 	else
 		pcall(function() ui:_buildKeybindWindow() end)
+	end
+
+	if opts.remember ~= false then
+		pcall(function() ui:_rememberStart() end)
 	end
 
 	if opts.autoload then
